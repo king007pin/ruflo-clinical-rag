@@ -34,7 +34,7 @@ export const orphadataCrawler: CrawlerDef = {
   description: "Orphadata — 10,000+ rare disease profiles (CC BY 4.0)",
   category: "Rare Diseases",
   batchSize: 8,
-  intervalHours: 720,
+  intervalHours: 168,
   delayMs: DELAY_MS,
 
   async fetchUrls(): Promise<string[]> {

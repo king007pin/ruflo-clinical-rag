@@ -79,7 +79,7 @@ export const mdcalcCrawler: CrawlerDef = {
   description: "MDCalc — evidence-based clinical scoring systems and diagnostic criteria",
   category: "Scoring Systems",
   batchSize: 8,
-  intervalHours: 720,
+  intervalHours: 168,
   delayMs: DELAY_MS,
 
   async fetchUrls(): Promise<string[]> {

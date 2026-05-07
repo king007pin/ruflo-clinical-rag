@@ -87,7 +87,7 @@ export const indiaGovCrawler: CrawlerDef = {
   description: "India Govt Guidelines — MoHFW STG, NTEP TB, NCVBDC dengue/malaria, NACO HIV, ICMR",
   category: "India Guidelines",
   batchSize: 5,
-  intervalHours: 720,
+  intervalHours: 168,
   delayMs: DELAY_MS,
 
   async fetchUrls(): Promise<string[]> {

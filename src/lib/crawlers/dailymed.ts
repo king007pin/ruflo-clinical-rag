@@ -46,7 +46,7 @@ export const dailymedCrawler: CrawlerDef = {
   description: "DailyMed — FDA official drug labels: dosing, contraindications, interactions",
   category: "Drug Database",
   batchSize: 12,
-  intervalHours: 720,
+  intervalHours: 168,
   delayMs: DELAY_MS,
 
   async fetchUrls(): Promise<string[]> {

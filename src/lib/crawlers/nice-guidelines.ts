@@ -33,7 +33,7 @@ export const niceGuidelinesCrawler: CrawlerDef = {
   description: "NICE Clinical Guidelines — UK evidence-based recommendations for clinical practice",
   category: "Clinical Guidelines",
   batchSize: 8,
-  intervalHours: 720,
+  intervalHours: 168,
   delayMs: DELAY_MS,
 
   async fetchUrls(): Promise<string[]> {

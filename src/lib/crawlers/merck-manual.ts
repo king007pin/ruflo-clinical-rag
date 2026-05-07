@@ -99,7 +99,7 @@ export const merckManualCrawler: CrawlerDef = {
   description: "Merck Manual Professional — disease symptoms, diagnosis, treatment, DDx",
   category: "Clinical Reference",
   batchSize: 8,
-  intervalHours: 720,
+  intervalHours: 168,
   delayMs: DELAY_MS,
 
   async fetchUrls(): Promise<string[]> {

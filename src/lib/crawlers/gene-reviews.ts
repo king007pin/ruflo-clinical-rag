@@ -34,7 +34,7 @@ export const geneReviewsCrawler: CrawlerDef = {
   description: "GeneReviews — NCBI Bookshelf (peer-reviewed genetic disease chapters)",
   category: "Clinical Reference",
   batchSize: 10,
-  intervalHours: 720,
+  intervalHours: 168,
   delayMs: DELAY_MS,
 
   async fetchUrls(): Promise<string[]> {

@@ -33,7 +33,7 @@ export const cdcDiseasesCrawler: CrawlerDef = {
   description: "CDC Disease Index — case definitions, symptoms, diagnosis, treatment",
   category: "Clinical Reference",
   batchSize: 10,
-  intervalHours: 720,
+  intervalHours: 168,
   delayMs: DELAY_MS,
 
   async fetchUrls(): Promise<string[]> {
