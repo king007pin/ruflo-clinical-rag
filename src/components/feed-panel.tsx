@@ -469,25 +469,46 @@ function DeepCrawlsSection() {
   const grouped = CATEGORY_ORDER.map((cat) => ({
     label: cat,
     crawlers: CRAWLER_LIST.filter((c) => c.category === cat),
+    style: CATEGORY_COLOURS[cat] ?? { bg: "rgba(100,116,139,0.15)", fg: "#94a3b8" },
   })).filter((g) => g.crawlers.length > 0);
 
   return (
-    <div className="space-y-4">
-      <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--accent)" }}>
-        Deep Crawl Sources — Multi-Source Clinical Knowledge Base
-      </p>
-      {grouped.map((group) => (
-        <div key={group.label}>
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--muted)" }}>
-            {group.label}
-          </p>
-          <div className="grid gap-3 md:grid-cols-2">
-            {group.crawlers.map((crawler) => (
-              <GenericCrawlCard key={crawler.id} crawler={crawler} />
-            ))}
+    <div className="space-y-6">
+      {/* Section header */}
+      <div className="flex items-center gap-3">
+        <div className="flex-1 h-px" style={{ backgroundColor: "var(--card-border)" }} />
+        <p className="text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: "var(--accent)" }}>
+          Deep Crawl Sources
+        </p>
+        <div className="flex-1 h-px" style={{ backgroundColor: "var(--card-border)" }} />
+      </div>
+
+      {/* Category grid — 2 categories per row on md+ */}
+      <div className="grid gap-6 md:grid-cols-2">
+        {grouped.map((group) => (
+          <div key={group.label}
+            className="rounded-2xl border p-4 space-y-3"
+            style={{ borderColor: `${group.style.fg}33`, backgroundColor: `${group.style.fg}08` }}>
+            {/* Category header */}
+            <div className="flex items-center gap-2 pb-2 border-b" style={{ borderColor: `${group.style.fg}33` }}>
+              <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: group.style.fg }} />
+              <p className="text-xs font-bold uppercase tracking-wider" style={{ color: group.style.fg }}>
+                {group.label}
+              </p>
+              <span className="ml-auto text-[10px] rounded-full px-2 py-0.5"
+                style={{ backgroundColor: group.style.bg, color: group.style.fg }}>
+                {group.crawlers.length} source{group.crawlers.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+            {/* Crawl cards stacked inside each category */}
+            <div className="space-y-3">
+              {group.crawlers.map((crawler) => (
+                <GenericCrawlCard key={crawler.id} crawler={crawler} />
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }

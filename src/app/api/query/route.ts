@@ -12,8 +12,10 @@ export const dynamic = "force-dynamic";
 const bodySchema = z.object({
   question: z.string().min(4),
   model: z.string().optional(),
-  swarmSize: z.number().int().min(1).max(6).optional(),
-  topK: z.number().int().min(1).max(12).optional(),
+  swarmSize: z.number().int().min(1).max(7).optional(),
+  topK: z.number().int().min(1).max(20).optional(),
+  patientContext: z.string().max(800).optional(),
+  labText: z.string().max(12000).optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -23,7 +25,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid payload", issues: parsed.error.issues }, { status: 400 });
   }
 
-  const { question, model, swarmSize = 3, topK = 6 } = parsed.data;
+  const { question, model, swarmSize = 3, topK = 10, patientContext, labText } = parsed.data;
 
   const rows = await db
     .select({
@@ -42,7 +44,10 @@ export async function POST(req: NextRequest) {
     .limit(250);
 
   if (!rows.length) {
-    return NextResponse.json({ error: "No knowledge ingested yet. Add PDF, YouTube, or website content first." }, { status: 400 });
+    return NextResponse.json(
+      { error: "No knowledge ingested yet. Add PDF, YouTube, or website content first." },
+      { status: 400 },
+    );
   }
 
   const qEmbedding = await embedText(question, "query");
@@ -60,47 +65,85 @@ export async function POST(req: NextRequest) {
     topK,
   );
 
-  // Memory injection: retrieve similar high-rated past cases
   const pastCases = await getSimilarPastCases(qEmbedding, 2).catch(() => []);
-  const pastCasesContext = pastCases.length > 0
-    ? "\n\nRelevant prior cases from knowledge base:\n" +
-      pastCases.map((c, i) => `[PC${i + 1}] Query: "${c.query}" -> Summary: ${c.consensusSnippet}`).join("\n")
-    : "";
+  const pastCasesContext =
+    pastCases.length > 0
+      ? "\n\nRelevant prior cases from knowledge base:\n" +
+        pastCases.map((c, i) => `[PC${i + 1}] Query: "${c.query}" -> Summary: ${c.consensusSnippet}`).join("\n")
+      : "";
 
   const context = assembleContext(matches);
   const contextWithMemory = context + pastCasesContext;
-  const swarm = await runSwarm({ question, context: contextWithMemory, model, swarmSize, matches });
 
-  // Build consensus snippet from first agent's answer (first sentence, max 120 chars)
-  const firstAnswer = swarm.agents[0]?.message ?? swarm.answer;
-  const consensusSnippet = firstAnswer.split(/[.!?]/)[0]?.trim().slice(0, 120) ?? null;
+  const encoder = new TextEncoder();
 
-  // Calculate max score
-  const maxScore = matches.length > 0 ? Math.max(...matches.map((m) => m.score ?? 0)) : 0;
+  const stream = new ReadableStream({
+    async start(controller) {
+      function send(data: Record<string, unknown>) {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+      }
 
-  // Log session (single INSERT ~5ms, awaited to return sessionId for feedback linkage)
-  const sessionId = await logSession({
-    query: question,
-    queryEmbedding: qEmbedding,
-    matchCount: matches.length,
-    maxScore,
-    agentCount: swarm.agents.length,
-    agentAnswers: swarm.agents.map((a) => a.message),
-    consensusSnippet: consensusSnippet ?? undefined,
-  }).catch(() => null);
+      try {
+        send({ type: "status", message: `Routing to ${swarmSize} agent${swarmSize !== 1 ? "s" : ""}…` });
 
-  return NextResponse.json({
-    answer: swarm.answer,
-    agents: swarm.agents,
-    sessionId,
-    matches: matches.map((m) => ({
-      sourceId: m.sourceId,
-      sourceTitle: m.sourceTitle,
-      sourceType: m.sourceType,
-      sourceUrl: m.sourceUrl,
-      position: m.position,
-      chunk: m.chunk,
-      score: m.score,
-    })),
+        const swarm = await runSwarm({
+          question,
+          context: contextWithMemory,
+          model,
+          swarmSize,
+          matches,
+          patientContext,
+          labText,
+          onAgentDone: (agent) => send({ type: "agent", ...agent }),
+          onDebateStart: () =>
+            send({ type: "debate_start", message: "Agents reviewing each other's reasoning…" }),
+          onSynthesisStart: () =>
+            send({ type: "synthesis_start", message: "Synthesising final report from debate…" }),
+        });
+
+        const firstAnswer = swarm.agents[0]?.message ?? swarm.answer;
+        const consensusSnippet = firstAnswer.split(/[.!?]/)[0]?.trim().slice(0, 120) ?? null;
+        const maxScore = matches.length > 0 ? Math.max(...matches.map((m) => m.score ?? 0)) : 0;
+
+        const sessionId = await logSession({
+          query: question,
+          queryEmbedding: qEmbedding,
+          matchCount: matches.length,
+          maxScore,
+          agentCount: swarm.agents.length,
+          agentAnswers: swarm.agents.map((a) => a.message),
+          consensusSnippet: consensusSnippet ?? undefined,
+        }).catch(() => null);
+
+        send({
+          type: "done",
+          answer: swarm.answer,
+          agents: swarm.agents,
+          round1Agents: swarm.round1Agents,
+          sessionId,
+          matches: matches.map((m) => ({
+            sourceId: m.sourceId,
+            sourceTitle: m.sourceTitle,
+            sourceType: m.sourceType,
+            sourceUrl: m.sourceUrl,
+            position: m.position,
+            chunk: m.chunk,
+            score: m.score,
+          })),
+        });
+      } catch (err) {
+        send({ type: "error", message: (err as Error).message });
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    },
   });
 }

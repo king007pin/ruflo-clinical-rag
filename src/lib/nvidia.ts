@@ -3,14 +3,14 @@ const NVIDIA_BASE = "https://integrate.api.nvidia.com/v1";
 export const NVIDIA_EMBED_MODEL = "nvidia/nv-embedqa-e5-v5";
 export const NVIDIA_EMBED_DIMS = 1024;
 
-// Primary: gpt-oss-120b (user's confirmed available model)
-// Others kept as fallback — same key may unlock them
 export const NVIDIA_SWARM_MODELS = [
-  "gpt-oss-120b",
-  "meta/llama-3.3-70b-instruct",
-  "mistralai/mixtral-8x7b-instruct-v0.1",
-  "google/gemma-3-27b-it",
-  "microsoft/phi-3-mini-128k-instruct",
+  "meta/llama-3.3-70b-instruct",       // primary / synthesis anchor — IM attending
+  "moonshotai/kimi-k2-instruct",        // agentic, GPQA 75.1%, 128K, 40 RPM free
+  "deepseek-ai/deepseek-r1",            // stepwise CoT, rare/complex presentations
+  "openai/gpt-oss-120b",               // strong 120B general clinical reasoning
+  "mistralai/mixtral-8x7b-instruct-v0.1", // MoE fast, literature synthesis
+  "google/gemma-3-27b-it",             // pharmacology, drug interactions
+  "microsoft/phi-3-mini-128k-instruct", // 128K fast triage, long clinical notes
 ] as const;
 
 export type NvidiaModel = (typeof NVIDIA_SWARM_MODELS)[number];
@@ -57,15 +57,27 @@ export async function nvidiaEmbed(text: string, inputType: "query" | "passage" =
   return vec;
 }
 
-export async function nvidiaChat(model: string, system: string, user: string): Promise<string> {
+// Per-model NIM constraints — wrong values cause 400/410
+const MODEL_CONFIGS: Record<string, { maxTokens: number; temperature: number }> = {
+  "meta/llama-3.3-70b-instruct":            { maxTokens: 4096, temperature: 0.3 },
+  "moonshotai/kimi-k2-instruct":             { maxTokens: 4096, temperature: 0.6 }, // NIM docs: 0.6 for instruct mode
+  "deepseek-ai/deepseek-r1":                { maxTokens: 4096, temperature: 0.6 }, // reasoning model needs higher temp
+  "openai/gpt-oss-120b":                    { maxTokens: 4096, temperature: 0.3 },
+  "mistralai/mixtral-8x7b-instruct-v0.1":   { maxTokens: 4096, temperature: 0.3 },
+  "google/gemma-3-27b-it":                  { maxTokens: 2048, temperature: 0.3 }, // smaller model, cap output
+  "microsoft/phi-3-mini-128k-instruct":      { maxTokens: 2048, temperature: 0.3 }, // 3.8B — cap output
+};
+
+export async function nvidiaChat(model: string, system: string, user: string, temperatureOverride?: number): Promise<string> {
+  const cfg = MODEL_CONFIGS[model] ?? { maxTokens: 4096, temperature: 0.3 };
   const data = (await nvidiaFetch("/chat/completions", {
     model,
     messages: [
       { role: "system", content: system },
       { role: "user", content: user },
     ],
-    max_tokens: 1024,
-    temperature: 0.3,
+    max_tokens: cfg.maxTokens,
+    temperature: temperatureOverride ?? cfg.temperature,
     top_p: 0.9,
   })) as { choices: Array<{ message: { content: string } }> };
   return data.choices[0].message.content;

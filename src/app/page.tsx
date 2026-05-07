@@ -72,9 +72,9 @@ export default async function HomePage() {
           </div>
         </header>
 
-        <section className="grid gap-6 md:grid-cols-2">
+        <section className="flex w-full flex-col gap-6">
           <div
-            className="rounded-3xl border p-4 shadow-lg sm:p-6"
+            className="w-full rounded-3xl border p-4 shadow-lg sm:p-6"
             style={{ backgroundColor: "var(--card)", borderColor: "var(--card-border)" }}
           >
             <div className="flex items-center justify-between text-left">
@@ -94,7 +94,7 @@ export default async function HomePage() {
             <IngestForm />
           </div>
           <div
-            className="rounded-3xl border p-4 shadow-lg sm:p-6"
+            className="w-full rounded-3xl border p-4 shadow-lg sm:p-6"
             style={{ backgroundColor: "var(--card)", borderColor: "var(--card-border)" }}
           >
             <div className="flex items-center justify-between text-left">
@@ -105,11 +105,11 @@ export default async function HomePage() {
                 className="rounded-full px-3 py-1 text-xs"
                 style={{ backgroundColor: "var(--pill)", color: "var(--text)", border: `1px solid var(--pill-border)` }}
               >
-                Multi-model · Consensus
+                Multi-model · Debate · Synthesis
               </span>
             </div>
             <p className="mt-2 text-sm" style={{ color: "var(--muted)" }}>
-              Describe symptoms or differentials; Ruflo swarms respond with grounded, cited context.
+              Describe symptoms or differentials. Agents debate in two rounds, then synthesise a structured plain-text clinical report.
             </p>
             <QueryBox />
           </div>
@@ -177,15 +177,38 @@ export default async function HomePage() {
           className="w-full rounded-3xl border p-6 shadow-lg"
           style={{ backgroundColor: "var(--card)", borderColor: "var(--card-border)" }}
         >
-          <div className="mb-4 flex flex-col items-center gap-1 text-center">
-            <p className="text-xs uppercase tracking-[0.28em]" style={{ color: "var(--accent)" }}>
-              India-primary · auto-updates hourly
-            </p>
+          <div className="mb-5 flex flex-col items-center gap-3 text-center">
+            <div className="flex items-center gap-2">
+              <span className="inline-block h-1.5 w-1.5 rounded-full animate-pulse" style={{ backgroundColor: "var(--accent)" }} />
+              <p className="text-xs uppercase tracking-[0.28em]" style={{ color: "var(--accent)" }}>
+                India-primary · auto-updates hourly
+              </p>
+              <span className="inline-block h-1.5 w-1.5 rounded-full animate-pulse" style={{ backgroundColor: "var(--accent)" }} />
+            </div>
             <h3 className="text-xl font-semibold" style={{ color: "var(--text)" }}>
-              Medical knowledge feeds
+              Medical Knowledge Feeds
             </h3>
-            <p className="text-sm" style={{ color: "var(--muted)" }}>
-              MoHFW · ICMR · NDTV · TOI · NEJM · JAMA · WHO · PubMed India queries — refreshed automatically
+            {/* Source grid — two rows of 4 */}
+            <div className="grid grid-cols-4 gap-2 w-full max-w-lg">
+              {[
+                { label: "MoHFW",        color: "#fb923c", desc: "India Govt" },
+                { label: "ICMR",         color: "#f472b6", desc: "Research"   },
+                { label: "NDTV Health",  color: "#818cf8", desc: "News"       },
+                { label: "Times of India", color: "#38bdf8", desc: "News"     },
+                { label: "NEJM",         color: "#4ade80", desc: "Journal"    },
+                { label: "JAMA",         color: "#a78bfa", desc: "Journal"    },
+                { label: "WHO SEARO",    color: "#fbbf24", desc: "Global"     },
+                { label: "PubMed India", color: "#34d399", desc: "Queries"    },
+              ].map(({ label, color, desc }) => (
+                <div key={label} className="rounded-xl border px-2 py-2 flex flex-col items-center gap-0.5"
+                  style={{ borderColor: `${color}33`, backgroundColor: `${color}11` }}>
+                  <span className="text-[11px] font-bold leading-tight text-center" style={{ color }}>{label}</span>
+                  <span className="text-[9px] uppercase tracking-wide" style={{ color: "var(--muted)" }}>{desc}</span>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs" style={{ color: "var(--muted)" }}>
+              Refreshed automatically — crawls run on schedule
             </p>
           </div>
           <FeedPanel />

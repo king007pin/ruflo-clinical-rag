@@ -160,8 +160,13 @@ export function pickTopMatches(
 export function assembleContext(top: ReturnType<typeof pickTopMatches>) {
   return top
     .map((match, idx) => {
-      const meta = [match.sourceTitle, match.sourceUrl].filter(Boolean).join(" · ");
-      return `# Snippet ${idx + 1}${meta ? ` (${meta})` : ""}\n${match.chunk}`;
+      const parts = [
+        match.sourceType ? `type:${match.sourceType.toUpperCase()}` : null,
+        match.sourceTitle ? `source:"${match.sourceTitle}"` : null,
+        match.sourceUrl ? `url:${match.sourceUrl}` : null,
+        typeof match.score === "number" ? `relevance:${match.score.toFixed(2)}` : null,
+      ].filter(Boolean).join(" | ");
+      return `[S${idx + 1}] ${parts ? `(${parts})` : ""}\n${match.chunk}`;
     })
-    .join("\n\n");
+    .join("\n\n---\n\n");
 }
