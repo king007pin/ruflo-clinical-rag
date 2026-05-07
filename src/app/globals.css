@@ -32,11 +32,18 @@
   box-sizing: border-box;
 }
 
+html {
+  /* prevent horizontal overflow on mobile */
+  overflow-x: hidden;
+}
+
 body {
   background: var(--bg);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
-  transition: background 0.2s, color 0.2s;
+  /* readable tap targets on mobile */
+  -webkit-tap-highlight-color: transparent;
+  overflow-x: hidden;
 }
 
 input,
@@ -44,7 +51,12 @@ textarea,
 select,
 button {
   font: inherit;
+  /* prevent iOS zoom on focus (font-size must be ≥16px on inputs) */
+  font-size: max(1rem, 16px);
 }
+
+/* override for purely display text inside buttons/labels */
+.text-xs, .text-sm { font-size: revert; }
 
 ::selection {
   background: color-mix(in srgb, var(--accent) 30%, transparent);
@@ -55,15 +67,28 @@ button {
   outline-offset: 2px;
 }
 
-/* Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+/* Scrollbar — desktop only */
+@media (pointer: fine) {
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--pill-border); border-radius: 99px; }
 }
-::-webkit-scrollbar-track {
-  background: transparent;
+
+/* ── Mobile-first layout helpers ─────────────────────────────────────── */
+
+/* Ensure cards don't overflow viewport on narrow screens */
+.card-safe {
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
-::-webkit-scrollbar-thumb {
-  background: var(--pill-border);
-  border-radius: 99px;
+
+/* Minimum tap target size */
+button, [role="button"] {
+  min-height: 2.5rem;
+}
+
+/* Prevent long URLs from breaking layout */
+a {
+  word-break: break-all;
 }

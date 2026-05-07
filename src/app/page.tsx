@@ -25,7 +25,7 @@ export default async function HomePage() {
 
   return (
     <main className="min-h-screen" style={{ background: "var(--bg)", color: "var(--text)" }}>
-      <div className="mx-auto flex max-w-6xl flex-col items-center gap-10 px-6 py-12 text-center">
+      <div className="mx-auto flex max-w-6xl flex-col items-center gap-6 px-4 py-6 text-center sm:gap-10 sm:px-6 sm:py-12">
         <div className="flex w-full items-center justify-between">
           <p className="text-sm font-semibold" style={{ color: "var(--muted)" }}>
             Ruflo • Clinical research copilot
@@ -73,7 +73,7 @@ export default async function HomePage() {
 
         <section className="grid gap-6 md:grid-cols-2">
           <div
-            className="rounded-3xl border p-6 shadow-lg"
+            className="rounded-3xl border p-4 shadow-lg sm:p-6"
             style={{ backgroundColor: "var(--card)", borderColor: "var(--card-border)" }}
           >
             <div className="flex items-center justify-between text-left">
@@ -93,7 +93,7 @@ export default async function HomePage() {
             <IngestForm />
           </div>
           <div
-            className="rounded-3xl border p-6 shadow-lg"
+            className="rounded-3xl border p-4 shadow-lg sm:p-6"
             style={{ backgroundColor: "var(--card)", borderColor: "var(--card-border)" }}
           >
             <div className="flex items-center justify-between text-left">

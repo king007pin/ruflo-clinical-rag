@@ -139,7 +139,7 @@ export default function FeedPanel() {
             <p className="mb-2 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--accent)" }}>
               {group.label}
             </p>
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid gap-2 md:grid-cols-2">
               {group.list.map((feed) => (
                 <div
                   key={feed.id}
