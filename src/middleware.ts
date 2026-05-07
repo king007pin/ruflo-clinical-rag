@@ -4,7 +4,7 @@ const COOKIE = "ruflo-auth";
 
 const PUBLIC = ["/login", "/api/auth", "/api/health"];
 
-export function proxy(req: NextRequest) {
+export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   if (PUBLIC.some((p) => pathname.startsWith(p))) return NextResponse.next();
 
