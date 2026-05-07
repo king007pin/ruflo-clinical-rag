@@ -40,7 +40,7 @@ export const geneReviewsCrawler: CrawlerDef = {
   async fetchUrls(): Promise<string[]> {
     const res = await fetch(GENE_REVIEWS_TOC, {
       headers: {
-        "User-Agent": "RufloRAG/1.0 (clinical research; NCBI Bookshelf; contact: admin@ruflo.ai)",
+        "User-Agent": "MediqRAG/1.0 (clinical research; NCBI Bookshelf; contact: admin@mediq.ai)",
         Accept: "text/html",
       },
       signal: AbortSignal.timeout(30000),
@@ -70,7 +70,7 @@ export const geneReviewsCrawler: CrawlerDef = {
       await new Promise((r) => setTimeout(r, DELAY_MS));
       const res = await fetch(url, {
         headers: {
-          "User-Agent": "RufloRAG/1.0 (clinical research; NCBI Bookshelf)",
+          "User-Agent": "MediqRAG/1.0 (clinical research; NCBI Bookshelf)",
           Accept: "text/html",
         },
         signal: AbortSignal.timeout(25000),

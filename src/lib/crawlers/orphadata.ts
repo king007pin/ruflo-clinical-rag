@@ -40,7 +40,7 @@ export const orphadataCrawler: CrawlerDef = {
   async fetchUrls(): Promise<string[]> {
     const res = await fetch(ORPHADATA_XML_URL, {
       headers: {
-        "User-Agent": "RufloRAG/1.0 (clinical research; contact: admin@ruflo.ai)",
+        "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
         Accept: "application/xml, text/xml",
       },
       signal: AbortSignal.timeout(120000),
@@ -74,7 +74,7 @@ export const orphadataCrawler: CrawlerDef = {
 
       const res = await fetch(url, {
         headers: {
-          "User-Agent": "RufloRAG/1.0 (clinical research; contact: admin@ruflo.ai)",
+          "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
           Accept: "text/html",
         },
         signal: AbortSignal.timeout(25000),

@@ -1,7 +1,7 @@
 import type { CrawlerDef, CrawlerArticle } from "./types";
 
 const DELAY_MS = 1000;
-const USER_AGENT = "RufloRAG/1.0 (clinical research; contact: admin@ruflo.ai)";
+const USER_AGENT = "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)";
 
 // Fallback list of specialty index pages if sitemap fails
 const FALLBACK_SPECIALTY_URLS = [

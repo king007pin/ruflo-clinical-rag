@@ -32,7 +32,7 @@ async function fetchUrlsFromHomepage(): Promise<Set<string>> {
   try {
     const res = await fetch(`${MDCALC_BASE}/`, {
       headers: {
-        "User-Agent": "RufloRAG/1.0 (clinical research; contact: admin@ruflo.ai)",
+        "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
         Accept: "text/html",
       },
       signal: AbortSignal.timeout(30000),
@@ -56,7 +56,7 @@ async function fetchUrlsFromSitemap(): Promise<Set<string>> {
   try {
     const res = await fetch(`${MDCALC_BASE}/sitemap.xml`, {
       headers: {
-        "User-Agent": "RufloRAG/1.0 (clinical research; contact: admin@ruflo.ai)",
+        "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
       },
       signal: AbortSignal.timeout(30000),
     });
@@ -97,7 +97,7 @@ export const mdcalcCrawler: CrawlerDef = {
       await new Promise((r) => setTimeout(r, DELAY_MS));
       const res = await fetch(url, {
         headers: {
-          "User-Agent": "RufloRAG/1.0 (clinical research; contact: admin@ruflo.ai)",
+          "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
           Accept: "text/html",
         },
         signal: AbortSignal.timeout(25000),

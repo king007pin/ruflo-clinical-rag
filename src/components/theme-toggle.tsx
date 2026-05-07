@@ -6,7 +6,7 @@ export default function ThemeToggle() {
   const [theme, setTheme] = useState<"light" | "dark">("light");
 
   useEffect(() => {
-    const stored = localStorage.getItem("ruflo-theme");
+    const stored = localStorage.getItem("mediq-theme");
     if (stored === "dark" || stored === "light") {
       setTheme(stored);
       document.documentElement.classList.toggle("dark", stored === "dark");
@@ -15,7 +15,7 @@ export default function ThemeToggle() {
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
-    localStorage.setItem("ruflo-theme", theme);
+    localStorage.setItem("mediq-theme", theme);
   }, [theme]);
 
   return (

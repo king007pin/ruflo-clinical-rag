@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const COOKIE = "ruflo-auth";
+const COOKIE = "mediq-auth";
 
 const PUBLIC = ["/login", "/api/auth", "/api/health"];
 

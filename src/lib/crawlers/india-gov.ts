@@ -51,7 +51,7 @@ async function extractPdfLinksFromPage(pageUrl: string): Promise<string[]> {
   try {
     const res = await fetch(pageUrl, {
       headers: {
-        "User-Agent": "RufloRAG/1.0 (clinical research; contact: admin@ruflo.ai)",
+        "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
         Accept: "text/html",
       },
       signal: AbortSignal.timeout(20000),
@@ -121,7 +121,7 @@ export const indiaGovCrawler: CrawlerDef = {
       if (isPdf) {
         const res = await fetch(url, {
           headers: {
-            "User-Agent": "RufloRAG/1.0 (clinical research; contact: admin@ruflo.ai)",
+            "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
           },
           signal: AbortSignal.timeout(60000),
         });
@@ -148,7 +148,7 @@ export const indiaGovCrawler: CrawlerDef = {
         // HTML page
         const res = await fetch(url, {
           headers: {
-            "User-Agent": "RufloRAG/1.0 (clinical research; contact: admin@ruflo.ai)",
+            "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
             Accept: "text/html",
           },
           signal: AbortSignal.timeout(25000),

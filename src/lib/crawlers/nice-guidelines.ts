@@ -47,7 +47,7 @@ export const niceGuidelinesCrawler: CrawlerDef = {
         const pageUrl = `${NICE_BASE}/guidance/published?type=ng,cg&pagesize=60&page=${page}`;
         const res = await fetch(pageUrl, {
           headers: {
-            "User-Agent": "RufloRAG/1.0 (clinical research; contact: admin@ruflo.ai)",
+            "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
             Accept: "text/html",
           },
           signal: AbortSignal.timeout(20000),
@@ -88,7 +88,7 @@ export const niceGuidelinesCrawler: CrawlerDef = {
       try {
         const recRes = await fetch(recommendationsUrl, {
           headers: {
-            "User-Agent": "RufloRAG/1.0 (clinical research; contact: admin@ruflo.ai)",
+            "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
             Accept: "text/html",
           },
           signal: AbortSignal.timeout(25000),
@@ -104,7 +104,7 @@ export const niceGuidelinesCrawler: CrawlerDef = {
       if (!html) {
         const baseRes = await fetch(url, {
           headers: {
-            "User-Agent": "RufloRAG/1.0 (clinical research; contact: admin@ruflo.ai)",
+            "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
             Accept: "text/html",
           },
           signal: AbortSignal.timeout(25000),

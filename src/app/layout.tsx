@@ -9,11 +9,11 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Ruflo Clinical RAG",
+  title: "Mediq",
   description:
     "Multi-model clinical research copilot — ingest medical PDFs, guidelines, and lectures, then query with a swarm of AI agents grounded in your corpus.",
   openGraph: {
-    title: "Ruflo Clinical RAG",
+    title: "Mediq",
     description: "AI-powered clinical swarm notebook for licensed physicians.",
     type: "website",
   },

@@ -34,7 +34,7 @@ function extractUrl(block: string): string {
 
 export async function fetchRssFeed(url: string, maxItems = 15): Promise<FeedItem[]> {
   const res = await fetch(url, {
-    headers: { "User-Agent": "RufloRAG/1.0 (clinical research copilot)" },
+    headers: { "User-Agent": "MediqRAG/1.0 (clinical research copilot)" },
     signal: AbortSignal.timeout(20000),
   });
   if (!res.ok) throw new Error(`RSS fetch failed (${res.status}): ${url}`);

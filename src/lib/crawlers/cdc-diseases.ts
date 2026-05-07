@@ -47,7 +47,7 @@ export const cdcDiseasesCrawler: CrawlerDef = {
       try {
         const res = await fetch(`${CDC_BASE}/az/${letter}.html`, {
           headers: {
-            "User-Agent": "RufloRAG/1.0 (clinical research; contact: admin@ruflo.ai)",
+            "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
             Accept: "text/html",
           },
           signal: AbortSignal.timeout(20000),
@@ -88,7 +88,7 @@ export const cdcDiseasesCrawler: CrawlerDef = {
       await new Promise((r) => setTimeout(r, DELAY_MS));
       const res = await fetch(url, {
         headers: {
-          "User-Agent": "RufloRAG/1.0 (clinical research; contact: admin@ruflo.ai)",
+          "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
           Accept: "text/html",
         },
         signal: AbortSignal.timeout(25000),

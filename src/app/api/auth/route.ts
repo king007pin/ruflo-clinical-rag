@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-const COOKIE = "ruflo-auth";
+const COOKIE = "mediq-auth";
 
 export async function POST(req: NextRequest) {
   const { password } = (await req.json().catch(() => ({}))) as { password?: string };

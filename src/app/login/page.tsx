@@ -50,7 +50,7 @@ function LoginForm() {
             Medical swarm notebook
           </p>
           <h1 className="text-2xl font-semibold" style={{ color: "var(--text)" }}>
-            Ruflo Clinical RAG
+            Mediq
           </h1>
           <p className="mt-2 text-sm" style={{ color: "var(--muted)" }}>
             For licensed clinicians only

@@ -29,7 +29,7 @@ export default async function HomePage() {
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-6 px-4 py-6 text-center sm:gap-10 sm:px-6 sm:py-12">
         <div className="flex w-full items-center justify-between">
           <p className="text-sm font-semibold" style={{ color: "var(--muted)" }}>
-            Ruflo • Clinical research copilot
+            Mediq • Clinical research copilot
           </p>
           <ThemeToggle />
         </div>
@@ -44,7 +44,7 @@ export default async function HomePage() {
             </h1>
             <p className="mt-4 max-w-2xl text-lg" style={{ color: "var(--muted)" }}>
               Built for physicians: ingest medical textbooks, guidelines, and recorded lectures, then ask patient-specific
-              questions. Ruflo routes across multiple models, grounds answers in your uploaded corpus, and returns
+              questions. Mediq routes across multiple models, grounds answers in your uploaded corpus, and returns
               consensus responses with citations.
             </p>
             <div className="mt-6 flex flex-wrap justify-center gap-3 text-sm" style={{ color: "var(--muted)" }}>
@@ -62,7 +62,7 @@ export default async function HomePage() {
               Clinical safety rails
             </h2>
             <ul className="mt-3 space-y-2 text-sm" style={{ color: "var(--muted)" }}>
-              <li>• Multi-model routing via Ruflo; configurable to your formulary</li>
+              <li>• Multi-model routing via Mediq; configurable to your formulary</li>
               <li>• Grounded in your uploaded PDFs / URLs / notes (no hallucinated citations)</li>
               <li>• Swarm consensus to reduce single-model errors</li>
             </ul>

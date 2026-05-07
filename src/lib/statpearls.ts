@@ -35,7 +35,7 @@ export type StatpearlsArticle = {
 export async function fetchStatpearlsArticleUrls(): Promise<string[]> {
   const res = await fetch(STATPEARLS_TOC, {
     headers: {
-      "User-Agent": "RufloRAG/1.0 (clinical research; NCBI Bookshelf; contact: admin@ruflo.ai)",
+      "User-Agent": "MediqRAG/1.0 (clinical research; NCBI Bookshelf; contact: admin@mediq.ai)",
       Accept: "text/html",
     },
     signal: AbortSignal.timeout(30000),
@@ -66,7 +66,7 @@ export async function fetchStatpearlsArticle(url: string): Promise<StatpearlsArt
     await new Promise((r) => setTimeout(r, NCBI_DELAY_MS));
     const res = await fetch(url, {
       headers: {
-        "User-Agent": "RufloRAG/1.0 (clinical research; NCBI Bookshelf)",
+        "User-Agent": "MediqRAG/1.0 (clinical research; NCBI Bookshelf)",
         Accept: "text/html",
       },
       signal: AbortSignal.timeout(25000),
