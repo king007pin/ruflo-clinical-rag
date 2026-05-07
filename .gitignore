@@ -1,0 +1,21 @@
+# deps
+node_modules/
+
+# next.js
+.next/
+out/
+
+# env (never commit real values)
+.env
+.env.local
+.env.*.local
+
+# system
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+
+# vercel
+.vercel

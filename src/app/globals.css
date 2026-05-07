@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f8fafc;
+  --card: #ffffff;
+  --card-border: #e2e8f0;
+  --text: #0f172a;
+  --muted: #475569;
+  --pill: #f1f5f9;
+  --pill-border: #cbd5e1;
+  --accent: #6366f1;
+  --accent-2: #f472b6;
+  --success: #22c55e;
+}
+
+:root.dark {
+  --bg: #080d1a;
+  --card: #0d1526;
+  --card-border: #1e293b;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --pill: #1e293b;
+  --pill-border: #334155;
+  --accent: #818cf8;
+  --accent-2: #f472b6;
+  --success: #4ade80;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  transition: background 0.2s, color 0.2s;
+}
+
+input,
+textarea,
+select,
+button {
+  font: inherit;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--pill-border);
+  border-radius: 99px;
+}
