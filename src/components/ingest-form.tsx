@@ -83,57 +83,59 @@ export default function IngestForm() {
         ))}
       </div>
 
-      {needsFile ? (
-        <label className="block text-sm" style={{ color: "var(--text)" }}>
-          Upload PDF (text-based)
-          <input
-            required
-            type="file"
-            accept="application/pdf"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            className="mt-1 w-full rounded-xl border px-3 py-2 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-[color:var(--accent)] file:px-3 file:py-2 file:text-slate-900 focus:outline-none"
-            style={{
-              borderColor: "var(--card-border)",
-              backgroundColor: "var(--card)",
-              color: "var(--text)",
-            }}
-          />
-        </label>
-      ) : needsUrl ? (
-        <label className="block text-sm" style={{ color: "var(--text)" }}>
-          Source URL
-          <input
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            required
-            type="url"
-            placeholder="https://example.com/guideline.pdf"
-            className="mt-1 w-full rounded-xl border px-3 py-2 text-sm focus:outline-none"
-            style={{
-              borderColor: "var(--card-border)",
-              backgroundColor: "var(--card)",
-              color: "var(--text)",
-            }}
-          />
-        </label>
-      ) : (
-        <label className="block text-sm" style={{ color: "var(--text)" }}>
-          Paste text
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            required
-            rows={5}
-            className="mt-1 w-full rounded-xl border px-3 py-2 text-sm focus:outline-none"
-            style={{
-              borderColor: "var(--card-border)",
-              backgroundColor: "var(--card)",
-              color: "var(--text)",
-            }}
-            placeholder="Drop research notes, case reports, or any text."
-          />
-        </label>
-      )}
+      <div key={kind}>
+        {needsFile ? (
+          <label className="block text-sm" style={{ color: "var(--text)" }}>
+            Upload PDF (text-based)
+            <input
+              required
+              type="file"
+              accept="application/pdf"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              className="mt-1 w-full rounded-xl border px-3 py-2 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-[color:var(--accent)] file:px-3 file:py-2 file:text-slate-900 focus:outline-none"
+              style={{
+                borderColor: "var(--card-border)",
+                backgroundColor: "var(--card)",
+                color: "var(--text)",
+              }}
+            />
+          </label>
+        ) : needsUrl ? (
+          <label className="block text-sm" style={{ color: "var(--text)" }}>
+            Source URL
+            <input
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              required
+              type="url"
+              placeholder="https://example.com/guideline.pdf"
+              className="mt-1 w-full rounded-xl border px-3 py-2 text-sm focus:outline-none"
+              style={{
+                borderColor: "var(--card-border)",
+                backgroundColor: "var(--card)",
+                color: "var(--text)",
+              }}
+            />
+          </label>
+        ) : (
+          <label className="block text-sm" style={{ color: "var(--text)" }}>
+            Paste text
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              required
+              rows={5}
+              className="mt-1 w-full rounded-xl border px-3 py-2 text-sm focus:outline-none"
+              style={{
+                borderColor: "var(--card-border)",
+                backgroundColor: "var(--card)",
+                color: "var(--text)",
+              }}
+              placeholder="Drop research notes, case reports, or any text."
+            />
+          </label>
+        )}
+      </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block text-sm" style={{ color: "var(--text)" }}>
