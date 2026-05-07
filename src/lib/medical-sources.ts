@@ -197,6 +197,19 @@ export const MEDICAL_SEED_FEEDS: SeedFeed[] = [
   },
 
   // ════════════════════════════════════════════════════════════
+  // CLINICAL REFERENCE — STATPEARLS (Harrison's equivalent)
+  // Deep crawl via /api/admin/crawl-statpearls
+  // This entry triggers monthly re-index of new articles only
+  // ════════════════════════════════════════════════════════════
+  {
+    name: "StatPearls — NCBI Bookshelf (clinical reference index)",
+    type: "website",
+    url: "https://www.ncbi.nlm.nih.gov/books/NBK430685/",
+    maxItems: 1,
+    intervalHours: 168, // weekly — TOC overview only; deep crawl is separate
+  },
+
+  // ════════════════════════════════════════════════════════════
   // GLOBAL — SECONDARY SOURCES
   // ════════════════════════════════════════════════════════════
 
