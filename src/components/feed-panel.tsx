@@ -2,6 +2,74 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+// Crawler registry metadata (client-safe — no server imports)
+type CrawlerMeta = {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  batchSize: number;
+};
+
+const CRAWLER_LIST: CrawlerMeta[] = [
+  {
+    id: "gene-reviews",
+    name: "GeneReviews — NCBI Bookshelf",
+    description: "GeneReviews — NCBI Bookshelf (peer-reviewed genetic disease chapters)",
+    category: "Clinical Reference",
+    batchSize: 10,
+  },
+  {
+    id: "merck-manual",
+    name: "Merck Manual Professional",
+    description: "Merck Manual Professional — disease symptoms, diagnosis, treatment, DDx",
+    category: "Clinical Reference",
+    batchSize: 8,
+  },
+  {
+    id: "cdc-diseases",
+    name: "CDC Disease Index",
+    description: "CDC Disease Index — case definitions, symptoms, diagnosis, treatment",
+    category: "Clinical Reference",
+    batchSize: 10,
+  },
+  {
+    id: "mdcalc",
+    name: "MDCalc — Clinical Scoring Systems",
+    description: "MDCalc — evidence-based clinical scoring systems and diagnostic criteria",
+    category: "Scoring Systems",
+    batchSize: 8,
+  },
+  {
+    id: "dailymed",
+    name: "DailyMed — FDA Drug Labels",
+    description: "DailyMed — FDA official drug labels: dosing, contraindications, interactions",
+    category: "Drug Database",
+    batchSize: 12,
+  },
+  {
+    id: "nice-guidelines",
+    name: "NICE Clinical Guidelines",
+    description: "NICE Clinical Guidelines — UK evidence-based recommendations for clinical practice",
+    category: "Clinical Guidelines",
+    batchSize: 8,
+  },
+  {
+    id: "india-gov",
+    name: "India Govt Clinical Guidelines",
+    description: "India Govt Guidelines — MoHFW STG, NTEP TB, NCVBDC dengue/malaria, NACO HIV, ICMR",
+    category: "India Guidelines",
+    batchSize: 5,
+  },
+  {
+    id: "orphadata",
+    name: "Orphadata — Rare Diseases",
+    description: "Orphadata — 10,000+ rare disease profiles (CC BY 4.0)",
+    category: "Rare Diseases",
+    batchSize: 8,
+  },
+];
+
 type Feed = {
   id: number;
   name: string;
@@ -208,6 +276,222 @@ function StatpearlsCrawl() {
   );
 }
 
+// ── Category badge colours ───────────────────────────────────────────────────
+const CATEGORY_COLOURS: Record<string, { bg: string; fg: string }> = {
+  "Clinical Reference": { bg: "rgba(129,140,248,0.15)", fg: "#818cf8" },
+  "Scoring Systems":    { bg: "rgba(251,191,36,0.15)",  fg: "#fbbf24" },
+  "Drug Database":      { bg: "rgba(239,68,68,0.15)",   fg: "#f87171" },
+  "Clinical Guidelines":{ bg: "rgba(34,197,94,0.15)",   fg: "#4ade80" },
+  "India Guidelines":   { bg: "rgba(249,115,22,0.15)",  fg: "#fb923c" },
+  "Rare Diseases":      { bg: "rgba(168,85,247,0.15)",  fg: "#c084fc" },
+};
+
+function categoryStyle(cat: string) {
+  return CATEGORY_COLOURS[cat] ?? { bg: "rgba(100,116,139,0.15)", fg: "#94a3b8" };
+}
+
+// ── GenericCrawlCard ─────────────────────────────────────────────────────────
+function GenericCrawlCard({ crawler }: { crawler: CrawlerMeta }) {
+  const [status, setStatus] = useState<CrawlStatus | null>(null);
+  const [crawling, setCrawling] = useState(false);
+  const [totalUrls, setTotalUrls] = useState(0);
+  const [currentOffset, setCurrentOffset] = useState(0);
+  const [sessionIngested, setSessionIngested] = useState(0);
+  const [msg, setMsg] = useState<string | null>(null);
+  const stopRef = useRef(false);
+
+  const apiBase = `/api/admin/crawl/${crawler.id}`;
+
+  const loadStatus = useCallback(async () => {
+    try {
+      const res = await fetch(apiBase);
+      const data = (await res.json()) as CrawlStatus;
+      setStatus(data);
+      setCurrentOffset(data.offset);
+    } catch {
+      // ignore load errors
+    }
+  }, [apiBase]);
+
+  useEffect(() => { void loadStatus(); }, [loadStatus]);
+
+  async function runBatch(): Promise<BatchResult> {
+    const res = await fetch(apiBase, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ batchSize: crawler.batchSize }),
+    });
+    return res.json() as Promise<BatchResult>;
+  }
+
+  async function startCrawl() {
+    stopRef.current = false;
+    setCrawling(true);
+    setSessionIngested(0);
+    setMsg(`Crawling ${crawler.name}…`);
+
+    let sessionTotal = 0;
+    while (!stopRef.current) {
+      const result = await runBatch();
+      if (result.error) { setMsg(`Error: ${result.error}`); break; }
+      sessionTotal += result.ingested;
+      setSessionIngested(sessionTotal);
+      setCurrentOffset(result.nextOffset);
+      setTotalUrls(result.totalUrls);
+      setMsg(`${result.progress} processed · ${sessionTotal} ingested this session`);
+      if (result.done) {
+        setMsg(`Crawl complete — all ${result.totalUrls} articles ingested!`);
+        break;
+      }
+    }
+    setCrawling(false);
+    await loadStatus();
+  }
+
+  async function resetCrawl() {
+    await fetch(apiBase, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reset: true }),
+    });
+    setCurrentOffset(0);
+    setSessionIngested(0);
+    setMsg("Crawl progress reset to beginning.");
+    await loadStatus();
+  }
+
+  const pct = totalUrls > 0 ? Math.round((currentOffset / totalUrls) * 100) : 0;
+  const totalIngested = status?.lastFetchCount ?? 0;
+  const catStyle = categoryStyle(crawler.category);
+
+  return (
+    <div
+      className="rounded-2xl border p-4 space-y-3"
+      style={{ borderColor: "var(--card-border)", backgroundColor: "var(--card)" }}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold truncate" style={{ color: "var(--text)" }}>
+            {crawler.name}
+          </p>
+          <p className="text-xs mt-0.5" style={{ color: "var(--muted)" }}>
+            {crawler.description}
+          </p>
+        </div>
+        <span
+          className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase shrink-0"
+          style={{ backgroundColor: catStyle.bg, color: catStyle.fg }}
+        >
+          {crawler.category}
+        </span>
+      </div>
+
+      {/* Progress bar */}
+      {totalUrls > 0 && (
+        <div>
+          <div className="flex justify-between text-[11px] mb-1" style={{ color: "var(--muted)" }}>
+            <span>{currentOffset} / {totalUrls} articles processed</span>
+            <span>{pct}%</span>
+          </div>
+          <div className="h-2 w-full rounded-full overflow-hidden" style={{ backgroundColor: "var(--pill)" }}>
+            <div
+              className="h-full rounded-full transition-all duration-300"
+              style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${catStyle.fg}, #4ade80)` }}
+            />
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-2 text-xs" style={{ color: "var(--muted)" }}>
+        {totalIngested > 0 && <span>{totalIngested} articles in knowledge base</span>}
+        {status?.lastFetchedAt && (
+          <span>· last run {new Date(status.lastFetchedAt).toLocaleDateString()}</span>
+        )}
+        {currentOffset > 0 && !crawling && totalUrls > 0 && currentOffset < totalUrls && (
+          <span style={{ color: catStyle.fg }}>· paused at {currentOffset}</span>
+        )}
+        {sessionIngested > 0 && crawling && (
+          <span style={{ color: catStyle.fg }}>· {sessionIngested} ingested this session</span>
+        )}
+      </div>
+
+      {msg && (
+        <p className="rounded-xl border px-3 py-2 text-xs" style={{ borderColor: "var(--card-border)", color: catStyle.fg }}>
+          {msg}
+        </p>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        {!crawling ? (
+          <button
+            onClick={startCrawl}
+            className="rounded-2xl px-4 py-2 text-sm font-semibold shadow transition"
+            style={{ background: `linear-gradient(90deg, ${catStyle.fg}, #4ade80)`, color: "#0f172a" }}
+          >
+            {currentOffset > 0 && totalUrls > 0 && currentOffset < totalUrls
+              ? `Resume (from ${currentOffset})`
+              : "Start crawl"}
+          </button>
+        ) : (
+          <button
+            onClick={() => { stopRef.current = true; }}
+            className="rounded-2xl px-4 py-2 text-sm font-semibold shadow transition"
+            style={{ background: "rgba(239,68,68,0.15)", color: "#f87171", border: "1px solid rgba(239,68,68,0.3)" }}
+          >
+            Pause
+          </button>
+        )}
+        {currentOffset > 0 && !crawling && (
+          <button
+            onClick={resetCrawl}
+            className="rounded-2xl px-4 py-2 text-sm transition"
+            style={{ backgroundColor: "var(--pill)", color: "var(--muted)", border: "1px solid var(--pill-border)" }}
+          >
+            Reset progress
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── DeepCrawlsSection ─────────────────────────────────────────────────────────
+const CATEGORY_ORDER = [
+  "Clinical Reference",
+  "Clinical Guidelines",
+  "Drug Database",
+  "Scoring Systems",
+  "Rare Diseases",
+  "India Guidelines",
+];
+
+function DeepCrawlsSection() {
+  const grouped = CATEGORY_ORDER.map((cat) => ({
+    label: cat,
+    crawlers: CRAWLER_LIST.filter((c) => c.category === cat),
+  })).filter((g) => g.crawlers.length > 0);
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--accent)" }}>
+        Deep Crawl Sources — Multi-Source Clinical Knowledge Base
+      </p>
+      {grouped.map((group) => (
+        <div key={group.label}>
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--muted)" }}>
+            {group.label}
+          </p>
+          <div className="grid gap-3 md:grid-cols-2">
+            {group.crawlers.map((crawler) => (
+              <GenericCrawlCard key={crawler.id} crawler={crawler} />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Main FeedPanel ───────────────────────────────────────────────────────────
 export default function FeedPanel() {
   const [feeds, setFeeds] = useState<Feed[]>([]);
@@ -280,6 +564,9 @@ export default function FeedPanel() {
     <div className="space-y-5">
       {/* StatPearls deep crawler always shown first */}
       <StatpearlsCrawl />
+
+      {/* Multi-source deep crawl section */}
+      <DeepCrawlsSection />
 
       <div className="flex flex-wrap items-center gap-3">
         {feeds.length === 0 && !loading && (
