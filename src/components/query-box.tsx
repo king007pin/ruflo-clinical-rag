@@ -13,7 +13,7 @@ type Match = {
   chunk: string;
   score: number;
 };
-type ResponseShape = { answer: string; agents: AgentReply[]; matches: Match[] };
+type ResponseShape = { answer: string; agents: AgentReply[]; matches: Match[]; sessionId: number | null };
 type SavePayload = {
   title?: string;
   patientName?: string;
@@ -52,12 +52,12 @@ const MODELS: ModelMeta[] = [
   },
   {
     id: "mistralai/mixtral-8x7b-instruct-v0.1",
-    label: "Mixtral 8×7B",
+    label: "Mixtral 8x7B",
     role: "Literature synthesizer",
     description:
-      "Mixture-of-experts architecture — 8 specialized sub-models in one. Ideal for synthesizing systematic reviews, meta-analyses, and multi-source evidence into actionable summaries.",
+      "Mixture-of-experts architecture -- 8 specialized sub-models in one. Ideal for synthesizing systematic reviews, meta-analyses, and multi-source evidence into actionable summaries.",
     tags: ["free", "MoE", "fast", "literature"],
-    size: "8×7B",
+    size: "8x7B",
   },
   {
     id: "google/gemma-3-27b-it",
@@ -73,7 +73,7 @@ const MODELS: ModelMeta[] = [
     label: "Phi-3 Mini 128K",
     role: "Rapid triage & long documents",
     description:
-      "Small but punchy model with a 128,000-token context window — longest in the roster. Best for fast emergency triage, quick second opinions, and analysing very long clinical notes or discharge summaries.",
+      "Small but punchy model with a 128,000-token context window -- longest in the roster. Best for fast emergency triage, quick second opinions, and analysing very long clinical notes or discharge summaries.",
     tags: ["free", "fast", "128K context", "triage"],
     size: "3.8B",
   },
@@ -150,7 +150,7 @@ function ModelCard({
 
 export default function QueryBox() {
   const [question, setQuestion] = useState(
-    "35-year-old with fever, cough, pleuritic chest pain—differential and next best diagnostics?",
+    "35-year-old with fever, cough, pleuritic chest pain--differential and next best diagnostics?",
   );
   const [model, setModel] = useState<string>("gpt-oss-120b");
   const [showModelPicker, setShowModelPicker] = useState(false);
@@ -161,12 +161,19 @@ export default function QueryBox() {
   const [saveCase, setSaveCase] = useState(false);
   const [caseFields, setCaseFields] = useState<SavePayload>({});
 
+  // Feedback state
+  const [feedbackSessionId, setFeedbackSessionId] = useState<number | null>(null);
+  const [feedbackGiven, setFeedbackGiven] = useState(false);
+  const [feedbackSending, setFeedbackSending] = useState(false);
+
   const selectedMeta = MODELS.find((m) => m.id === model) ?? MODELS[0];
 
   async function ask(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
     setStatus(null);
+    setFeedbackGiven(false);
+    setFeedbackSessionId(null);
     try {
       const res = await fetch("/api/query", {
         method: "POST",
@@ -176,6 +183,7 @@ export default function QueryBox() {
       const data = (await res.json()) as ResponseShape & { error?: string };
       if (!res.ok) throw new Error(data.error ?? "Query failed");
       setResult(data as ResponseShape);
+      setFeedbackSessionId(data.sessionId ?? null);
 
       if (saveCase) {
         const saveRes = await fetch("/api/cases", {
@@ -202,6 +210,21 @@ export default function QueryBox() {
     }
   }
 
+  async function submitFeedback(rating: number, helpful: boolean, issueType?: string) {
+    if (!feedbackSessionId || feedbackGiven) return;
+    setFeedbackSending(true);
+    try {
+      await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: feedbackSessionId, rating, helpful, issueType }),
+      });
+      setFeedbackGiven(true);
+    } finally {
+      setFeedbackSending(false);
+    }
+  }
+
   const topCitation = useMemo(() => result?.matches?.[0], [result]);
 
   return (
@@ -224,7 +247,7 @@ export default function QueryBox() {
 
         <p className="text-xs text-amber-400">For clinician use only. Always verify with current guidelines.</p>
 
-        {/* ── Model picker ─────────────────────────────────────────────── */}
+        {/* Model picker */}
         <div>
           <div className="mb-1 flex items-center justify-between">
             <span className="text-sm" style={{ color: "var(--text)" }}>Primary agent</span>
@@ -254,7 +277,7 @@ export default function QueryBox() {
               <span className="text-xs" style={{ color: "var(--accent)" }}>{selectedMeta.role}</span>
             </div>
             <p className="mt-0.5 text-xs" style={{ color: "var(--muted)" }}>
-              {selectedMeta.description.slice(0, 90)}…
+              {selectedMeta.description.slice(0, 90)}...
             </p>
           </div>
 
@@ -262,7 +285,7 @@ export default function QueryBox() {
           {showModelPicker && (
             <div className="mt-2 space-y-2">
               <p className="text-xs uppercase tracking-wider" style={{ color: "var(--muted)" }}>
-                All free NVIDIA NIM agents — click to select
+                All free NVIDIA NIM agents -- click to select
               </p>
               {MODELS.map((m) => (
                 <ModelCard
@@ -279,11 +302,11 @@ export default function QueryBox() {
           )}
         </div>
 
-        {/* ── Swarm size ───────────────────────────────────────────────── */}
+        {/* Swarm size */}
         <label className="block text-sm" style={{ color: "var(--text)" }}>
           Swarm size
           <span className="ml-2 text-xs" style={{ color: "var(--muted)" }}>
-            (how many agents answer in parallel — max 5)
+            (how many agents answer in parallel -- max 5)
           </span>
           <input
             type="number"
@@ -311,7 +334,7 @@ export default function QueryBox() {
               boxShadow: "0 10px 30px rgba(99,102,241,0.25)",
             }}
           >
-            {loading ? "Routing swarm…" : "Ask the swarm"}
+            {loading ? "Routing swarm..." : "Ask the swarm"}
           </button>
           <label className="flex items-center gap-2 text-sm" style={{ color: "var(--text)" }}>
             <input type="checkbox" checked={saveCase} onChange={(e) => setSaveCase(e.target.checked)} />
@@ -395,6 +418,47 @@ export default function QueryBox() {
               })}
             </div>
           </div>
+
+          {/* Feedback bar -- shown after result until feedback given */}
+          {feedbackSessionId && !feedbackGiven && (
+            <div
+              className="rounded-xl border px-4 py-3 flex flex-wrap items-center gap-3"
+              style={{ borderColor: "var(--card-border)", backgroundColor: "var(--card)" }}
+            >
+              <span className="text-xs" style={{ color: "var(--muted)" }}>
+                Was this helpful?
+              </span>
+              <button
+                disabled={feedbackSending}
+                onClick={() => void submitFeedback(5, true)}
+                className="rounded-xl px-3 py-1.5 text-sm font-medium transition disabled:opacity-50"
+                style={{ backgroundColor: "rgba(74,222,128,0.15)", color: "#4ade80" }}
+              >
+                Yes
+              </button>
+              <button
+                disabled={feedbackSending}
+                onClick={() => void submitFeedback(2, false, "incomplete")}
+                className="rounded-xl px-3 py-1.5 text-sm font-medium transition disabled:opacity-50"
+                style={{ backgroundColor: "rgba(239,68,68,0.15)", color: "#f87171" }}
+              >
+                Needs work
+              </button>
+              <button
+                disabled={feedbackSending}
+                onClick={() => void submitFeedback(1, false, "wrong_diagnosis")}
+                className="rounded-xl px-3 py-1.5 text-sm font-medium transition disabled:opacity-50"
+                style={{ backgroundColor: "rgba(239,68,68,0.15)", color: "#f87171", border: "1px solid rgba(239,68,68,0.3)" }}
+              >
+                Wrong diagnosis
+              </button>
+            </div>
+          )}
+          {feedbackGiven && (
+            <p className="text-xs text-center" style={{ color: "var(--muted)" }}>
+              Feedback recorded -- system will learn from this session.
+            </p>
+          )}
 
           {result.matches?.length > 0 && (
             <div>

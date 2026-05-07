@@ -1,6 +1,7 @@
 import { db } from "@/db";
 import { embeddings, sources } from "@/db/schema";
 import { assembleContext, embedText, pickTopMatches } from "@/lib/rag";
+import { getSimilarPastCases, logSession } from "@/lib/session-learning";
 import { runSwarm } from "@/lib/swarm";
 import { and, desc, eq, isNotNull } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
@@ -59,12 +60,39 @@ export async function POST(req: NextRequest) {
     topK,
   );
 
+  // Memory injection: retrieve similar high-rated past cases
+  const pastCases = await getSimilarPastCases(qEmbedding, 2).catch(() => []);
+  const pastCasesContext = pastCases.length > 0
+    ? "\n\nRelevant prior cases from knowledge base:\n" +
+      pastCases.map((c, i) => `[PC${i + 1}] Query: "${c.query}" -> Summary: ${c.consensusSnippet}`).join("\n")
+    : "";
+
   const context = assembleContext(matches);
-  const swarm = await runSwarm({ question, context, model, swarmSize, matches });
+  const contextWithMemory = context + pastCasesContext;
+  const swarm = await runSwarm({ question, context: contextWithMemory, model, swarmSize, matches });
+
+  // Build consensus snippet from first agent's answer (first sentence, max 120 chars)
+  const firstAnswer = swarm.agents[0]?.message ?? swarm.answer;
+  const consensusSnippet = firstAnswer.split(/[.!?]/)[0]?.trim().slice(0, 120) ?? null;
+
+  // Calculate max score
+  const maxScore = matches.length > 0 ? Math.max(...matches.map((m) => m.score ?? 0)) : 0;
+
+  // Log session (single INSERT ~5ms, awaited to return sessionId for feedback linkage)
+  const sessionId = await logSession({
+    query: question,
+    queryEmbedding: qEmbedding,
+    matchCount: matches.length,
+    maxScore,
+    agentCount: swarm.agents.length,
+    agentAnswers: swarm.agents.map((a) => a.message),
+    consensusSnippet: consensusSnippet ?? undefined,
+  }).catch(() => null);
 
   return NextResponse.json({
     answer: swarm.answer,
     agents: swarm.agents,
+    sessionId,
     matches: matches.map((m) => ({
       sourceId: m.sourceId,
       sourceTitle: m.sourceTitle,

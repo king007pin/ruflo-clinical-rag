@@ -1,6 +1,6 @@
 // Keep the schema entrypoint present so models can define tables and run
 // `npx drizzle-kit push` without bootstrapping Drizzle config first.
-import { boolean, integer, jsonb, pgEnum, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, integer, jsonb, pgEnum, pgTable, real, serial, text, timestamp } from "drizzle-orm/pg-core";
 
 export const sourceTypeEnum = pgEnum("source_type", ["pdf", "youtube", "website", "text"]);
 
@@ -61,4 +61,49 @@ export type CaseProfile = typeof caseProfiles.$inferSelect;
 export type CaseProfileInsert = typeof caseProfiles.$inferInsert;
 export type SourceFeed = typeof sourceFeeds.$inferSelect;
 export type SourceFeedInsert = typeof sourceFeeds.$inferInsert;
+
+// Query session log
+export const querySessions = pgTable("query_sessions", {
+  id: serial("id").primaryKey(),
+  query: text("query").notNull(),
+  queryEmbedding: jsonb("query_embedding").$type<number[]>(),
+  matchCount: integer("match_count").default(0).notNull(),
+  maxScore: real("max_score").default(0).notNull(),
+  agentCount: integer("agent_count").default(0).notNull(),
+  consensusSnippet: text("consensus_snippet"),
+  hadGap: boolean("had_gap").default(false).notNull(),
+  gapTopic: text("gap_topic"),
+  createdAt: timestamp("created_at", { withTimezone: false }).defaultNow().notNull(),
+});
+
+// Doctor feedback on sessions
+export const sessionFeedback = pgTable("session_feedback", {
+  id: serial("id").primaryKey(),
+  sessionId: integer("session_id").notNull().references(() => querySessions.id, { onDelete: "cascade" }),
+  rating: integer("rating").notNull(),
+  helpful: boolean("helpful").notNull(),
+  issueType: text("issue_type"),
+  comment: text("comment"),
+  createdAt: timestamp("created_at", { withTimezone: false }).defaultNow().notNull(),
+});
+
+// Knowledge gaps — topics that repeatedly had inadequate sources
+export const knowledgeGaps = pgTable("knowledge_gaps", {
+  id: serial("id").primaryKey(),
+  topic: text("topic").notNull(),
+  queryCount: integer("query_count").default(1).notNull(),
+  firstSeenAt: timestamp("first_seen_at", { withTimezone: false }).defaultNow().notNull(),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: false }).defaultNow().notNull(),
+  resolved: boolean("resolved").default(false).notNull(),
+  resolvedAt: timestamp("resolved_at", { withTimezone: false }),
+  pubmedQuery: text("pubmed_query"),
+  ingestedCount: integer("ingested_count").default(0).notNull(),
+});
+
+export type QuerySession = typeof querySessions.$inferSelect;
+export type QuerySessionInsert = typeof querySessions.$inferInsert;
+export type SessionFeedback = typeof sessionFeedback.$inferSelect;
+export type SessionFeedbackInsert = typeof sessionFeedback.$inferInsert;
+export type KnowledgeGap = typeof knowledgeGaps.$inferSelect;
+export type KnowledgeGapInsert = typeof knowledgeGaps.$inferInsert;
 

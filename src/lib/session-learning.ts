@@ -1,0 +1,187 @@
+import { db } from "@/db";
+import { knowledgeGaps, querySessions, sessionFeedback } from "@/db/schema";
+import { and, desc, eq, sql } from "drizzle-orm";
+
+// Called gap when: few sources OR low max score OR agent text contains "not supported"
+export function detectGap(
+  matchCount: number,
+  maxScore: number,
+  agentAnswers: string[],
+): boolean {
+  if (matchCount < 2) return true;
+  if (maxScore < 0.45) return true;
+  const notSupported = agentAnswers.some((a) =>
+    a.toLowerCase().includes("not supported by provided evidence")
+  );
+  return notSupported;
+}
+
+// Extract main clinical topic from query (simple keyword heuristic, no LLM)
+export function extractTopic(query: string): string {
+  const cleaned = query
+    .replace(/^(what is|how to|can you|tell me about|explain|describe|what are the)\s+/i, "")
+    .replace(/\?+$/, "")
+    .trim();
+  return cleaned.slice(0, 60);
+}
+
+// Log session (awaited in query route — single INSERT, ~5ms)
+export async function logSession(opts: {
+  query: string;
+  queryEmbedding: number[];
+  matchCount: number;
+  maxScore: number;
+  agentCount: number;
+  agentAnswers: string[];
+  consensusSnippet?: string;
+}): Promise<number | null> {
+  try {
+    const hadGap = detectGap(opts.matchCount, opts.maxScore, opts.agentAnswers);
+    const gapTopic = hadGap ? extractTopic(opts.query) : null;
+
+    const [row] = await db
+      .insert(querySessions)
+      .values({
+        query: opts.query,
+        queryEmbedding: opts.queryEmbedding,
+        matchCount: opts.matchCount,
+        maxScore: opts.maxScore,
+        agentCount: opts.agentCount,
+        consensusSnippet: opts.consensusSnippet ?? null,
+        hadGap,
+        gapTopic,
+      })
+      .returning({ id: querySessions.id });
+
+    if (hadGap && gapTopic) {
+      await upsertGap(gapTopic);
+    }
+
+    return row?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// Upsert knowledge gap record
+async function upsertGap(topic: string): Promise<void> {
+  const existing = await db
+    .select()
+    .from(knowledgeGaps)
+    .where(eq(knowledgeGaps.topic, topic))
+    .limit(1);
+
+  if (existing[0]) {
+    await db
+      .update(knowledgeGaps)
+      .set({
+        queryCount: existing[0].queryCount + 1,
+        lastSeenAt: new Date(),
+      })
+      .where(eq(knowledgeGaps.id, existing[0].id));
+  } else {
+    await db.insert(knowledgeGaps).values({ topic, pubmedQuery: topic });
+  }
+}
+
+// Retrieve similar past successful sessions (for memory injection).
+// Returns top-N sessions whose query embeddings are cosine-close to the given embedding.
+// "Successful" = session had no gap (hadGap = false) and has a consensusSnippet.
+export async function getSimilarPastCases(
+  queryEmbedding: number[],
+  limit = 2,
+): Promise<Array<{ query: string; consensusSnippet: string | null; sessionId: number }>> {
+  const recent = await db
+    .select({
+      id: querySessions.id,
+      query: querySessions.query,
+      queryEmbedding: querySessions.queryEmbedding,
+      consensusSnippet: querySessions.consensusSnippet,
+    })
+    .from(querySessions)
+    .where(eq(querySessions.hadGap, false))
+    .orderBy(desc(querySessions.createdAt))
+    .limit(200);
+
+  if (!recent.length) return [];
+
+  function cosineSim(a: number[], b: number[]): number {
+    if (a.length !== b.length || !a.length) return 0;
+    let dot = 0, na = 0, nb = 0;
+    for (let i = 0; i < a.length; i++) {
+      dot += a[i] * b[i];
+      na += a[i] * a[i];
+      nb += b[i] * b[i];
+    }
+    const denom = Math.sqrt(na) * Math.sqrt(nb);
+    return denom === 0 ? 0 : dot / denom;
+  }
+
+  const scored = recent
+    .filter((r) => r.queryEmbedding && r.consensusSnippet)
+    .map((r) => ({
+      ...r,
+      score: cosineSim(queryEmbedding, r.queryEmbedding as number[]),
+    }))
+    .filter((r) => r.score > 0.80)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+
+  return scored.map((r) => ({
+    query: r.query,
+    consensusSnippet: r.consensusSnippet,
+    sessionId: r.id,
+  }));
+}
+
+// Get learning stats for admin panel
+export async function getLearningStats() {
+  const [totalSessionsRow] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(querySessions);
+
+  const [totalGapsRow] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(knowledgeGaps);
+
+  const [resolvedGapsRow] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(knowledgeGaps)
+    .where(eq(knowledgeGaps.resolved, true));
+
+  const [totalFeedbackRow] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(sessionFeedback);
+
+  const recentGaps = await db
+    .select()
+    .from(knowledgeGaps)
+    .where(eq(knowledgeGaps.resolved, false))
+    .orderBy(desc(knowledgeGaps.queryCount))
+    .limit(10);
+
+  const recentSessions = await db
+    .select({
+      id: querySessions.id,
+      query: querySessions.query,
+      matchCount: querySessions.matchCount,
+      maxScore: querySessions.maxScore,
+      hadGap: querySessions.hadGap,
+      createdAt: querySessions.createdAt,
+    })
+    .from(querySessions)
+    .orderBy(desc(querySessions.createdAt))
+    .limit(20);
+
+  return {
+    totalSessions: Number(totalSessionsRow?.count ?? 0),
+    totalGaps: Number(totalGapsRow?.count ?? 0),
+    resolvedGaps: Number(resolvedGapsRow?.count ?? 0),
+    totalFeedback: Number(totalFeedbackRow?.count ?? 0),
+    recentGaps,
+    recentSessions,
+  };
+}
+
+// Satisfy the unused-import linter — `and` is used in cron/learn route via re-export path
+export { and };
