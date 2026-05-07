@@ -1,12 +1,12 @@
 {
   "framework": "nextjs",
   "buildCommand": "npm run build",
-  "installCommand": "npm install",
+  "installCommand": "npm install --ignore-scripts",
   "outputDirectory": ".next",
-  "env": {
-    "DATABASE_URL": "@database_url",
-    "NVIDIA_API_KEY": "@nvidia_api_key",
-    "APP_PASSWORD": "@app_password",
-    "AUTH_SECRET": "@auth_secret"
-  }
+  "crons": [
+    {
+      "path": "/api/cron/refresh",
+      "schedule": "0 * * * *"
+    }
+  ]
 }

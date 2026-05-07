@@ -44,14 +44,50 @@ function extractYoutubeId(url: string) {
   return match?.[1];
 }
 
-export async function textFromWebsite(url: string) {
-  const article = await extract(url);
+export async function textFromWebsite(url: string): Promise<string> {
+  // Try Tinyfish API first (handles anti-bot, JS-rendered pages)
+  if (process.env.TINYFISH_API_KEY) {
+    try {
+      return await textFromTinyfish(url);
+    } catch {
+      // fall through to article-extractor
+    }
+  }
+
+  // Fallback: article-extractor with browser-like headers
+  const article = await extract(url, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.9",
+    },
+  } as Parameters<typeof extract>[1]);
   if (!article) throw new Error("Could not extract article content");
   const body = normalizeWhitespace(
     [article.title, article.description, article.content].filter(Boolean).join("\n\n"),
   );
   if (!body) throw new Error("Website content was empty");
   return body;
+}
+
+async function textFromTinyfish(url: string): Promise<string> {
+  // Tinyfish: JS-rendered + anti-bot bypassing web crawling API
+  // Inspired by: https://github.com/tinyfish-io/tinyfish-cookbook
+  const res = await fetch("https://api.tinyfish.io/api/v1/scrape", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.TINYFISH_API_KEY}`,
+    },
+    body: JSON.stringify({ url, return_markdown: true }),
+    signal: AbortSignal.timeout(30000),
+  });
+  if (!res.ok) throw new Error(`Tinyfish failed (${res.status})`);
+  const data = (await res.json()) as { markdown?: string; text?: string; content?: string };
+  const text = data.markdown ?? data.text ?? data.content ?? "";
+  if (!text) throw new Error("Tinyfish returned empty content");
+  return normalizeWhitespace(text);
 }
 
 export function chunkText(text: string, chunkSize = 900, overlap = 140) {
