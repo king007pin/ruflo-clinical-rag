@@ -303,9 +303,7 @@ function AgentCard({ agent, meta, color, idx, phase, pending, compact }: {
 // ── Main component ───────────────────────────────────────────────────────────
 
 export default function QueryBox() {
-  const [question, setQuestion] = useState(
-    "35-year-old with fever, cough, pleuritic chest pain--differential and next best diagnostics?",
-  );
+  const [question, setQuestion] = useState("");
   const [model, setModel] = useState<string>("meta/llama-3.3-70b-instruct");
   const [showModelPicker, setShowModelPicker] = useState(false);
   const [swarmSize, setSwarmSize] = useState(3);
