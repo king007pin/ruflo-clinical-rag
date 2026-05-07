@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 const COOKIE = "mediq-auth";
 
-const PUBLIC = ["/login", "/api/auth", "/api/health"];
+const PUBLIC = ["/login", "/api/auth", "/api/health", "/api/cron", "/api/admin"];
 
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
