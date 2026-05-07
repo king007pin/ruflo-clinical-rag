@@ -50,7 +50,7 @@ export default async function HomePage() {
             <div className="mt-6 flex flex-wrap justify-center gap-3 text-sm" style={{ color: "var(--muted)" }}>
               <StatPill label="Sources" value={sourceCount} />
               <StatPill label="Chunks" value={chunkCount} />
-              <StatPill label="Models" value={6} />
+              <StatPill label="Models" value={7} />
               <StatPill label="Swarm consensus" value={"on"} />
             </div>
           </div>
