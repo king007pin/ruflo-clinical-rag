@@ -1,5 +1,15 @@
 import type { CrawlerDef, CrawlerArticle } from "./types";
-import { PDFParse } from "pdf-parse";
+
+async function parsePdfBuffer(arrayBuffer: ArrayBuffer): Promise<string> {
+  try {
+    const { PDFParse } = await import("pdf-parse");
+    const parser = new PDFParse({ data: arrayBuffer });
+    const result = await parser.getText();
+    return (result.text ?? "").replace(/\s{2,}/g, " ").trim();
+  } catch {
+    return "";
+  }
+}
 
 const DELAY_MS = 1000;
 
@@ -118,10 +128,7 @@ export const indiaGovCrawler: CrawlerDef = {
         if (!res.ok) return null;
 
         const arrayBuffer = await res.arrayBuffer();
-        const parser = new PDFParse({ data: arrayBuffer });
-        const parsed = await parser.getText();
-
-        const content = (parsed.text ?? "").replace(/\s{2,}/g, " ").trim();
+        const content = await parsePdfBuffer(arrayBuffer);
         if (content.length < 200) return null;
 
         // Derive title from URL filename
