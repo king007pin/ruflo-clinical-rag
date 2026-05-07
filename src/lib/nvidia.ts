@@ -3,12 +3,14 @@ const NVIDIA_BASE = "https://integrate.api.nvidia.com/v1";
 export const NVIDIA_EMBED_MODEL = "nvidia/nv-embedqa-e5-v5";
 export const NVIDIA_EMBED_DIMS = 1024;
 
+// Primary: gpt-oss-120b (user's confirmed available model)
+// Others kept as fallback — same key may unlock them
 export const NVIDIA_SWARM_MODELS = [
+  "gpt-oss-120b",
   "meta/llama-3.3-70b-instruct",
   "mistralai/mixtral-8x7b-instruct-v0.1",
   "google/gemma-3-27b-it",
   "microsoft/phi-3-mini-128k-instruct",
-  "deepseek-ai/deepseek-r1",
 ] as const;
 
 export type NvidiaModel = (typeof NVIDIA_SWARM_MODELS)[number];

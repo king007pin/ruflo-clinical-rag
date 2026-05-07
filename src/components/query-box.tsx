@@ -29,11 +29,11 @@ type SavePayload = {
 };
 
 const modelOptions = [
+  "gpt-oss-120b",
   "meta/llama-3.3-70b-instruct",
   "mistralai/mixtral-8x7b-instruct-v0.1",
   "google/gemma-3-27b-it",
   "microsoft/phi-3-mini-128k-instruct",
-  "deepseek-ai/deepseek-r1",
   "ruflo/ruvllm",
 ];
 
@@ -41,7 +41,7 @@ export default function QueryBox() {
   const [question, setQuestion] = useState(
     "35-year-old with fever, cough, pleuritic chest pain—differential and next best diagnostics?",
   );
-  const [model, setModel] = useState<string>("meta/llama-3.3-70b-instruct");
+  const [model, setModel] = useState<string>("gpt-oss-120b");
   const [swarmSize, setSwarmSize] = useState(3);
   const [result, setResult] = useState<ResponseShape | null>(null);
   const [status, setStatus] = useState<string | null>(null);
