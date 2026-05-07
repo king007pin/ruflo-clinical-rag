@@ -189,7 +189,7 @@ export default async function HomePage() {
               Medical Knowledge Feeds
             </h3>
             {/* Source grid — two rows of 4 */}
-            <div className="grid grid-cols-4 gap-2 w-full max-w-lg">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full max-w-lg">
               {[
                 { label: "MoHFW",        color: "#fb923c", desc: "India Govt" },
                 { label: "ICMR",         color: "#f472b6", desc: "Research"   },
