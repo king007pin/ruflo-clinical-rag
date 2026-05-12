@@ -1,6 +1,6 @@
 "use client";
 
-import React, { type FormEvent, useEffect, useMemo, useState } from "react";
+import React, { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 type AgentReply = { model: string; message: string; reasoning: string; round?: 1 | 2 };
 type Match = {
@@ -675,6 +675,12 @@ export default function QueryBox() {
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [sharingPdf, setSharingPdf] = useState(false);
 
+  const abortRef = useRef<AbortController | null>(null);
+
+  function stop() {
+    abortRef.current?.abort();
+  }
+
   useEffect(() => {
     fetch("/api/provider-key/status")
       .then((r) => r.json())
@@ -746,6 +752,8 @@ export default function QueryBox() {
 
   async function ask(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
     setLoading(true);
     setResult(null);
     setMultiResult(null);
@@ -760,6 +768,7 @@ export default function QueryBox() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ query: question, context: ctx || undefined }),
+          signal: ctrl.signal,
         });
         const data = (await res.json()) as { synthesis?: string; agents?: Array<{ role: string; model: string; providerId: string; content: string }>; swarmSize?: number; error?: string };
         if (data.error) { setStatus(data.error); }
@@ -774,8 +783,11 @@ export default function QueryBox() {
             setStatus("Saved as case profile");
           }
         }
-      } catch (err) { setStatus((err as Error).message); }
-      finally { setLoading(false); setLiveStatus(null); setRoutingPhase(false); }
+      } catch (err) {
+        if ((err as Error).name !== "AbortError") setStatus((err as Error).message);
+        else setStatus("Stopped — modify your query and try again.");
+      }
+      finally { setLoading(false); setLiveStatus(null); setRoutingPhase(false); abortRef.current = null; }
       return;
     }
     // ── NVIDIA swarm path ────────────────────────────────────────────────────
@@ -799,6 +811,7 @@ export default function QueryBox() {
           patientContext: formatPatientContext(patientInfo) || undefined,
           labText: labText || undefined,
         }),
+        signal: ctrl.signal,
       });
 
       if (!res.ok || !res.body) {
@@ -882,13 +895,15 @@ export default function QueryBox() {
         }
       }
     } catch (err) {
-      setStatus((err as Error).message);
+      if ((err as Error).name !== "AbortError") setStatus((err as Error).message);
+      else setStatus("Stopped — modify your query and try again.");
     } finally {
       setLoading(false);
       setLiveStatus(null);
       setRoutingPhase(false);
       setDebatePhase(false);
       setSynthesisPhase(false);
+      abortRef.current = null;
     }
   }
 
@@ -1090,6 +1105,13 @@ export default function QueryBox() {
             style={{ background: "linear-gradient(90deg, #818cf8, #f472b6)", color: "#0f172a", boxShadow: "0 10px 30px rgba(99,102,241,0.25)" }}>
             {loading ? "Debating…" : "Ask the swarm"}
           </button>
+          {loading && (
+            <button type="button" onClick={stop}
+              className="rounded-2xl px-6 py-3 text-sm font-semibold transition"
+              style={{ backgroundColor: "rgba(239,68,68,0.12)", color: "#f87171", border: "1px solid rgba(239,68,68,0.35)" }}>
+              Stop
+            </button>
+          )}
           <label className="flex items-center gap-2 text-sm" style={{ color: "var(--text)" }}>
             <input type="checkbox" checked={saveCase} onChange={(e) => setSaveCase(e.target.checked)} />
             Save as case profile
