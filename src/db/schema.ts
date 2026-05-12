@@ -121,6 +121,41 @@ export const managerEvents = pgTable("manager_events", {
 export type ManagerEvent = typeof managerEvents.$inferSelect;
 export type ManagerEventInsert = typeof managerEvents.$inferInsert;
 
+// ── Multi-provider AI Swarm Manager ──────────────────────────────────────────
+
+export const providerCredentials = pgTable("provider_credentials", {
+  id: serial("id").primaryKey(),
+  providerId: text("provider_id").notNull().unique(),
+  providerName: text("provider_name").notNull(),
+  encryptedData: text("encrypted_data").notNull(),
+  customBaseUrl: text("custom_base_url"),
+  createdAt: timestamp("created_at", { withTimezone: false }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: false }).defaultNow().notNull(),
+});
+
+export const swarmConfigs = pgTable("swarm_configs", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  config: jsonb("config").$type<Array<{ role: string; providerId: string; model: string }>>().notNull(),
+  isActive: boolean("is_active").default(false).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: false }).defaultNow().notNull(),
+});
+
+export const swarmHealthReports = pgTable("swarm_health_reports", {
+  id: serial("id").primaryKey(),
+  providerId: text("provider_id").notNull(),
+  model: text("model").notNull(),
+  status: text("status").notNull(),
+  latencyMs: integer("latency_ms"),
+  errorCode: text("error_code"),
+  errorMessage: text("error_message"),
+  checkedAt: timestamp("checked_at", { withTimezone: false }).defaultNow().notNull(),
+});
+
+export type ProviderCredential = typeof providerCredentials.$inferSelect;
+export type SwarmConfig = typeof swarmConfigs.$inferSelect;
+export type SwarmHealthReport = typeof swarmHealthReports.$inferSelect;
+
 export type QuerySession = typeof querySessions.$inferSelect;
 export type QuerySessionInsert = typeof querySessions.$inferInsert;
 export type SessionFeedback = typeof sessionFeedback.$inferSelect;

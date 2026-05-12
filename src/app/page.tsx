@@ -5,6 +5,7 @@ import ThemeToggle from "@/components/theme-toggle";
 import FeedPanel from "@/components/feed-panel";
 import InsightsPanel from "@/components/insights-panel";
 import ManagerPanel from "@/components/manager-panel";
+import ProviderKeyManager from "@/components/provider-key-manager";
 import { db } from "@/db";
 import { embeddings, sources } from "@/db/schema";
 import { desc, sql } from "drizzle-orm";
@@ -248,6 +249,24 @@ export default async function HomePage() {
             </p>
           </div>
           <ManagerPanel />
+        </section>
+
+        <section
+          className="w-full rounded-3xl border p-6 shadow-lg"
+          style={{ backgroundColor: "var(--card)", borderColor: "var(--card-border)" }}
+        >
+          <div className="mb-4 flex flex-col items-center gap-1 text-center">
+            <p className="text-xs uppercase tracking-[0.28em]" style={{ color: "var(--accent)" }}>
+              Multi-Provider AI
+            </p>
+            <h3 className="text-xl font-semibold" style={{ color: "var(--text)" }}>
+              Provider &amp; Swarm Manager
+            </h3>
+            <p className="text-sm" style={{ color: "var(--muted)" }}>
+              Add API keys from 12 providers, auto-configure a 7-role clinical swarm, and run multi-provider analyses
+            </p>
+          </div>
+          <ProviderKeyManager />
         </section>
 
         <section
