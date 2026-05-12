@@ -40,43 +40,76 @@ export const cdcDiseasesCrawler: CrawlerDef = {
     const seen = new Set<string>();
     const urls: string[] = [];
 
-    const letters = "abcdefghijklmnopqrstuvwxyz".split("");
-
-    for (const letter of letters) {
-      if (urls.length >= 1000) break;
-      try {
-        const res = await fetch(`${CDC_BASE}/az/${letter}.html`, {
-          headers: {
-            "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
-            Accept: "text/html",
-          },
+    // Try CDC's public content API first (most reliable)
+    try {
+      for (let page = 1; page <= 10 && urls.length < 500; page++) {
+        const p = new URLSearchParams({
+          mediaTypes: "HTML",
+          language: "English",
+          fields: "id,name,sourceUrl",
+          pageSize: "100",
+          page: String(page),
+        });
+        const apiRes = await fetch(`https://tools.cdc.gov/api/v2/resources/media?${p}`, {
+          headers: { "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)" },
           signal: AbortSignal.timeout(20000),
         });
-        if (!res.ok) continue;
-        const html = await res.text();
-
-        // Extract absolute CDC disease URLs: https://www.cdc.gov/{disease}/
-        for (const match of html.matchAll(/href="(https:\/\/www\.cdc\.gov\/([a-z][a-z0-9-]+)\/)"/g)) {
-          const full = match[1];
-          if (!seen.has(full)) {
-            seen.add(full);
-            urls.push(full);
+        if (!apiRes.ok) break;
+        const data = (await apiRes.json()) as { results?: Array<{ sourceUrl?: string }> };
+        let foundAny = false;
+        for (const item of data.results ?? []) {
+          const src = item.sourceUrl ?? "";
+          if (src.startsWith("https://www.cdc.gov/") && !seen.has(src)) {
+            seen.add(src);
+            urls.push(src);
+            foundAny = true;
           }
         }
+        if (!foundAny) break;
+      }
+    } catch { /* fall through */ }
 
-        // Extract relative disease links: href="/diseaseabc/"
-        for (const match of html.matchAll(/href="(\/[a-z][a-z0-9-]+\/)"/g)) {
-          const path = match[1];
-          // Skip navigation-like short paths and az index pages
-          if (path.length < 4 || path.startsWith("/az/")) continue;
-          const full = `${CDC_BASE}${path}`;
-          if (!seen.has(full)) {
-            seen.add(full);
-            urls.push(full);
+    // Fallback: try CDC A-Z index pages (old + new URL patterns)
+    if (urls.length < 50) {
+      const letters = "abcdefghijklmnopqrstuvwxyz".split("");
+      const azPatterns = (l: string) => [
+        `${CDC_BASE}/az/${l}.html`,
+        `${CDC_BASE}/health/${l}/`,
+        `${CDC_BASE}/health-topics/${l}/`,
+      ];
+
+      for (const letter of letters) {
+        if (urls.length >= 1000) break;
+        for (const pageUrl of azPatterns(letter)) {
+          try {
+            const res = await fetch(pageUrl, {
+              headers: {
+                "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
+                Accept: "text/html",
+              },
+              signal: AbortSignal.timeout(15000),
+            });
+            if (!res.ok) continue;
+            const html = await res.text();
+
+            for (const match of html.matchAll(/href="(https?:\/\/www\.cdc\.gov\/[a-z][a-z0-9/-]+)"/g)) {
+              const full = match[1].split("?")[0].split("#")[0];
+              if (!seen.has(full) && !full.includes("/az/") && !full.endsWith(".pdf")) {
+                seen.add(full);
+                urls.push(full);
+              }
+            }
+            for (const match of html.matchAll(/href="(\/[a-z][a-z0-9-]+(?:\/[a-z0-9-]+)*)"/g)) {
+              const path = match[1];
+              if (path.length < 5 || path.startsWith("/az/")) continue;
+              const full = `${CDC_BASE}${path}`;
+              if (!seen.has(full)) { seen.add(full); urls.push(full); }
+            }
+            if (urls.length > 0) break; // found URLs from this letter, move on
+          } catch {
+            continue;
           }
         }
-      } catch {
-        // skip failed letters
       }
     }
 

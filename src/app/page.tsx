@@ -4,8 +4,9 @@ import CaseList from "@/components/case-list";
 import ThemeToggle from "@/components/theme-toggle";
 import FeedPanel from "@/components/feed-panel";
 import InsightsPanel from "@/components/insights-panel";
-import ManagerPanel from "@/components/manager-panel";
+import ManagerPanel, { ManagerPreview } from "@/components/manager-panel";
 import ProviderKeyManager from "@/components/provider-key-manager";
+import CollapsibleSection from "@/components/collapsible-section";
 import { db } from "@/db";
 import { embeddings, sources } from "@/db/schema";
 import { desc, sql } from "drizzle-orm";
@@ -29,47 +30,107 @@ export default async function HomePage() {
   return (
     <main className="min-h-screen" style={{ background: "var(--bg)", color: "var(--text)" }}>
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-6 px-4 py-6 text-center sm:gap-10 sm:px-6 sm:py-12">
-        <div className="flex w-full items-center justify-between">
-          <p className="text-sm font-semibold" style={{ color: "var(--muted)" }}>
-            Mediq • Clinical research copilot
-          </p>
+        <div className="flex w-full items-center justify-end">
           <ThemeToggle />
         </div>
 
-        <header className="grid w-full gap-6 md:grid-cols-[2fr,1fr] md:items-center">
-          <div className="flex flex-col items-center text-center">
-            <p className="text-sm uppercase tracking-[0.28em]" style={{ color: "var(--accent)" }}>
-              Medical swarm notebook
+        <header className="grid w-full gap-8 md:grid-cols-[3fr,1fr] md:items-center">
+          <div className="flex flex-col items-center text-center gap-0">
+            {/* Tagline badge */}
+            <div
+              className="inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.32em]"
+              style={{
+                borderColor: "var(--accent)",
+                color: "var(--accent)",
+                backgroundColor: "color-mix(in srgb, var(--accent) 8%, transparent)",
+              }}
+            >
+              <span
+                className="h-1.5 w-1.5 rounded-full"
+                style={{ backgroundColor: "var(--accent)", boxShadow: "0 0 6px var(--accent)" }}
+              />
+              Medical Swarm Notebook
+            </div>
+
+            {/* Hero headline */}
+            {/* Brand — icon + logotype, independent elements */}
+            <div className="mt-4 flex items-center justify-center gap-4">
+              {/* Brain icon — blend-multiply removes white bg on light; invert+hue-rotate on dark */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/brain-icon.png"
+                alt=""
+                aria-hidden="true"
+                className="h-20 w-20 mix-blend-multiply dark:mix-blend-normal dark:invert dark:hue-rotate-180"
+                style={{ filter: "drop-shadow(0 4px 16px rgba(13,148,136,0.35))" }}
+              />
+              {/* Logotype text */}
+              <span
+                className="text-6xl font-black tracking-[-0.03em] leading-none md:text-7xl"
+                style={{
+                  color: "var(--text)",
+                  textShadow: "0 2px 24px color-mix(in srgb, var(--accent) 20%, transparent)",
+                  fontFamily: "'Inter', 'Helvetica Neue', Arial, sans-serif",
+                  letterSpacing: "-0.02em",
+                }}
+              >
+                MEDIQ
+              </span>
+            </div>
+            <p
+              className="mt-3 text-sm font-semibold uppercase tracking-[0.28em]"
+              style={{ color: "var(--accent)" }}
+            >
+              Clinical Intelligence
             </p>
-            <h1 className="mt-3 text-4xl font-semibold leading-tight md:text-5xl">
-              Upload medical texts, report symptoms, get swarm-checked answers
-            </h1>
-            <p className="mt-4 max-w-2xl text-lg" style={{ color: "var(--muted)" }}>
-              Built for physicians: ingest medical textbooks, guidelines, and recorded lectures, then ask patient-specific
-              questions. Mediq routes across multiple models, grounds answers in your uploaded corpus, and returns
-              consensus responses with citations.
+
+            {/* Sub-headline */}
+            <p
+              className="mt-5 max-w-xl text-base leading-relaxed"
+              style={{ color: "var(--muted)" }}
+            >
+              Mediq synthesises multi-model clinical assessments grounded in your institutional corpus —
+              textbooks, guidelines, and lecture transcripts. Present a case; receive ranked differentials,
+              cited evidence, and explicit uncertainty ratings from a seven-specialist AI panel.
             </p>
-            <div className="mt-6 flex flex-wrap justify-center gap-3 text-sm" style={{ color: "var(--muted)" }}>
+
+            {/* Stat pills */}
+            <div className="mt-7 flex flex-wrap justify-center gap-3 text-sm">
               <StatPill label="Sources" value={sourceCount} />
               <StatPill label="Chunks" value={chunkCount} />
-              <StatPill label="Models" value={7} />
-              <StatPill label="Swarm consensus" value={"on"} />
+              <StatPill label="Specialists" value={7} />
+              <StatPill label="Consensus" value="live" />
             </div>
           </div>
+
+          {/* Safety card */}
           <div
-            className="rounded-3xl border p-5 shadow-lg"
-            style={{ backgroundColor: "var(--card)", borderColor: "var(--card-border)", color: "var(--text)" }}
+            className="rounded-3xl border p-5 shadow-xl"
+            style={{
+              backgroundColor: "var(--card)",
+              borderColor: "var(--card-border)",
+              boxShadow: "0 8px 40px color-mix(in srgb, var(--accent) 8%, transparent)",
+            }}
           >
-            <h2 className="text-lg font-semibold" style={{ color: "var(--text)" }}>
-              Clinical safety rails
+            <p className="text-xs uppercase tracking-[0.28em] mb-2" style={{ color: "var(--accent)" }}>
+              Safety rails
+            </p>
+            <h2 className="text-base font-semibold uppercase mb-3 text-center" style={{ color: "var(--text)" }}>
+              Built for licensed clinicians
             </h2>
-            <ul className="mt-3 space-y-2 text-sm" style={{ color: "var(--muted)" }}>
-              <li>• Multi-model routing via Mediq; configurable to your formulary</li>
-              <li>• Grounded in your uploaded PDFs / URLs / notes (no hallucinated citations)</li>
-              <li>• Swarm consensus to reduce single-model errors</li>
+            <ul className="space-y-2.5 text-sm text-center" style={{ color: "var(--muted)" }}>
+              <li>
+                Multi-model routing across 12 providers; configurable to your formulary
+              </li>
+              <li>
+                Answers grounded in your uploaded corpus — no fabricated citations
+              </li>
+              <li>
+                Two-round specialist debate before synthesis; disagreements surfaced explicitly
+              </li>
             </ul>
-            <p className="mt-3 text-xs" style={{ color: "var(--accent)" }}>
-              For licensed clinicians. Not a substitute for medical judgment.
+            <p className="mt-4 text-[11px] font-medium text-center" style={{ color: "var(--accent)" }}>
+              Not a substitute for clinical judgement.
             </p>
           </div>
         </header>
@@ -79,30 +140,9 @@ export default async function HomePage() {
             className="w-full rounded-3xl border p-4 shadow-lg sm:p-6"
             style={{ backgroundColor: "var(--card)", borderColor: "var(--card-border)" }}
           >
-            <div className="flex items-center justify-between text-left">
-              <h3 className="text-xl font-semibold" style={{ color: "var(--text)" }}>
-                1) Ingest knowledge
-              </h3>
-              <span
-                className="rounded-full px-3 py-1 text-xs"
-                style={{ backgroundColor: "var(--pill)", color: "var(--text)", border: `1px solid var(--pill-border)` }}
-              >
-                PDF · Upload · YouTube · Web
-              </span>
-            </div>
-            <p className="mt-2 text-sm" style={{ color: "var(--muted)" }}>
-              Textbooks, guidelines, and lecture PDFs are chunked, embedded, and stored securely in Postgres.
-            </p>
-            <IngestForm />
-          </div>
-          <div
-            className="w-full rounded-3xl border p-4 shadow-lg sm:p-6"
-            style={{ backgroundColor: "var(--card)", borderColor: "var(--card-border)" }}
-          >
-            <div className="flex items-center justify-between text-left">
-              <h3 className="text-xl font-semibold" style={{ color: "var(--text)" }}>
-                2) Ask with swarms
-              </h3>
+            <div className="flex flex-col items-center text-center gap-1 mb-1">
+              <p className="text-xs uppercase tracking-[0.22em]" style={{ color: "var(--accent)" }}>Clinical AI</p>
+              <h3 className="text-xl font-semibold" style={{ color: "var(--text)" }}>Ask the Swarm</h3>
               <span
                 className="rounded-full px-3 py-1 text-xs"
                 style={{ backgroundColor: "var(--pill)", color: "var(--text)", border: `1px solid var(--pill-border)` }}
@@ -115,26 +155,53 @@ export default async function HomePage() {
             </p>
             <QueryBox />
           </div>
+          <CollapsibleSection
+            eyebrow="Knowledge Base"
+            title="Ingest Medical Sources"
+            subtitle="Textbooks, guidelines, and lecture PDFs are chunked, embedded, and stored securely in Postgres. PDF · Upload · YouTube · Web"
+            features={[
+              { sub: "PDF", label: "Upload" },
+              { sub: "YouTube", label: "Transcribe" },
+              { sub: "Web", label: "Crawl URL" },
+              { sub: "Auto", label: "Embed & Index" },
+            ]}
+            defaultOpen={true}
+          >
+            <IngestForm />
+          </CollapsibleSection>
+          <CollapsibleSection
+            eyebrow="Multi-Provider AI"
+            title="Provider & Swarm Manager"
+            subtitle="Add API keys from 12 providers, auto-configure a 7-role clinical swarm"
+            features={[
+              { sub: "12", label: "Providers" },
+              { sub: "7", label: "Swarm Roles" },
+              { sub: "Auto", label: "Model Select" },
+              { sub: "Live", label: "Health Check" },
+            ]}
+            defaultOpen={true}
+          >
+            <ProviderKeyManager />
+          </CollapsibleSection>
         </section>
 
-        <section
-          className="w-full rounded-3xl border p-6 shadow-lg"
-          style={{ backgroundColor: "var(--card)", borderColor: "var(--card-border)" }}
+        <CollapsibleSection
+          title="Document Corpus"
+          subtitle="Latest 6 ingested sources — PDFs, URLs, and lecture transcripts"
+          features={[
+            { sub: String(sourceCount), label: "Sources" },
+            { sub: String(chunkCount), label: "Chunks" },
+            { sub: "Vector", label: "Similarity Search" },
+            { sub: "RAG", label: "Grounded Answers" },
+          ]}
+          defaultOpen={true}
         >
-          <div className="flex flex-col items-center justify-between gap-1 text-center">
-            <h3 className="text-xl font-semibold" style={{ color: "var(--text)" }}>
-              Knowledge base
-            </h3>
-            <span className="text-xs" style={{ color: "var(--muted)" }}>
-              Latest 6 sources
-            </span>
-          </div>
           {latest.length === 0 ? (
-            <p className="mt-4 text-center text-sm" style={{ color: "var(--muted)" }}>
+            <p className="text-center text-sm" style={{ color: "var(--muted)" }}>
               Add a PDF, YouTube link, or website to get started.
             </p>
           ) : (
-            <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-2">
               {latest.map((source) => (
                 <article
                   key={source.id}
@@ -173,119 +240,98 @@ export default async function HomePage() {
               ))}
             </div>
           )}
-        </section>
+        </CollapsibleSection>
 
-        <section
-          className="w-full rounded-3xl border p-6 shadow-lg"
-          style={{ backgroundColor: "var(--card)", borderColor: "var(--card-border)" }}
+        <CollapsibleSection
+          eyebrow="India-primary · auto-updates hourly"
+          title="Medical Knowledge Feeds"
+          subtitle="RSS feeds, deep crawls, and clinical databases — click to expand"
+          features={[
+            { sub: "22", label: "Crawl Sources" },
+            { sub: "8", label: "Categories" },
+            { sub: "Hourly", label: "Auto-refresh" },
+            { sub: "RSS", label: "Live Feeds" },
+          ]}
+          defaultOpen={true}
+          preview={
+            <div className="flex flex-col items-center gap-3 text-center mt-1">
+              <div className="grid grid-cols-4 gap-2 w-full max-w-lg mx-auto">
+                {[
+                  { label: "MoHFW",          color: "#fb923c", desc: "India Govt" },
+                  { label: "ICMR",           color: "#f472b6", desc: "Research"   },
+                  { label: "NDTV Health",    color: "#818cf8", desc: "News"       },
+                  { label: "Times of India", color: "#38bdf8", desc: "News"       },
+                  { label: "NEJM",           color: "#4ade80", desc: "Journal"    },
+                  { label: "JAMA",           color: "#a78bfa", desc: "Journal"    },
+                  { label: "WHO SEARO",      color: "#fbbf24", desc: "Global"     },
+                  { label: "PubMed India",   color: "#34d399", desc: "Queries"    },
+                ].map(({ label, color, desc }) => (
+                  <div key={label} className="rounded-xl border px-2 py-2 flex flex-col items-center gap-0.5"
+                    style={{ borderColor: `${color}33`, backgroundColor: `${color}11` }}>
+                    <span className="text-[11px] font-bold leading-tight text-center" style={{ color }}>{label}</span>
+                    <span className="text-[9px] uppercase tracking-wide" style={{ color: "var(--muted)" }}>{desc}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center gap-3 flex-wrap justify-center">
+                <p className="text-xs" style={{ color: "var(--muted)" }}>
+                  Refreshed automatically — crawls run on schedule
+                </p>
+                <span className="rounded-full border px-3 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+                  style={{ borderColor: "var(--accent)", color: "var(--accent)", backgroundColor: "color-mix(in srgb, var(--accent) 8%, transparent)" }}>
+                  Master Control ▶
+                </span>
+              </div>
+            </div>
+          }
         >
-          <div className="mb-5 flex flex-col items-center gap-3 text-center">
-            <div className="flex items-center gap-2">
-              <span className="inline-block h-1.5 w-1.5 rounded-full animate-pulse" style={{ backgroundColor: "var(--accent)" }} />
-              <p className="text-xs uppercase tracking-[0.28em]" style={{ color: "var(--accent)" }}>
-                India-primary · auto-updates hourly
-              </p>
-              <span className="inline-block h-1.5 w-1.5 rounded-full animate-pulse" style={{ backgroundColor: "var(--accent)" }} />
-            </div>
-            <h3 className="text-xl font-semibold" style={{ color: "var(--text)" }}>
-              Medical Knowledge Feeds
-            </h3>
-            {/* Source grid — two rows of 4 */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full max-w-lg">
-              {[
-                { label: "MoHFW",        color: "#fb923c", desc: "India Govt" },
-                { label: "ICMR",         color: "#f472b6", desc: "Research"   },
-                { label: "NDTV Health",  color: "#818cf8", desc: "News"       },
-                { label: "Times of India", color: "#38bdf8", desc: "News"     },
-                { label: "NEJM",         color: "#4ade80", desc: "Journal"    },
-                { label: "JAMA",         color: "#a78bfa", desc: "Journal"    },
-                { label: "WHO SEARO",    color: "#fbbf24", desc: "Global"     },
-                { label: "PubMed India", color: "#34d399", desc: "Queries"    },
-              ].map(({ label, color, desc }) => (
-                <div key={label} className="rounded-xl border px-2 py-2 flex flex-col items-center gap-0.5"
-                  style={{ borderColor: `${color}33`, backgroundColor: `${color}11` }}>
-                  <span className="text-[11px] font-bold leading-tight text-center" style={{ color }}>{label}</span>
-                  <span className="text-[9px] uppercase tracking-wide" style={{ color: "var(--muted)" }}>{desc}</span>
-                </div>
-              ))}
-            </div>
-            <p className="text-xs" style={{ color: "var(--muted)" }}>
-              Refreshed automatically — crawls run on schedule
-            </p>
-          </div>
           <FeedPanel />
-        </section>
+        </CollapsibleSection>
 
-        <section
-          className="w-full rounded-3xl border p-6 shadow-lg"
-          style={{ backgroundColor: "var(--card)", borderColor: "var(--card-border)" }}
+        <CollapsibleSection
+          title="Case Profiles"
+          subtitle="Saved swarm discussions you can revisit"
+          features={[
+            { sub: "Save", label: "Swarm Sessions" },
+            { sub: "Review", label: "Past Cases" },
+            { sub: "Share", label: "Clinical Notes" },
+            { sub: "Track", label: "Patient History" },
+          ]}
+          defaultOpen={true}
         >
-          <div className="flex flex-col items-center justify-between gap-1 text-center">
-            <h3 className="text-xl font-semibold" style={{ color: "var(--text)" }}>
-              Case profiles
-            </h3>
-            <span className="text-xs" style={{ color: "var(--muted)" }}>
-              Saved swarm discussions you can revisit
-            </span>
-          </div>
-          <div className="mt-4">
-            <CaseList />
-          </div>
-        </section>
+          <CaseList />
+        </CollapsibleSection>
 
-        <section
-          className="w-full rounded-3xl border p-6 shadow-lg"
-          style={{ backgroundColor: "var(--card)", borderColor: "var(--card-border)" }}
+        <CollapsibleSection
+          eyebrow="Swarm Operations"
+          title="Manager Dashboard"
+          subtitle="Real-time swarm orchestration — query complexity routing, emergency detection, escalation tracking"
+          features={[
+            { sub: "Live", label: "Swarm Status" },
+            { sub: "Route", label: "Query Complexity" },
+            { sub: "Detect", label: "Emergencies" },
+            { sub: "Track", label: "Escalations" },
+          ]}
+          preview={<ManagerPreview />}
+          defaultOpen={true}
         >
-          <div className="mb-4 flex flex-col items-center gap-1 text-center">
-            <p className="text-xs uppercase tracking-[0.28em]" style={{ color: "var(--accent)" }}>
-              Swarm Operations
-            </p>
-            <h3 className="text-xl font-semibold" style={{ color: "var(--text)" }}>
-              Manager Dashboard
-            </h3>
-            <p className="text-sm" style={{ color: "var(--muted)" }}>
-              Real-time swarm orchestration — query complexity routing, emergency detection, escalation tracking
-            </p>
-          </div>
           <ManagerPanel />
-        </section>
+        </CollapsibleSection>
 
-        <section
-          className="w-full rounded-3xl border p-6 shadow-lg"
-          style={{ backgroundColor: "var(--card)", borderColor: "var(--card-border)" }}
+        <CollapsibleSection
+          eyebrow="Continuous Learning"
+          title="Learning Insights"
+          subtitle="Session history, knowledge gaps, and auto-remediation via PubMed ingestion"
+          features={[
+            { sub: "Find", label: "Knowledge Gaps" },
+            { sub: "Auto", label: "PubMed Ingest" },
+            { sub: "Track", label: "Session History" },
+            { sub: "Improve", label: "Remediation" },
+          ]}
+          defaultOpen={true}
         >
-          <div className="mb-4 flex flex-col items-center gap-1 text-center">
-            <p className="text-xs uppercase tracking-[0.28em]" style={{ color: "var(--accent)" }}>
-              Multi-Provider AI
-            </p>
-            <h3 className="text-xl font-semibold" style={{ color: "var(--text)" }}>
-              Provider &amp; Swarm Manager
-            </h3>
-            <p className="text-sm" style={{ color: "var(--muted)" }}>
-              Add API keys from 12 providers, auto-configure a 7-role clinical swarm, and run multi-provider analyses
-            </p>
-          </div>
-          <ProviderKeyManager />
-        </section>
-
-        <section
-          className="w-full rounded-3xl border p-6 shadow-lg"
-          style={{ backgroundColor: "var(--card)", borderColor: "var(--card-border)" }}
-        >
-          <div className="mb-4 flex flex-col items-center gap-1 text-center">
-            <p className="text-xs uppercase tracking-[0.28em]" style={{ color: "var(--accent)" }}>
-              Continuous learning
-            </p>
-            <h3 className="text-xl font-semibold" style={{ color: "var(--text)" }}>
-              Learning Insights
-            </h3>
-            <p className="text-sm" style={{ color: "var(--muted)" }}>
-              Session history, knowledge gaps, and auto-remediation via PubMed ingestion
-            </p>
-          </div>
           <InsightsPanel />
-        </section>
+        </CollapsibleSection>
 
         <p className="mx-auto max-w-3xl text-center text-xs" style={{ color: "var(--muted)" }}>
           Disclaimer: This tool is for licensed clinicians. Always corroborate with clinical judgment and local

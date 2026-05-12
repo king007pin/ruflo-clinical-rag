@@ -38,15 +38,60 @@ export const orphadataCrawler: CrawlerDef = {
   delayMs: DELAY_MS,
 
   async fetchUrls(): Promise<string[]> {
-    const res = await fetch(ORPHADATA_XML_URL, {
-      headers: {
-        "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
-        Accept: "application/xml, text/xml",
-      },
-      signal: AbortSignal.timeout(120000),
-    });
-    if (!res.ok) throw new Error(`Orphadata XML fetch failed (${res.status})`);
-    const xml = await res.text();
+    // Try multiple known Orphadata XML locations (URL has changed over time)
+    const XML_CANDIDATES = [
+      ORPHADATA_XML_URL,
+      "https://www.orphadata.com/orphadata/en_product1.xml",
+      "https://download.orphanet.org/data/en/en_product1.xml",
+      "https://raw.githubusercontent.com/Orphanet/ORDO/master/ordo_orphanet.owl",
+    ];
+
+    let xml = "";
+    for (const candidate of XML_CANDIDATES) {
+      try {
+        const res = await fetch(candidate, {
+          headers: {
+            "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
+            Accept: "application/xml, text/xml, */*",
+          },
+          signal: AbortSignal.timeout(60000),
+        });
+        if (res.ok) {
+          xml = await res.text();
+          if (xml.length > 1000) break;
+        }
+      } catch { continue; }
+    }
+
+    if (!xml || xml.length < 1000) {
+      // Last resort: scrape Orphanet disease listing pages
+      const fallbackUrls: string[] = [];
+      const seen = new Set<string>();
+      for (let page = 1; page <= 50 && fallbackUrls.length < 3000; page++) {
+        try {
+          await new Promise((r) => setTimeout(r, 500));
+          const res = await fetch(
+            `${ORPHANET_BASE}/en/disease/search?name=&page=${page}`,
+            {
+              headers: {
+                "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
+                Accept: "text/html",
+              },
+              signal: AbortSignal.timeout(20000),
+            },
+          );
+          if (!res.ok) break;
+          const html = await res.text();
+          let found = false;
+          for (const match of html.matchAll(/href="(\/en\/disease\/detail\/\d+)"/g)) {
+            const full = `${ORPHANET_BASE}${match[1]}`;
+            if (!seen.has(full)) { seen.add(full); fallbackUrls.push(full); found = true; }
+          }
+          if (!found) break;
+        } catch { break; }
+      }
+      return fallbackUrls;
+    }
 
     const urls: string[] = [];
     const seen = new Set<string>();

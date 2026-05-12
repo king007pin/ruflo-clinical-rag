@@ -12,6 +12,7 @@ type CrawlerMeta = {
 };
 
 const CRAWLER_LIST: CrawlerMeta[] = [
+  // ── Clinical Reference ──────────────────────────────────────────────────────
   {
     id: "gene-reviews",
     name: "GeneReviews — NCBI Bookshelf",
@@ -34,19 +35,13 @@ const CRAWLER_LIST: CrawlerMeta[] = [
     batchSize: 10,
   },
   {
-    id: "mdcalc",
-    name: "MDCalc — Clinical Scoring Systems",
-    description: "MDCalc — evidence-based clinical scoring systems and diagnostic criteria",
-    category: "Scoring Systems",
+    id: "wiki-em",
+    name: "WikiEM — Emergency Medicine",
+    description: "WikiEM — free open-access emergency medicine wiki: toxicology, resuscitation, procedures, rapid bedside assessment",
+    category: "Clinical Reference",
     batchSize: 8,
   },
-  {
-    id: "dailymed",
-    name: "DailyMed — FDA Drug Labels",
-    description: "DailyMed — FDA official drug labels: dosing, contraindications, interactions",
-    category: "Drug Database",
-    batchSize: 12,
-  },
+  // ── Clinical Guidelines ─────────────────────────────────────────────────────
   {
     id: "nice-guidelines",
     name: "NICE Clinical Guidelines",
@@ -55,6 +50,80 @@ const CRAWLER_LIST: CrawlerMeta[] = [
     batchSize: 8,
   },
   {
+    id: "cochrane-summaries",
+    name: "Cochrane Systematic Reviews",
+    description: "Cochrane Library — CDSR systematic reviews summarising RCT evidence for clinical practice decisions",
+    category: "Clinical Guidelines",
+    batchSize: 6,
+  },
+  {
+    id: "ahrq-reviews",
+    name: "AHRQ Evidence Reviews",
+    description: "AHRQ — US Agency for Healthcare Research and Quality: clinical practice guidelines, systematic reviews, patient safety tools",
+    category: "Clinical Guidelines",
+    batchSize: 6,
+  },
+  {
+    id: "who-guidelines",
+    name: "WHO Global Clinical Guidelines",
+    description: "WHO — global treatment guidelines, disease fact sheets, NCD protocols, infectious disease management",
+    category: "Clinical Guidelines",
+    batchSize: 8,
+  },
+  // ── Drug Database ───────────────────────────────────────────────────────────
+  {
+    id: "dailymed",
+    name: "DailyMed — FDA Drug Labels",
+    description: "DailyMed — FDA official drug labels: dosing, contraindications, interactions",
+    category: "Drug Database",
+    batchSize: 12,
+  },
+  {
+    id: "who-essential-meds",
+    name: "WHO Essential Medicines List",
+    description: "WHO EML — 500+ essential medicines with evidence levels, dosing guidelines, and therapeutic equivalents",
+    category: "Drug Database",
+    batchSize: 8,
+  },
+  {
+    id: "pubchem-compounds",
+    name: "PubChem — Compounds & Pharmacology",
+    description: "PubChem — NCBI compound database: structure, bioassay, pharmacology, toxicology, clinical trials linkage",
+    category: "Drug Database",
+    batchSize: 10,
+  },
+  // ── Scoring Systems ─────────────────────────────────────────────────────────
+  {
+    id: "mdcalc",
+    name: "MDCalc — Clinical Scoring Systems",
+    description: "MDCalc — evidence-based clinical scoring systems and diagnostic criteria",
+    category: "Scoring Systems",
+    batchSize: 8,
+  },
+  {
+    id: "uspstf",
+    name: "USPSTF Preventive Services",
+    description: "USPSTF — evidence-based screening and preventive medication recommendations with letter-grade evidence ratings",
+    category: "Scoring Systems",
+    batchSize: 6,
+  },
+  // ── Rare Diseases ───────────────────────────────────────────────────────────
+  {
+    id: "orphadata",
+    name: "Orphadata — Rare Diseases",
+    description: "Orphadata — 10,000+ rare disease profiles (CC BY 4.0)",
+    category: "Rare Diseases",
+    batchSize: 8,
+  },
+  {
+    id: "omim",
+    name: "OMIM — Mendelian Inheritance",
+    description: "OMIM — comprehensive catalog of human genes and genetic disorders; clinical synopses and molecular genetics",
+    category: "Rare Diseases",
+    batchSize: 8,
+  },
+  // ── India Guidelines ────────────────────────────────────────────────────────
+  {
     id: "india-gov",
     name: "India Govt Clinical Guidelines",
     description: "India Govt Guidelines — MoHFW STG, NTEP TB, NCVBDC dengue/malaria, NACO HIV, ICMR",
@@ -62,10 +131,47 @@ const CRAWLER_LIST: CrawlerMeta[] = [
     batchSize: 5,
   },
   {
-    id: "orphadata",
-    name: "Orphadata — Rare Diseases",
-    description: "Orphadata — 10,000+ rare disease profiles (CC BY 4.0)",
-    category: "Rare Diseases",
+    id: "icmr-guidelines",
+    name: "ICMR Research Guidelines",
+    description: "ICMR — Indian Council of Medical Research: national disease guidelines, COVID-19, TB, NCD, and outbreak protocols",
+    category: "India Guidelines",
+    batchSize: 6,
+  },
+  {
+    id: "aiims-protocols",
+    name: "AIIMS Clinical Protocols",
+    description: "AIIMS — All India Institute of Medical Sciences treatment protocols and clinical practice guidelines",
+    category: "India Guidelines",
+    batchSize: 5,
+  },
+  // ── Research Databases ──────────────────────────────────────────────────────
+  {
+    id: "clinicaltrials",
+    name: "ClinicalTrials.gov",
+    description: "NIH ClinicalTrials.gov — registered clinical trials: interventions, eligibility criteria, endpoints, and outcomes",
+    category: "Research Databases",
+    batchSize: 10,
+  },
+  {
+    id: "pubmed-central",
+    name: "PubMed Central — Open Access",
+    description: "PubMed Central — NIH free full-text archive of biomedical and life sciences journal articles",
+    category: "Research Databases",
+    batchSize: 12,
+  },
+  // ── Pharmacovigilance ───────────────────────────────────────────────────────
+  {
+    id: "openfda-faers",
+    name: "OpenFDA — Adverse Events (FAERS)",
+    description: "OpenFDA FAERS — FDA adverse event reports, drug safety signals, post-market surveillance data (public API)",
+    category: "Pharmacovigilance",
+    batchSize: 10,
+  },
+  {
+    id: "who-drug-safety",
+    name: "WHO Drug Safety — VigiAccess",
+    description: "WHO VigiAccess — global pharmacovigilance database of individual case safety reports from 130+ countries",
+    category: "Pharmacovigilance",
     batchSize: 8,
   },
 ];
@@ -193,21 +299,19 @@ function StatpearlsCrawl() {
       className="rounded-2xl border p-4 space-y-3"
       style={{ borderColor: "var(--accent)", backgroundColor: "color-mix(in srgb, var(--accent) 5%, var(--card))" }}
     >
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>
-            StatPearls — Harrison's-equivalent clinical reference
-          </p>
-          <p className="text-xs mt-0.5" style={{ color: "var(--muted)" }}>
-            3,000+ peer-reviewed disease articles · symptoms · diagnosis · treatment · auto-refreshes weekly
-          </p>
-        </div>
+      <div className="flex flex-col items-center text-center gap-2">
         <span
-          className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase"
+          className="rounded-full px-3 py-0.5 text-[10px] font-bold uppercase tracking-wide"
           style={{ backgroundColor: "rgba(74,222,128,0.15)", color: "#4ade80" }}
         >
           Free · NCBI
         </span>
+        <p className="text-base font-bold uppercase tracking-wide" style={{ color: "var(--text)" }}>
+          StatPearls — Clinical Reference
+        </p>
+        <p className="text-xs max-w-sm leading-relaxed" style={{ color: "var(--muted)" }}>
+          Harrison&apos;s-equivalent — 3,000+ peer-reviewed disease articles covering symptoms, diagnosis, and treatment. Auto-refreshes weekly.
+        </p>
       </div>
 
       {/* Progress bar */}
@@ -242,33 +346,33 @@ function StatpearlsCrawl() {
         </p>
       )}
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap justify-center gap-2">
         {!crawling ? (
           <button
             onClick={startCrawl}
-            className="rounded-2xl px-4 py-2 text-sm font-semibold shadow transition"
+            className="rounded-full px-6 py-2 text-sm font-bold uppercase tracking-wide shadow transition hover:opacity-90"
             style={{ background: "linear-gradient(90deg,#818cf8,#4ade80)", color: "#0f172a" }}
           >
             {currentOffset > 0 && totalUrls > 0 && currentOffset < totalUrls
-              ? `Resume crawl (from ${currentOffset})`
-              : "Start crawl"}
+              ? `Resume (from ${currentOffset})`
+              : "▶ Start Crawl"}
           </button>
         ) : (
           <button
             onClick={() => { stopRef.current = true; }}
-            className="rounded-2xl px-4 py-2 text-sm font-semibold shadow transition"
+            className="rounded-full px-6 py-2 text-sm font-bold uppercase tracking-wide transition"
             style={{ background: "rgba(239,68,68,0.15)", color: "#f87171", border: "1px solid rgba(239,68,68,0.3)" }}
           >
-            Pause
+            ⏸ Pause
           </button>
         )}
         {currentOffset > 0 && !crawling && (
           <button
             onClick={resetCrawl}
-            className="rounded-2xl px-4 py-2 text-sm transition"
+            className="rounded-full px-6 py-2 text-sm transition"
             style={{ backgroundColor: "var(--pill)", color: "var(--muted)", border: "1px solid var(--pill-border)" }}
           >
-            Reset progress
+            Reset
           </button>
         )}
       </div>
@@ -278,12 +382,14 @@ function StatpearlsCrawl() {
 
 // ── Category badge colours ───────────────────────────────────────────────────
 const CATEGORY_COLOURS: Record<string, { bg: string; fg: string }> = {
-  "Clinical Reference": { bg: "rgba(129,140,248,0.15)", fg: "#818cf8" },
-  "Scoring Systems":    { bg: "rgba(251,191,36,0.15)",  fg: "#fbbf24" },
-  "Drug Database":      { bg: "rgba(239,68,68,0.15)",   fg: "#f87171" },
-  "Clinical Guidelines":{ bg: "rgba(34,197,94,0.15)",   fg: "#4ade80" },
-  "India Guidelines":   { bg: "rgba(249,115,22,0.15)",  fg: "#fb923c" },
-  "Rare Diseases":      { bg: "rgba(168,85,247,0.15)",  fg: "#c084fc" },
+  "Clinical Reference":  { bg: "rgba(129,140,248,0.15)", fg: "#818cf8" },
+  "Scoring Systems":     { bg: "rgba(251,191,36,0.15)",  fg: "#fbbf24" },
+  "Drug Database":       { bg: "rgba(239,68,68,0.15)",   fg: "#f87171" },
+  "Clinical Guidelines": { bg: "rgba(34,197,94,0.15)",   fg: "#4ade80" },
+  "India Guidelines":    { bg: "rgba(249,115,22,0.15)",  fg: "#fb923c" },
+  "Rare Diseases":       { bg: "rgba(168,85,247,0.15)",  fg: "#c084fc" },
+  "Research Databases":  { bg: "rgba(20,184,166,0.15)",  fg: "#2dd4bf" },
+  "Pharmacovigilance":   { bg: "rgba(244,114,182,0.15)", fg: "#f472b6" },
 };
 
 function categoryStyle(cat: string) {
@@ -463,6 +569,8 @@ const CATEGORY_ORDER = [
   "Scoring Systems",
   "Rare Diseases",
   "India Guidelines",
+  "Research Databases",
+  "Pharmacovigilance",
 ];
 
 function DeepCrawlsSection() {
@@ -520,6 +628,11 @@ export default function FeedPanel() {
   const [refreshing, setRefreshing] = useState(false);
   const [seeding, setSeeding] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [feedsOpen, setFeedsOpen] = useState(false);
+  const [masterCrawling, setMasterCrawling] = useState(false);
+  const [masterProgress, setMasterProgress] = useState(0);
+  const [masterIngested, setMasterIngested] = useState(0);
+  const [masterMsg, setMasterMsg] = useState<string | null>(null);
 
   const loadFeeds = useCallback(async () => {
     try {
@@ -571,6 +684,33 @@ export default function FeedPanel() {
     finally { setRefreshing(false); }
   }
 
+  async function startMasterCrawl() {
+    setMasterCrawling(true);
+    setMasterProgress(0);
+    setMasterIngested(0);
+    setMasterMsg("Initialising master crawl...");
+    let totalIngested = 0;
+    for (let i = 0; i < CRAWLER_LIST.length; i++) {
+      const crawler = CRAWLER_LIST[i];
+      setMasterMsg(`Crawling ${crawler.name} (${i + 1} / ${CRAWLER_LIST.length})…`);
+      setMasterProgress(i + 1);
+      try {
+        const res = await fetch(`/api/admin/crawl/${crawler.id}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ batchSize: crawler.batchSize }),
+        });
+        const data = (await res.json()) as { ingested?: number };
+        totalIngested += data.ingested ?? 0;
+        setMasterIngested(totalIngested);
+      } catch {
+        // skip failed crawler, continue
+      }
+    }
+    setMasterMsg(`Done — ${totalIngested} article(s) ingested from ${CRAWLER_LIST.length} sources.`);
+    setMasterCrawling(false);
+  }
+
   async function toggleFeed(id: number, enabled: boolean) {
     await fetch("/api/admin/feeds", {
       method: "PATCH",
@@ -596,107 +736,200 @@ export default function FeedPanel() {
 
   return (
     <div className="space-y-5">
+      {/* ── Master Crawl ───────────────────────────────────────────────────────── */}
+      <div
+        className="rounded-2xl border p-5 space-y-4"
+        style={{
+          borderColor: "var(--accent)",
+          backgroundColor: "color-mix(in srgb, var(--accent) 6%, var(--card))",
+          boxShadow: "0 0 24px color-mix(in srgb, var(--accent) 12%, transparent)",
+        }}
+      >
+        <div className="flex flex-col items-center text-center gap-1">
+          <p className="text-[11px] uppercase tracking-[0.28em]" style={{ color: "var(--accent)" }}>
+            Master Control
+          </p>
+          <h3 className="text-lg font-bold uppercase tracking-wide" style={{ color: "var(--text)" }}>
+            Crawl All Sources
+          </h3>
+          <p className="text-xs max-w-sm" style={{ color: "var(--muted)" }}>
+            Triggers all {CRAWLER_LIST.length} knowledge crawlers sequentially — one batch per source. Saves directly to Neon Postgres.
+          </p>
+        </div>
+
+        {/* Progress bar */}
+        {(masterCrawling || masterProgress > 0) && (
+          <div className="space-y-1.5">
+            <div className="h-2 w-full rounded-full overflow-hidden" style={{ backgroundColor: "var(--card-border)" }}>
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{
+                  width: `${Math.round((masterProgress / CRAWLER_LIST.length) * 100)}%`,
+                  backgroundColor: "var(--accent)",
+                  boxShadow: "0 0 8px var(--accent)",
+                }}
+              />
+            </div>
+            <div className="flex justify-between text-[10px]" style={{ color: "var(--muted)" }}>
+              <span>{masterProgress} / {CRAWLER_LIST.length} sources</span>
+              <span>{masterIngested} articles ingested</span>
+            </div>
+          </div>
+        )}
+
+        {masterMsg && (
+          <p className="text-center text-xs" style={{ color: masterCrawling ? "var(--accent)" : "var(--muted)" }}>
+            {masterCrawling ? "⟳ " : "✓ "}{masterMsg}
+          </p>
+        )}
+
+        <div className="flex justify-center">
+          <button
+            onClick={startMasterCrawl}
+            disabled={masterCrawling}
+            className="rounded-full px-8 py-2.5 text-sm font-bold uppercase tracking-wide transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{
+              backgroundColor: "var(--accent)",
+              color: "var(--bg)",
+              boxShadow: masterCrawling ? "none" : "0 0 16px color-mix(in srgb, var(--accent) 40%, transparent)",
+            }}
+          >
+            {masterCrawling ? `Crawling ${masterProgress}/${CRAWLER_LIST.length}…` : "▶ Start Master Crawl"}
+          </button>
+        </div>
+      </div>
+
       {/* StatPearls deep crawler always shown first */}
       <StatpearlsCrawl />
 
       {/* Multi-source deep crawl section */}
       <DeepCrawlsSection />
 
-      <div className="flex flex-wrap items-center gap-3">
-        {feeds.length === 0 && !loading && (
-          <button
-            onClick={seed}
-            disabled={seeding}
-            className="rounded-2xl px-4 py-2 text-sm font-semibold shadow transition disabled:opacity-60"
-            style={{ background: "linear-gradient(90deg,#818cf8,#f472b6)", color: "#0f172a" }}
+      {/* RSS Feeds — collapsed by default */}
+      <div
+        className="rounded-2xl border overflow-hidden"
+        style={{ borderColor: "var(--card-border)" }}
+      >
+        <button
+          onClick={() => setFeedsOpen((o) => !o)}
+          className="relative flex w-full flex-col items-center justify-center px-4 py-4 text-center transition hover:opacity-80"
+          style={{ backgroundColor: "color-mix(in srgb, var(--accent) 6%, var(--card))", color: "var(--text)" }}
+        >
+          <span
+            className="absolute right-4 top-1/2 -translate-y-1/2"
+            style={{ color: "var(--accent)", transition: "transform 0.2s", transform: feedsOpen ? "rotate(180deg)" : "rotate(0deg)", display: "inline-block" }}
           >
-            {seeding ? "Seeding…" : "Seed all feeds"}
-          </button>
-        )}
-        {feeds.length > 0 && (
-          <button
-            onClick={resetAndReseed}
-            disabled={seeding}
-            className="rounded-2xl px-4 py-2 text-sm font-semibold shadow transition disabled:opacity-60"
-            style={{ background: "rgba(239,68,68,0.15)", color: "#f87171", border: "1px solid rgba(239,68,68,0.3)" }}
-          >
-            {seeding ? "Resetting…" : "Reset & Reseed"}
-          </button>
-        )}
-        {feeds.length > 0 && (
-          <button
-            onClick={refresh}
-            disabled={refreshing}
-            className="rounded-2xl px-4 py-2 text-sm font-semibold shadow transition disabled:opacity-60"
-            style={{ background: "linear-gradient(90deg,#22c55e,#06b6d4)", color: "#0f172a" }}
-          >
-            {refreshing ? "Refreshing…" : "Refresh news feeds now"}
-          </button>
-        )}
-        <span className="text-xs" style={{ color: "var(--muted)" }}>
-          {feeds.length > 0
-            ? `${feeds.filter((f) => f.enabled).length}/${feeds.length} feeds active · auto-updates hourly`
-            : "No news feeds configured yet"}
-        </span>
-      </div>
+            ▼
+          </span>
+          <span className="text-lg font-bold uppercase tracking-wide" style={{ color: "var(--accent)" }}>
+            RSS News Feeds
+          </span>
+          <span className="mt-1 text-[11px] font-normal rounded-full px-2 py-0.5"
+            style={{ backgroundColor: "var(--pill)", color: "var(--muted)" }}>
+            {feeds.length > 0
+              ? `${feeds.filter((f) => f.enabled).length}/${feeds.length} active`
+              : "not seeded"}
+          </span>
+        </button>
 
-      {msg && (
-        <p className="rounded-xl border px-3 py-2 text-sm" style={{ borderColor: "var(--card-border)", color: "var(--accent)" }}>
-          {msg}
-        </p>
-      )}
-      {loading && <p className="text-sm" style={{ color: "var(--muted)" }}>Loading feeds…</p>}
-
-      {[
-        { label: "🇮🇳 India — Primary", list: indiaFeeds },
-        { label: "🌐 Global — Secondary", list: globalFeeds },
-      ]
-        .filter((g) => g.list.length > 0)
-        .map((group) => (
-          <div key={group.label}>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--accent)" }}>
-              {group.label}
-            </p>
-            <div className="grid gap-2 md:grid-cols-2">
-              {group.list.map((feed) => (
-                <div
-                  key={feed.id}
-                  className="flex items-start justify-between gap-3 rounded-xl border p-3 text-xs"
-                  style={{
-                    borderColor: feed.errorCount && feed.errorCount > 0 ? "rgba(239,68,68,0.4)" : "var(--card-border)",
-                    backgroundColor: "var(--card)",
-                    opacity: feed.enabled ? 1 : 0.5,
-                  }}
+        {feedsOpen && (
+          <div className="space-y-4 px-4 pb-4 pt-3">
+            <div className="flex flex-wrap items-center gap-3">
+              {feeds.length === 0 && !loading && (
+                <button
+                  onClick={seed}
+                  disabled={seeding}
+                  className="rounded-2xl px-4 py-2 text-sm font-semibold shadow transition disabled:opacity-60"
+                  style={{ background: "linear-gradient(90deg,#818cf8,#f472b6)", color: "#0f172a" }}
                 >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium" style={{ color: "var(--text)" }}>{feed.name}</p>
-                    <p className="mt-0.5" style={{ color: "var(--muted)" }}>
-                      <span className="uppercase">{feed.type}</span>
-                      {" · "}every {intervalLabel(feed.intervalHours)}
-                      {" · "}next: {nextFetchIn(feed)}
-                      {feed.lastFetchCount != null && feed.lastFetchCount > 0 && (
-                        <> · {feed.lastFetchCount} ingested</>
-                      )}
-                    </p>
-                    {feed.lastError && (
-                      <p className="mt-0.5 truncate text-red-400">{feed.lastError}</p>
-                    )}
+                  {seeding ? "Seeding…" : "Seed all feeds"}
+                </button>
+              )}
+              {feeds.length > 0 && (
+                <button
+                  onClick={resetAndReseed}
+                  disabled={seeding}
+                  className="rounded-2xl px-4 py-2 text-sm font-semibold shadow transition disabled:opacity-60"
+                  style={{ background: "rgba(239,68,68,0.15)", color: "#f87171", border: "1px solid rgba(239,68,68,0.3)" }}
+                >
+                  {seeding ? "Resetting…" : "Reset & Reseed"}
+                </button>
+              )}
+              {feeds.length > 0 && (
+                <button
+                  onClick={refresh}
+                  disabled={refreshing}
+                  className="rounded-2xl px-4 py-2 text-sm font-semibold shadow transition disabled:opacity-60"
+                  style={{ background: "linear-gradient(90deg,#22c55e,#06b6d4)", color: "#0f172a" }}
+                >
+                  {refreshing ? "Refreshing…" : "Refresh now"}
+                </button>
+              )}
+              <span className="text-xs" style={{ color: "var(--muted)" }}>
+                {feeds.length > 0 ? "auto-updates hourly" : "No feeds configured yet"}
+              </span>
+            </div>
+
+            {msg && (
+              <p className="rounded-xl border px-3 py-2 text-sm" style={{ borderColor: "var(--card-border)", color: "var(--accent)" }}>
+                {msg}
+              </p>
+            )}
+            {loading && <p className="text-sm" style={{ color: "var(--muted)" }}>Loading feeds…</p>}
+
+            {[
+              { label: "🇮🇳 India — Primary", list: indiaFeeds },
+              { label: "🌐 Global — Secondary", list: globalFeeds },
+            ]
+              .filter((g) => g.list.length > 0)
+              .map((group) => (
+                <div key={group.label}>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--accent)" }}>
+                    {group.label}
+                  </p>
+                  <div className="grid gap-2 md:grid-cols-2">
+                    {group.list.map((feed) => (
+                      <div
+                        key={feed.id}
+                        className="flex items-start justify-between gap-3 rounded-xl border p-3 text-xs"
+                        style={{
+                          borderColor: feed.errorCount && feed.errorCount > 0 ? "rgba(239,68,68,0.4)" : "var(--card-border)",
+                          backgroundColor: "var(--card)",
+                          opacity: feed.enabled ? 1 : 0.5,
+                        }}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-medium" style={{ color: "var(--text)" }}>{feed.name}</p>
+                          <p className="mt-0.5" style={{ color: "var(--muted)" }}>
+                            <span className="uppercase">{feed.type}</span>
+                            {" · "}every {intervalLabel(feed.intervalHours)}
+                            {" · "}next: {nextFetchIn(feed)}
+                            {feed.lastFetchCount != null && feed.lastFetchCount > 0 && (
+                              <> · {feed.lastFetchCount} ingested</>
+                            )}
+                          </p>
+                          {feed.lastError && (
+                            <p className="mt-0.5 truncate text-red-400">{feed.lastError}</p>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => toggleFeed(feed.id, !feed.enabled)}
+                          className="mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium transition"
+                          style={{
+                            backgroundColor: feed.enabled ? "rgba(34,197,94,0.15)" : "rgba(100,116,139,0.15)",
+                            color: feed.enabled ? "#4ade80" : "var(--muted)",
+                          }}
+                        >
+                          {feed.enabled ? "ON" : "OFF"}
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                  <button
-                    onClick={() => toggleFeed(feed.id, !feed.enabled)}
-                    className="mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium transition"
-                    style={{
-                      backgroundColor: feed.enabled ? "rgba(34,197,94,0.15)" : "rgba(100,116,139,0.15)",
-                      color: feed.enabled ? "#4ade80" : "var(--muted)",
-                    }}
-                  >
-                    {feed.enabled ? "ON" : "OFF"}
-                  </button>
                 </div>
               ))}
-            </div>
           </div>
-        ))}
+        )}
+      </div>
     </div>
   );
 }

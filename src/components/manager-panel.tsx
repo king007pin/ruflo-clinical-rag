@@ -179,6 +179,48 @@ function FeedHealthPanel() {
   );
 }
 
+// ── Compact preview (always-visible in collapsed CollapsibleSection) ──────────
+export function ManagerPreview() {
+  const [stats, setStats] = useState<ManagerStats | null>(null);
+
+  useEffect(() => {
+    fetch("/api/admin/manager")
+      .then((r) => r.json())
+      .then((d) => setStats(d as ManagerStats))
+      .catch(() => null);
+  }, []);
+
+  const pills = [
+    { label: "Queries", value: stats?.totalQueries ?? "—", color: "#818cf8" },
+    { label: "Emergencies", value: stats?.emergencyCount ?? "—", color: "#f87171" },
+    { label: "Escalations", value: stats?.escalationCount ?? "—", color: "#fbbf24" },
+    { label: "Avg latency", value: stats?.avgLatencyMs ? `${Math.round(stats.avgLatencyMs / 1000)}s` : "—", color: "#4ade80" },
+  ];
+
+  const recentComplexity = stats?.recentEvents?.[0]?.complexity ?? null;
+  const cs = recentComplexity ? complexityStyle(recentComplexity) : null;
+
+  return (
+    <div className="flex flex-col items-center gap-3 mt-1 w-full">
+      <div className="grid grid-cols-4 gap-2 w-full">
+        {pills.map((p) => (
+          <div key={p.label} className="flex flex-col items-center justify-center rounded-xl border px-2 py-2 text-center gap-0.5"
+            style={{ borderColor: `${p.color}33`, backgroundColor: `${p.color}11` }}>
+            <span className="text-sm font-bold leading-tight" style={{ color: p.color }}>{String(p.value)}</span>
+            <span className="text-[10px] uppercase tracking-wide" style={{ color: "var(--muted)" }}>{p.label}</span>
+          </div>
+        ))}
+      </div>
+      {cs && recentComplexity && (
+        <span className="rounded-full px-3 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+          style={{ backgroundColor: cs.bg, color: cs.fg }}>
+          Last query: {recentComplexity}
+        </span>
+      )}
+    </div>
+  );
+}
+
 // ── Main ManagerPanel ─────────────────────────────────────────────────────────
 export default function ManagerPanel() {
   const [stats, setStats] = useState<ManagerStats | null>(null);
