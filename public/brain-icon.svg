@@ -1,48 +1,61 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 110" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 230" fill="none">
   <defs>
-    <linearGradient id="g" x1="10" y1="10" x2="90" y2="90" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#0d9488"/>
-      <stop offset="55%" stop-color="#0f6a9a"/>
+    <linearGradient id="g" x1="30" y1="20" x2="195" y2="210" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#0d9488"/>
+      <stop offset="45%"  stop-color="#0e7490"/>
       <stop offset="100%" stop-color="#1a3460"/>
     </linearGradient>
   </defs>
 
-  <!-- Outer brain shape -->
+  <!-- ── Outer brain boundary (lateral view, clockwise) ── -->
   <path
-    d="M 32 85
-       C 24 84 16 78 13 69
-       C 10 61 13 53 18 48
-       C 14 43 12 36 15 29
-       C 18 22 25 17 33 18
-       C 36 12 43 9 50 11
-       C 57 9 64 12 67 18
-       C 74 16 81 21 83 28
-       C 86 34 84 43 80 48
-       C 85 53 87 62 84 70
-       C 81 78 73 84 65 85
-       C 60 91 40 91 32 85 Z"
-    stroke="url(#g)" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"
+    d="M 88 198
+       C 72 198 55 190 45 178
+       C 34 165 32 148 36 135
+       C 24 128 15 115 16 100
+       C 17 86  26  73  40  67
+       C 36  57  36  45  44  36
+       C 52  27  65  23  77  27
+       C 84  16  96   9 110  11
+       C 124   8 138  15 145  26
+       C 157  20 172  25 180  37
+       C 190  50 188  67 180  78
+       C 192  88 196 103 190 117
+       C 184 132 170 140 157 142
+       C 158 155 152 167 140 175
+       C 128 183 112 185  98 182
+       C 95  190  92 197  88 198 Z"
+    stroke="url(#g)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"
   />
 
-  <!-- Top gyrus bumps -->
-  <path d="M 20 40 C 23 31 30 27 37 30" stroke="url(#g)" stroke-width="2" stroke-linecap="round"/>
-  <path d="M 38 27 C 43 22 52 22 57 27" stroke="url(#g)" stroke-width="2" stroke-linecap="round"/>
-  <path d="M 58 28 C 63 25 70 28 72 35" stroke="url(#g)" stroke-width="2" stroke-linecap="round"/>
+  <!-- ── Superior gyri bumps (top surface) ── -->
+  <path d="M 44 36 C 50 24 62 18 74 22" stroke="url(#g)" stroke-width="4.5" stroke-linecap="round"/>
+  <path d="M 80 22 C 90 10 106 8 116 16" stroke="url(#g)" stroke-width="4.5" stroke-linecap="round"/>
+  <path d="M 120 12 C 133 4 150 8 158 20" stroke="url(#g)" stroke-width="4.5" stroke-linecap="round"/>
 
-  <!-- Left-side gyrus -->
-  <path d="M 14 60 C 18 55 24 54 28 57" stroke="url(#g)" stroke-width="1.8" stroke-linecap="round"/>
+  <!-- ── Frontal lobe inner gyri ── -->
+  <path d="M 36 100 C 44 90 56 88 64 95" stroke="url(#g)" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M 40 67  C 50 60 62 60 70 68" stroke="url(#g)" stroke-width="3.5" stroke-linecap="round"/>
 
-  <!-- Right-side gyrus -->
-  <path d="M 73 60 C 77 55 82 57 83 63" stroke="url(#g)" stroke-width="1.8" stroke-linecap="round"/>
+  <!-- ── Posterior gyri ── -->
+  <path d="M 175 80 C 183 90 182 104 174 112" stroke="url(#g)" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M 158 142 C 166 132 168 118 160 110" stroke="url(#g)" stroke-width="3.5" stroke-linecap="round"/>
 
-  <!-- Central fissure -->
-  <path d="M 50 84 C 49 72 48 58 50 42" stroke="url(#g)" stroke-width="1.8" stroke-linecap="round"/>
+  <!-- ── Temporal lobe gyri ── -->
+  <path d="M 48 178 C 58 172 68 174 74 182" stroke="url(#g)" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M 100 182 C 112 178 122 172 128 162" stroke="url(#g)" stroke-width="3.5" stroke-linecap="round"/>
 
-  <!-- Medical cross — centred in left hemisphere -->
-  <line x1="38" y1="46" x2="38" y2="66" stroke="url(#g)" stroke-width="5" stroke-linecap="round"/>
-  <line x1="28" y1="56" x2="48" y2="56" stroke="url(#g)" stroke-width="5" stroke-linecap="round"/>
+  <!-- ── Central sulcus divider ── -->
+  <path d="M 108 175 C 106 158 104 138 108 116 C 112 95 110 78 108 60"
+    stroke="url(#g)" stroke-width="3" stroke-linecap="round" opacity="0.6"/>
 
-  <!-- Stem -->
-  <path d="M 36 86 C 36 93 41 97 47 97 C 53 97 56 93 56 87"
-    stroke="url(#g)" stroke-width="2.8" stroke-linecap="round"/>
+  <!-- ── Medical cross (large, centred in frontal lobe) ── -->
+  <!-- Vertical bar -->
+  <line x1="88" y1="68" x2="88" y2="138" stroke="url(#g)" stroke-width="12" stroke-linecap="round"/>
+  <!-- Horizontal bar -->
+  <line x1="52" y1="103" x2="124" y2="103" stroke="url(#g)" stroke-width="12" stroke-linecap="round"/>
+
+  <!-- ── Brainstem ── -->
+  <path d="M 90 198 C 90 208 96 215 104 215 C 112 215 116 208 116 198"
+    stroke="url(#g)" stroke-width="5" stroke-linecap="round"/>
 </svg>

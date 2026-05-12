@@ -135,7 +135,7 @@ function FeedHealthPanel() {
 
       {!allHealthy && (
         <div className="space-y-1.5">
-          {[...brokenFeeds, ...errorFeeds].slice(0, 5).map((f) => (
+          {[...new Map([...brokenFeeds, ...errorFeeds].map((f) => [f.id, f])).values()].slice(0, 5).map((f) => (
             <div key={f.id} className="flex items-start gap-2 text-xs"
               style={{ color: "var(--muted)" }}>
               <span style={{ color: (f.errorCount ?? 0) >= 3 ? "#f87171" : "#fbbf24" }}>

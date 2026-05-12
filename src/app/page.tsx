@@ -55,14 +55,14 @@ export default async function HomePage() {
             {/* Hero headline */}
             {/* Brand — icon + logotype, independent elements */}
             <div className="mt-4 flex items-center justify-center gap-4">
-              {/* Brain icon — blend-multiply removes white bg on light; invert+hue-rotate on dark */}
+              {/* Brain icon — transparent PNG, no blend tricks needed */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/brain-icon.png"
                 alt=""
                 aria-hidden="true"
-                className="h-20 w-20 mix-blend-multiply dark:mix-blend-normal dark:invert dark:hue-rotate-180"
-                style={{ filter: "drop-shadow(0 4px 16px rgba(13,148,136,0.35))" }}
+                className="h-24 w-24"
+                style={{ filter: "drop-shadow(0 4px 20px rgba(13,148,136,0.4))" }}
               />
               {/* Logotype text */}
               <span
