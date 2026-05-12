@@ -22,3 +22,8 @@ npm-debug.log*
 *.png
 *.jpg
 *.jpeg
+# Allow public/ assets
+!public/*.png
+!public/*.jpg
+!public/*.jpeg
+!public/*.svg
