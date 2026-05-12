@@ -58,27 +58,27 @@ const MODEL_COGNITIVE_STRATEGIES: Record<string, { strategy: string; mandate: st
     strategy: "Bayesian differential",
     mandate: "Start from population base rates for this patient's demographic. For each diagnosis, state pre-test probability as a percentage, then explicitly update it for every key finding. Show your probability chain: 'CAP: 40% base → 65% given productive cough [S#] → 80% given unilateral consolidation'. Your differential must be probabilistic, not just a list.",
   },
-  "moonshotai/kimi-k2-instruct": {
-    strategy: "Time-critical life-threat triage",
-    mandate: "ABCDE first — what can kill or permanently harm this patient in the next 60 minutes? Rule out PE, tension pneumothorax, aortic dissection, cardiac tamponade before anything else. Every investigation and treatment recommendation MUST include a time-to-action (STAT <1h / urgent <6h / routine <24h). Do not move to lower-acuity diagnoses until life threats are addressed.",
-  },
-  "deepseek-ai/deepseek-r1": {
-    strategy: "Devil's advocate and rare diagnosis hunter",
-    mandate: "Challenge the obvious diagnosis. Your job is to find what others will miss. Reason step by step: (1) State the most common diagnosis — then argue AGAINST it. (2) Propose at least one rare or atypical diagnosis that fits all the findings. (3) Identify one finding that does NOT fit the leading diagnosis and explain what it should make you consider instead.",
-  },
   "openai/gpt-oss-120b": {
     strategy: "Worst-case and red flag hunter",
     mandate: "Lead with: what serious, life-altering, or malignant pathology could be masquerading as this presentation? Your first question is always: 'Could this be cancer, vasculitis, autoimmune, or a paraneoplastic syndrome?' Systematically screen every red flag. If serious pathology is present, it must not be missed — weight your assessment toward ruling it out before settling on a benign diagnosis.",
   },
-  "mistralai/mixtral-8x7b-instruct-v0.1": {
+  "meta/llama-4-maverick-17b-128e-instruct": {
+    strategy: "Time-critical life-threat triage",
+    mandate: "ABCDE first — what can kill or permanently harm this patient in the next 60 minutes? Rule out PE, tension pneumothorax, aortic dissection, cardiac tamponade before anything else. Every investigation and treatment recommendation MUST include a time-to-action (STAT <1h / urgent <6h / routine <24h). Do not move to lower-acuity diagnoses until life threats are addressed.",
+  },
+  "qwen/qwen3-next-80b-a3b-instruct": {
+    strategy: "Devil's advocate and rare diagnosis hunter",
+    mandate: "Challenge the obvious diagnosis. Your job is to find what others will miss. Reason step by step: (1) State the most common diagnosis — then argue AGAINST it. (2) Propose at least one rare or atypical diagnosis that fits all the findings. (3) Identify one finding that does NOT fit the leading diagnosis and explain what it should make you consider instead.",
+  },
+  "mistralai/ministral-14b-instruct-2512": {
     strategy: "Pathogen-first infectious reasoning",
     mandate: "Build your analysis organism-first, not symptom-first. Ask: which pathogen class fits (bacterial / viral / fungal / atypical / parasitic)? What is the most likely source? What empiric regimen covers it while awaiting cultures? Apply antimicrobial stewardship: broad → narrow as soon as possible. Cite local resistance patterns where relevant. Your pharmacological plan must name specific agents with doses and duration.",
   },
-  "google/gemma-3-27b-it": {
+  "nvidia/nemotron-3-super-120b-a12b": {
     strategy: "Metabolic and systemic unifier",
     mandate: "Ask: what single metabolic, hormonal, or systemic process explains ALL symptoms simultaneously? Could this be DKA, adrenal crisis, thyroid storm, or another endocrine emergency? Resist treating symptoms in isolation. Your job is to find the unifying metabolic thread. Check: does this presentation change management if the patient is diabetic, has thyroid disease, or is on steroids?",
   },
-  "microsoft/phi-3-mini-128k-instruct": {
+  "nvidia/nemotron-nano-12b-v2-vl": {
     strategy: "Occam's razor — parsimony first",
     mandate: "Find ONE diagnosis that explains every symptom. Reject any differential that requires two concurrent diagnoses unless the evidence demands it. Then build the most pragmatic, community-feasible management plan: what can a GP do right now with the resources available? Prioritise: what is the single most important thing to do in the next hour?",
   },
@@ -86,13 +86,13 @@ const MODEL_COGNITIVE_STRATEGIES: Record<string, { strategy: string; mandate: st
 
 // Each model pinned to the specialty that matches its actual capabilities
 const MODEL_SPECIALTY_MAP: Record<string, string> = {
-  "meta/llama-3.3-70b-instruct":            "internal_medicine",   // broad generalist, evidence workup, synthesis anchor
-  "moonshotai/kimi-k2-instruct":             "emergency_medicine",  // agentic multi-step, acute triage, ABCDE, red flags
-  "deepseek-ai/deepseek-r1":                "neurology",           // stepwise CoT, complex reasoning-heavy presentations
-  "openai/gpt-oss-120b":                    "oncology",            // large model handles complex staging, paraneoplastic
-  "mistralai/mixtral-8x7b-instruct-v0.1":   "infectious_disease",  // MoE fast, antimicrobial stewardship, epidemiology
-  "google/gemma-3-27b-it":                  "endocrinology",       // strong structured recall, dosing, metabolic disorders
-  "microsoft/phi-3-mini-128k-instruct":      "general_practice",   // 128K fast, community prevalence, outpatient feasibility
+  "meta/llama-3.3-70b-instruct":                 "internal_medicine",   // 70B generalist, evidence workup, synthesis anchor
+  "openai/gpt-oss-120b":                          "oncology",            // 120B handles complex staging, paraneoplastic, red flags
+  "meta/llama-4-maverick-17b-128e-instruct":      "emergency_medicine",  // Llama 4 MoE, acute triage, ABCDE, time-critical
+  "qwen/qwen3-next-80b-a3b-instruct":             "neurology",           // 80B MoE, stepwise reasoning, rare/complex presentations
+  "mistralai/ministral-14b-instruct-2512":        "infectious_disease",  // 14B fast, antimicrobial stewardship, epidemiology
+  "nvidia/nemotron-3-super-120b-a12b":            "endocrinology",       // 120B NVIDIA, metabolic/systemic unifier, dosing
+  "nvidia/nemotron-nano-12b-v2-vl":              "general_practice",    // 12B fast, community prevalence, outpatient feasibility
 };
 
 function getSpecialtyForModel(modelId: string, fallbackIndex: number): SpecialtyMeta {

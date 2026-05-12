@@ -4,13 +4,13 @@ export const NVIDIA_EMBED_MODEL = "nvidia/nv-embedqa-e5-v5";
 export const NVIDIA_EMBED_DIMS = 1024;
 
 export const NVIDIA_SWARM_MODELS = [
-  "meta/llama-3.3-70b-instruct",       // primary / synthesis anchor — IM attending
-  "moonshotai/kimi-k2-instruct",        // agentic, GPQA 75.1%, 128K, 40 RPM free
-  "deepseek-ai/deepseek-r1",            // stepwise CoT, rare/complex presentations
-  "openai/gpt-oss-120b",               // strong 120B general clinical reasoning
-  "mistralai/mixtral-8x7b-instruct-v0.1", // MoE fast, literature synthesis
-  "google/gemma-3-27b-it",             // pharmacology, drug interactions
-  "microsoft/phi-3-mini-128k-instruct", // 128K fast triage, long clinical notes
+  "meta/llama-3.3-70b-instruct",                 // primary / synthesis anchor — IM attending, 70B
+  "openai/gpt-oss-120b",                          // oncology/complex staging, 120B
+  "meta/llama-4-maverick-17b-128e-instruct",      // emergency/acute triage, Llama 4 MoE
+  "qwen/qwen3-next-80b-a3b-instruct",             // neurology / stepwise reasoning, 80B MoE
+  "mistralai/ministral-14b-instruct-2512",        // infectious disease / fast, 14B
+  "nvidia/nemotron-3-super-120b-a12b",            // cardiology / critical care, 120B NVIDIA
+  "nvidia/nemotron-nano-12b-v2-vl",              // general practice / fast triage, 12B
 ] as const;
 
 export type NvidiaModel = (typeof NVIDIA_SWARM_MODELS)[number];
@@ -59,13 +59,13 @@ export async function nvidiaEmbed(text: string, inputType: "query" | "passage" =
 
 // Per-model NIM constraints — wrong values cause 400/410
 const MODEL_CONFIGS: Record<string, { maxTokens: number; temperature: number }> = {
-  "meta/llama-3.3-70b-instruct":            { maxTokens: 4096, temperature: 0.3 },
-  "moonshotai/kimi-k2-instruct":             { maxTokens: 4096, temperature: 0.6 }, // NIM docs: 0.6 for instruct mode
-  "deepseek-ai/deepseek-r1":                { maxTokens: 4096, temperature: 0.6 }, // reasoning model needs higher temp
-  "openai/gpt-oss-120b":                    { maxTokens: 4096, temperature: 0.3 },
-  "mistralai/mixtral-8x7b-instruct-v0.1":   { maxTokens: 4096, temperature: 0.3 },
-  "google/gemma-3-27b-it":                  { maxTokens: 2048, temperature: 0.3 }, // smaller model, cap output
-  "microsoft/phi-3-mini-128k-instruct":      { maxTokens: 2048, temperature: 0.3 }, // 3.8B — cap output
+  "meta/llama-3.3-70b-instruct":                 { maxTokens: 4096, temperature: 0.3 },
+  "openai/gpt-oss-120b":                          { maxTokens: 4096, temperature: 0.3 },
+  "meta/llama-4-maverick-17b-128e-instruct":      { maxTokens: 4096, temperature: 0.4 },
+  "qwen/qwen3-next-80b-a3b-instruct":             { maxTokens: 4096, temperature: 0.4 },
+  "mistralai/ministral-14b-instruct-2512":        { maxTokens: 4096, temperature: 0.3 },
+  "nvidia/nemotron-3-super-120b-a12b":            { maxTokens: 4096, temperature: 0.3 },
+  "nvidia/nemotron-nano-12b-v2-vl":              { maxTokens: 2048, temperature: 0.3 },
 };
 
 export async function nvidiaChat(model: string, system: string, user: string, temperatureOverride?: number): Promise<string> {

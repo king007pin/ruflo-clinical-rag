@@ -31,26 +31,26 @@ type ModelMeta = { id: string; label: string; role: string; description: string;
 
 const MODELS: ModelMeta[] = [
   { id: "meta/llama-3.3-70b-instruct", label: "Llama 3.3 70B", role: "Internal Medicine",
-    description: "Synthesis anchor. Broad systemic differentials, evidence-based workup, chronic disease context, internal medicine guidelines.",
+    description: "Synthesis anchor. Bayesian probabilistic differentials, evidence-based workup, chronic disease context, internal medicine guidelines.",
     tags: ["free", "70B", "synthesis anchor", "generalist"], size: "70B" },
-  { id: "moonshotai/kimi-k2-instruct", label: "Kimi K2", role: "Emergency Medicine",
-    description: "Agentic multi-step reasoning. Acute triage, ABCDE assessment, time-critical diagnoses, red flag recognition. GPQA-Diamond 75.1%.",
-    tags: ["free", "128K", "agentic", "acute care"], size: "1T MoE" },
-  { id: "deepseek-ai/deepseek-r1", label: "DeepSeek R1", role: "Neurology",
-    description: "Chain-of-thought stepwise reasoning. Complex neurological workups, rare presentations, and explicit diagnostic reasoning traces.",
-    tags: ["free", "CoT", "reasoning", "rare disease"], size: "671B MoE" },
   { id: "openai/gpt-oss-120b", label: "GPT-OSS 120B", role: "Oncology",
-    description: "120B open-weights. Complex staging, paraneoplastic syndromes, oncologic emergencies, and multi-system malignancy workup.",
-    tags: ["free", "120B", "oncology", "complex cases"], size: "120B" },
-  { id: "mistralai/mixtral-8x7b-instruct-v0.1", label: "Mixtral 8x7B", role: "Infectious Disease",
-    description: "MoE fast. Antimicrobial stewardship, epidemiological risk, infection source control, travel medicine, and culture interpretation.",
-    tags: ["free", "MoE", "fast", "antimicrobials"], size: "8x7B" },
-  { id: "google/gemma-3-27b-it", label: "Gemma 3 27B", role: "Endocrinology",
-    description: "Strong structured recall. Hormonal disorders, diabetes management, thyroid, adrenal pathology, dosing precision, and metabolic workup.",
-    tags: ["free", "27B", "metabolic", "dosing"], size: "27B" },
-  { id: "microsoft/phi-3-mini-128k-instruct", label: "Phi-3 Mini 128K", role: "General Practice",
-    description: "128K context, fast. Community prevalence priors, outpatient feasibility, patient history integration, and long clinical note analysis.",
-    tags: ["free", "fast", "128K", "primary care"], size: "3.8B" },
+    description: "120B open-weights. Red flag hunter. Complex staging, paraneoplastic syndromes, oncologic emergencies, worst-case analysis.",
+    tags: ["free", "120B", "oncology", "red flags"], size: "120B" },
+  { id: "meta/llama-4-maverick-17b-128e-instruct", label: "Llama 4 Maverick", role: "Emergency Medicine",
+    description: "Llama 4 MoE. ABCDE life-threat triage, time-critical diagnoses, STAT vs urgent vs routine prioritisation.",
+    tags: ["free", "MoE", "Llama 4", "acute care"], size: "17B×128E" },
+  { id: "qwen/qwen3-next-80b-a3b-instruct", label: "Qwen3 80B MoE", role: "Neurology",
+    description: "80B MoE stepwise reasoning. Devil's advocate. Rare and atypical diagnoses, complex neurological workups, CoT traces.",
+    tags: ["free", "80B MoE", "reasoning", "rare disease"], size: "80B MoE" },
+  { id: "mistralai/ministral-14b-instruct-2512", label: "Ministral 14B", role: "Infectious Disease",
+    description: "14B fast. Pathogen-first reasoning. Antimicrobial stewardship, epidemiological risk, empiric regimen selection, culture interpretation.",
+    tags: ["free", "14B", "fast", "antimicrobials"], size: "14B" },
+  { id: "nvidia/nemotron-3-super-120b-a12b", label: "Nemotron Super 120B", role: "Endocrinology",
+    description: "NVIDIA 120B. Metabolic unifier. Hormonal disorders, DKA, thyroid storm, adrenal crisis, systemic metabolic workup.",
+    tags: ["free", "120B", "NVIDIA", "metabolic"], size: "120B" },
+  { id: "nvidia/nemotron-nano-12b-v2-vl", label: "Nemotron Nano 12B", role: "General Practice",
+    description: "12B fast, vision-capable. Occam's razor. Community prevalence priors, outpatient feasibility, pragmatic single-diagnosis focus.",
+    tags: ["free", "12B", "fast", "primary care"], size: "12B" },
 ];
 
 const MODEL_COLORS = [
@@ -267,13 +267,13 @@ function parseAgentSections(text: string): Array<{ heading: string; body: string
 
 // Cognitive strategy labels per model (for display)
 const MODEL_STRATEGY_LABELS: Record<string, string> = {
-  "meta/llama-3.3-70b-instruct":            "Bayesian differential",
-  "moonshotai/kimi-k2-instruct":             "Time-critical life-threat triage",
-  "deepseek-ai/deepseek-r1":                "Devil's advocate · rare diagnosis hunter",
-  "openai/gpt-oss-120b":                    "Worst-case · red flag hunter",
-  "mistralai/mixtral-8x7b-instruct-v0.1":   "Pathogen-first infectious reasoning",
-  "google/gemma-3-27b-it":                  "Metabolic · systemic unifier",
-  "microsoft/phi-3-mini-128k-instruct":      "Occam's razor · parsimony first",
+  "meta/llama-3.3-70b-instruct":                 "Bayesian differential",
+  "openai/gpt-oss-120b":                          "Worst-case · red flag hunter",
+  "meta/llama-4-maverick-17b-128e-instruct":      "Time-critical life-threat triage",
+  "qwen/qwen3-next-80b-a3b-instruct":             "Devil's advocate · rare diagnosis hunter",
+  "mistralai/ministral-14b-instruct-2512":        "Pathogen-first infectious reasoning",
+  "nvidia/nemotron-3-super-120b-a12b":            "Metabolic · systemic unifier",
+  "nvidia/nemotron-nano-12b-v2-vl":              "Occam's razor · parsimony first",
 };
 
 function AgentCard({ agent, meta, color, idx, phase, pending, compact }: {
