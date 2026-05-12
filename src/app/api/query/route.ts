@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 const bodySchema = z.object({
   question: z.string().min(4),
@@ -83,6 +84,11 @@ export async function POST(req: NextRequest) {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
       }
 
+      let ping: ReturnType<typeof setInterval> | null = null;
+      ping = setInterval(() => {
+        try { controller.enqueue(encoder.encode(": ping\n\n")); } catch { /* stream closed */ }
+      }, 5000);
+
       try {
         send({ type: "status", message: "Manager: initialising swarm…" });
 
@@ -124,6 +130,7 @@ export async function POST(req: NextRequest) {
       } catch (err) {
         send({ type: "error", message: (err as Error).message });
       } finally {
+        if (ping) clearInterval(ping);
         controller.close();
       }
     },
