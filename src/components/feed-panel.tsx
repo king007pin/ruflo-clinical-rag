@@ -676,11 +676,27 @@ export default function FeedPanel() {
     setMsg(null);
     try {
       const res = await fetch("/api/admin/refresh", { method: "POST" });
-      const data = (await res.json()) as { processed: number; results: Array<{ ingested: number }> };
-      const total = data.results.reduce((s, r) => s + r.ingested, 0);
-      setMsg(`Processed ${data.processed} feed(s), ingested ${total} article(s).`);
+      const data = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        processed?: number;
+        results?: Array<{ name: string; ingested: number; error?: string; autoDisabled?: boolean }>;
+      };
+      if (!res.ok || data.error) {
+        setMsg(`Refresh error: ${data.error ?? `HTTP ${res.status}`}`);
+      } else {
+        const total = (data.results ?? []).reduce((s, r) => s + r.ingested, 0);
+        const failed = (data.results ?? []).filter(r => r.error);
+        const disabled = (data.results ?? []).filter(r => r.autoDisabled);
+        let summary = `Processed ${data.processed ?? 0} feed(s), ingested ${total} article(s).`;
+        if (failed.length) summary += ` ${failed.length} feed(s) failed: ${failed.map(f => f.name).join(", ")}.`;
+        if (disabled.length) summary += ` ${disabled.length} feed(s) auto-disabled after 3 consecutive errors.`;
+        setMsg(summary);
+      }
       await loadFeeds();
-    } catch { setMsg("Refresh failed."); }
+    } catch (err) {
+      setMsg(`Refresh failed — ${(err as Error).message}. Check NEXT_PUBLIC_APP_URL env var on Vercel.`);
+    }
     finally { setRefreshing(false); }
   }
 
