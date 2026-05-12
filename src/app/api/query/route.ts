@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { embeddings, sources } from "@/db/schema";
 import { assembleContext, embedText, pickTopMatches } from "@/lib/rag";
 import { getSimilarPastCases, logSession } from "@/lib/session-learning";
-import { runSwarm } from "@/lib/swarm";
+import { runManagedSwarm } from "@/lib/manager";
 import { and, desc, eq, isNotNull } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid payload", issues: parsed.error.issues }, { status: 400 });
   }
 
-  const { question, model, swarmSize = 3, topK = 10, patientContext, labText } = parsed.data;
+  const { question, model, swarmSize, topK = 10, patientContext, labText } = parsed.data;
 
   const rows = await db
     .select({
@@ -84,43 +84,33 @@ export async function POST(req: NextRequest) {
       }
 
       try {
-        send({ type: "status", message: `Routing to ${swarmSize} agent${swarmSize !== 1 ? "s" : ""}…` });
+        send({ type: "status", message: "Manager: initialising swarm…" });
 
-        const swarm = await runSwarm({
+        const result = await runManagedSwarm({
           question,
           context: contextWithMemory,
+          matches,
           model,
           swarmSize,
-          matches,
           patientContext,
           labText,
+          queryEmbedding: qEmbedding,
           onAgentDone: (agent) => send({ type: "agent", ...agent }),
           onDebateStart: () =>
             send({ type: "debate_start", message: "Agents reviewing each other's reasoning…" }),
           onSynthesisStart: () =>
             send({ type: "synthesis_start", message: "Synthesising final report from debate…" }),
+          onManagerStatus: (msg) => send({ type: "status", message: msg }),
+          logSessionFn: logSession,
         });
-
-        const firstAnswer = swarm.agents[0]?.message ?? swarm.answer;
-        const consensusSnippet = firstAnswer.split(/[.!?]/)[0]?.trim().slice(0, 120) ?? null;
-        const maxScore = matches.length > 0 ? Math.max(...matches.map((m) => m.score ?? 0)) : 0;
-
-        const sessionId = await logSession({
-          query: question,
-          queryEmbedding: qEmbedding,
-          matchCount: matches.length,
-          maxScore,
-          agentCount: swarm.agents.length,
-          agentAnswers: swarm.agents.map((a) => a.message),
-          consensusSnippet: consensusSnippet ?? undefined,
-        }).catch(() => null);
 
         send({
           type: "done",
-          answer: swarm.answer,
-          agents: swarm.agents,
-          round1Agents: swarm.round1Agents,
-          sessionId,
+          answer: result.answer,
+          agents: result.agents,
+          round1Agents: result.round1Agents,
+          sessionId: result.sessionId,
+          managerReport: result.managerReport,
           matches: matches.map((m) => ({
             sourceId: m.sourceId,
             sourceTitle: m.sourceTitle,

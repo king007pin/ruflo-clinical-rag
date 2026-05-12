@@ -60,11 +60,18 @@ export async function GET(req: NextRequest) {
       results.push({ id: feed.id, name: feed.name, ingested });
     } catch (err) {
       const msg = (err as Error).message.slice(0, 300);
+      const newErrorCount = (feed.errorCount ?? 0) + 1;
+      const autoDisabled = newErrorCount >= 3;
       await db
         .update(sourceFeeds)
-        .set({ lastFetchedAt: now, errorCount: (feed.errorCount ?? 0) + 1, lastError: msg })
+        .set({
+          lastFetchedAt: now,
+          errorCount: newErrorCount,
+          lastError: msg,
+          ...(autoDisabled ? { enabled: false } : {}),
+        })
         .where(eq(sourceFeeds.id, feed.id));
-      results.push({ id: feed.id, name: feed.name, ingested: 0, error: msg });
+      results.push({ id: feed.id, name: feed.name, ingested: 0, error: msg, ...(autoDisabled ? { disabled: true } : {}) });
     }
   }
 

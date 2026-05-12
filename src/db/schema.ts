@@ -100,6 +100,27 @@ export const knowledgeGaps = pgTable("knowledge_gaps", {
   ingestedCount: integer("ingested_count").default(0).notNull(),
 });
 
+// Manager audit log — one row per query
+export const managerEvents = pgTable("manager_events", {
+  id: serial("id").primaryKey(),
+  sessionId: integer("session_id").references(() => querySessions.id, { onDelete: "set null" }),
+  complexity: text("complexity").notNull().default("moderate"),   // simple | moderate | complex | emergency
+  isMedical: boolean("is_medical").default(true).notNull(),
+  isEmergency: boolean("is_emergency").default(false).notNull(),
+  emergencyTriggers: jsonb("emergency_triggers").$type<string[]>(),
+  agentCountSelected: integer("agent_count_selected").default(3).notNull(),
+  totalLatencyMs: integer("total_latency_ms"),
+  perAgentLatencyMs: jsonb("per_agent_latency_ms").$type<Record<string, number>>(),
+  escalationTriggered: boolean("escalation_triggered").default(false).notNull(),
+  preCheckPassed: boolean("pre_check_passed").default(true).notNull(),
+  postCheckPassed: boolean("post_check_passed").default(true).notNull(),
+  agentErrors: integer("agent_errors").default(0).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: false }).defaultNow().notNull(),
+});
+
+export type ManagerEvent = typeof managerEvents.$inferSelect;
+export type ManagerEventInsert = typeof managerEvents.$inferInsert;
+
 export type QuerySession = typeof querySessions.$inferSelect;
 export type QuerySessionInsert = typeof querySessions.$inferInsert;
 export type SessionFeedback = typeof sessionFeedback.$inferSelect;

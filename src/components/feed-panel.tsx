@@ -545,11 +545,24 @@ export default function FeedPanel() {
     finally { setSeeding(false); }
   }
 
+  async function resetAndReseed() {
+    setSeeding(true);
+    setMsg(null);
+    try {
+      await fetch("/api/admin/feeds", { method: "DELETE" });
+      const res = await fetch("/api/admin/seed", { method: "POST" });
+      const data = (await res.json()) as { seeded: number };
+      setMsg(`Reset complete. Seeded ${data.seeded} feed(s) with verified URLs. Click "Refresh now" to ingest.`);
+      await loadFeeds();
+    } catch { setMsg("Reset failed."); }
+    finally { setSeeding(false); }
+  }
+
   async function refresh() {
     setRefreshing(true);
     setMsg(null);
     try {
-      const res = await fetch("/api/cron/refresh");
+      const res = await fetch("/api/admin/refresh", { method: "POST" });
       const data = (await res.json()) as { processed: number; results: Array<{ ingested: number }> };
       const total = data.results.reduce((s, r) => s + r.ingested, 0);
       setMsg(`Processed ${data.processed} feed(s), ingested ${total} article(s).`);
@@ -597,7 +610,17 @@ export default function FeedPanel() {
             className="rounded-2xl px-4 py-2 text-sm font-semibold shadow transition disabled:opacity-60"
             style={{ background: "linear-gradient(90deg,#818cf8,#f472b6)", color: "#0f172a" }}
           >
-            {seeding ? "Seeding…" : "Seed all 35 India-primary feeds"}
+            {seeding ? "Seeding…" : "Seed all feeds"}
+          </button>
+        )}
+        {feeds.length > 0 && (
+          <button
+            onClick={resetAndReseed}
+            disabled={seeding}
+            className="rounded-2xl px-4 py-2 text-sm font-semibold shadow transition disabled:opacity-60"
+            style={{ background: "rgba(239,68,68,0.15)", color: "#f87171", border: "1px solid rgba(239,68,68,0.3)" }}
+          >
+            {seeding ? "Resetting…" : "Reset & Reseed"}
           </button>
         )}
         {feeds.length > 0 && (

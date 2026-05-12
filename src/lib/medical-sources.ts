@@ -21,47 +21,12 @@ export const MEDICAL_SEED_FEEDS: SeedFeed[] = [
     maxItems: 15,
     intervalHours: 1,
   },
-  {
-    name: "India — ICMR Research Updates",
-    type: "rss",
-    url: "https://main.icmr.gov.in/rss.xml",
-    maxItems: 10,
-    intervalHours: 6,
-  },
-  {
-    name: "India — National Health Portal",
-    type: "rss",
-    url: "https://www.nhp.gov.in/rss",
-    maxItems: 10,
-    intervalHours: 6,
-  },
-  {
-    name: "India — CDSCO Drug Alerts & Approvals",
-    type: "rss",
-    url: "https://cdsco.gov.in/opencms/opencms/en/Consumer/rss.xml",
-    maxItems: 10,
-    intervalHours: 2,
-  },
 
   // ── India Medical News (Major Papers) ───────────────────────
   {
-    name: "India — NDTV Health News",
-    type: "rss",
-    url: "https://feeds.feedburner.com/ndtvnews-health-news",
-    maxItems: 15,
-    intervalHours: 1,
-  },
-  {
     name: "India — Times of India Health",
     type: "rss",
-    url: "https://timesofindia.indiatimes.com/rss/7148009.cms",
-    maxItems: 15,
-    intervalHours: 1,
-  },
-  {
-    name: "India — Hindustan Times Health",
-    type: "rss",
-    url: "https://www.hindustantimes.com/feeds/rss/health/rssfeed.xml",
+    url: "https://timesofindia.indiatimes.com/rssfeeds/3908999.cms",
     maxItems: 15,
     intervalHours: 1,
   },
@@ -89,39 +54,9 @@ export const MEDICAL_SEED_FEEDS: SeedFeed[] = [
   {
     name: "India — Express Healthcare",
     type: "rss",
-    url: "https://www.expresshealthcare.in/feed",
+    url: "https://www.expresshealthcare.in/feed/",
     maxItems: 12,
     intervalHours: 2,
-  },
-  {
-    name: "India — PharmaBiz",
-    type: "rss",
-    url: "https://www.pharmabiz.com/rss.aspx",
-    maxItems: 10,
-    intervalHours: 2,
-  },
-
-  // ── India Medical Journals ───────────────────────────────────
-  {
-    name: "India — Indian Journal of Medical Research (IJMR)",
-    type: "rss",
-    url: "https://www.ijmr.org.in/rss.asp",
-    maxItems: 10,
-    intervalHours: 72,
-  },
-  {
-    name: "India — Journal of Association of Physicians (JAPI)",
-    type: "rss",
-    url: "https://www.japi.org/rss",
-    maxItems: 8,
-    intervalHours: 72,
-  },
-  {
-    name: "India — Indian Pediatrics",
-    type: "rss",
-    url: "https://www.indianpediatrics.net/rss.asp",
-    maxItems: 8,
-    intervalHours: 72,
   },
 
   // ── PubMed — India Disease Burden (high priority) ───────────
@@ -198,28 +133,19 @@ export const MEDICAL_SEED_FEEDS: SeedFeed[] = [
 
   // ════════════════════════════════════════════════════════════
   // CLINICAL REFERENCE — STATPEARLS (Harrison's equivalent)
-  // Deep crawl via /api/admin/crawl-statpearls
-  // This entry triggers monthly re-index of new articles only
   // ════════════════════════════════════════════════════════════
   {
     name: "StatPearls — NCBI Bookshelf (clinical reference index)",
     type: "website",
     url: "https://www.ncbi.nlm.nih.gov/books/NBK430685/",
     maxItems: 1,
-    intervalHours: 168, // weekly — TOC overview only; deep crawl is separate
+    intervalHours: 168,
   },
 
   // ════════════════════════════════════════════════════════════
   // GLOBAL — SECONDARY SOURCES
   // ════════════════════════════════════════════════════════════
 
-  {
-    name: "WHO SEARO — South-East Asia Region",
-    type: "rss",
-    url: "https://www.who.int/southeastasia/news/rss",
-    maxItems: 10,
-    intervalHours: 6,
-  },
   {
     name: "WHO — Global Health News",
     type: "rss",
@@ -228,16 +154,9 @@ export const MEDICAL_SEED_FEEDS: SeedFeed[] = [
     intervalHours: 6,
   },
   {
-    name: "WHO — Disease Outbreak News",
-    type: "rss",
-    url: "https://www.who.int/feeds/entity/csr/don/en/rss.xml",
-    maxItems: 10,
-    intervalHours: 3,
-  },
-  {
     name: "CDC — MMWR Weekly",
     type: "rss",
-    url: "https://www.cdc.gov/mmwr/rss/mmwr.xml",
+    url: "https://tools.cdc.gov/api/v2/resources/media/342778.rss",
     maxItems: 8,
     intervalHours: 168,
   },
@@ -256,25 +175,11 @@ export const MEDICAL_SEED_FEEDS: SeedFeed[] = [
     intervalHours: 168,
   },
   {
-    name: "JAMA — Current Issue",
-    type: "rss",
-    url: "https://jamanetwork.com/rss/site_3/67.xml",
-    maxItems: 8,
-    intervalHours: 168,
-  },
-  {
     name: "The Lancet — Current Issue",
     type: "rss",
     url: "https://www.thelancet.com/rssfeed/lancet_current.xml",
     maxItems: 8,
     intervalHours: 168,
-  },
-  {
-    name: "BMJ — Recent Articles",
-    type: "rss",
-    url: "https://feeds.bmj.com/bmj/recent",
-    maxItems: 8,
-    intervalHours: 24,
   },
   {
     name: "PubMed — Global Clinical Practice Guidelines",

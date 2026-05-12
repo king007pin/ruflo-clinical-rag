@@ -26,3 +26,8 @@ export async function PATCH(req: NextRequest) {
   }
   return NextResponse.json({ ok: true });
 }
+
+export async function DELETE() {
+  await db.delete(sourceFeeds);
+  return NextResponse.json({ ok: true });
+}

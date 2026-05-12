@@ -55,6 +55,18 @@ export default function InsightsPanel() {
     await load();
   }
 
+  async function clearSessions() {
+    await fetch("/api/admin/insights", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "sessions" }) });
+    setMsg("Sessions cleared.");
+    await load();
+  }
+
+  async function resolveAllGaps() {
+    await fetch("/api/admin/insights", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "resolve-all-gaps" }) });
+    setMsg("All knowledge gaps marked resolved.");
+    await load();
+  }
+
   if (loading) return <p className="text-sm" style={{ color: "var(--muted)" }}>Loading insights...</p>;
   if (!stats) return null;
 
@@ -113,12 +125,21 @@ export default function InsightsPanel() {
       {/* Open knowledge gaps */}
       {stats.recentGaps.length > 0 && (
         <div>
-          <p
-            className="mb-2 text-xs font-semibold uppercase tracking-wider"
-            style={{ color: "var(--accent)" }}
-          >
-            Open Knowledge Gaps
-          </p>
+          <div className="flex items-center justify-between mb-2">
+            <p
+              className="text-xs font-semibold uppercase tracking-wider"
+              style={{ color: "var(--accent)" }}
+            >
+              Open Knowledge Gaps
+            </p>
+            <button
+              onClick={() => void resolveAllGaps()}
+              className="rounded-xl px-3 py-1 text-xs font-medium transition"
+              style={{ backgroundColor: "rgba(129,140,248,0.15)", color: "#818cf8" }}
+            >
+              Resolve all
+            </button>
+          </div>
           <div className="space-y-2">
             {stats.recentGaps.map((gap) => (
               <div
@@ -144,12 +165,21 @@ export default function InsightsPanel() {
       {/* Recent sessions */}
       {stats.recentSessions.length > 0 && (
         <div>
-          <p
-            className="mb-2 text-xs font-semibold uppercase tracking-wider"
-            style={{ color: "var(--accent)" }}
-          >
-            Recent Sessions
-          </p>
+          <div className="flex items-center justify-between mb-2">
+            <p
+              className="text-xs font-semibold uppercase tracking-wider"
+              style={{ color: "var(--accent)" }}
+            >
+              Recent Sessions
+            </p>
+            <button
+              onClick={() => void clearSessions()}
+              className="rounded-xl px-3 py-1 text-xs font-medium transition"
+              style={{ backgroundColor: "rgba(239,68,68,0.1)", color: "#f87171" }}
+            >
+              Clear all
+            </button>
+          </div>
           <div className="space-y-1.5">
             {stats.recentSessions.map((s) => (
               <div
