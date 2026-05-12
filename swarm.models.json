@@ -1,0 +1,61 @@
+{
+  "manager_model": "openai/gpt-oss-120b",
+  "settings": {
+    "base_url": "https://integrate.api.nvidia.com/v1",
+    "max_workers": 6,
+    "candidate_limit": 12,
+    "request_timeout_seconds": 45,
+    "max_retries": 2
+  },
+  "swarm": [
+    {
+      "role": "general_reasoner",
+      "model": "meta/llama-3.3-70b-instruct",
+      "required_capability": "chat",
+      "prefer": ["meta", "llama", "70b", "instruct", "reasoning"],
+      "avoid": ["embed", "rerank", "ocr", "asr", "safety", "guard", "image", "video"]
+    },
+    {
+      "role": "openai_reasoner",
+      "model": "openai/gpt-oss-120b",
+      "required_capability": "chat",
+      "prefer": ["openai", "gpt", "oss", "120b", "instruct", "reasoning"],
+      "avoid": ["embed", "rerank", "ocr", "asr", "safety", "guard", "image", "video"]
+    },
+    {
+      "role": "large_multimodal_or_reasoning",
+      "model": "meta/llama-4-maverick-17b-128e-instruct",
+      "required_capability": "chat",
+      "prefer": ["meta", "llama", "maverick", "instruct", "vl", "vision", "reasoning"],
+      "avoid": ["embed", "rerank", "ocr", "asr", "safety", "guard"]
+    },
+    {
+      "role": "qwen_reasoner",
+      "model": "qwen/qwen3-next-80b-a3b-instruct",
+      "required_capability": "chat",
+      "prefer": ["qwen", "80b", "instruct", "reasoning"],
+      "avoid": ["embed", "rerank", "ocr", "asr", "safety", "guard", "image", "video"]
+    },
+    {
+      "role": "fast_mistral_fallback",
+      "model": "mistralai/ministral-14b-instruct-2512",
+      "required_capability": "chat",
+      "prefer": ["mistral", "ministral", "mixtral", "instruct", "fast"],
+      "avoid": ["embed", "rerank", "ocr", "asr", "safety", "guard", "image", "video"]
+    },
+    {
+      "role": "nemotron_large_reasoner",
+      "model": "nvidia/nemotron-3-super-120b-a12b",
+      "required_capability": "chat",
+      "prefer": ["nvidia", "nemotron", "120b", "super", "reasoning", "instruct"],
+      "avoid": ["embed", "rerank", "ocr", "asr", "safety", "guard", "image", "video"]
+    },
+    {
+      "role": "small_vl_or_fast_fallback",
+      "model": "nvidia/nemotron-nano-12b-v2-vl",
+      "required_capability": "chat",
+      "prefer": ["nvidia", "nemotron", "nano", "12b", "vl", "vision", "fast"],
+      "avoid": ["embed", "rerank", "ocr", "asr", "safety", "guard"]
+    }
+  ]
+}
