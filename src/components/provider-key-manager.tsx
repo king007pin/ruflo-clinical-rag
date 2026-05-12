@@ -454,8 +454,8 @@ function SwarmConfigPanel() {
   );
 }
 
-// ── Clinical Swarm Analyzer ────────────────────────────────────────────────────
-function ClinicalSwarmAnalyzer() {
+// ── (Clinical Swarm Analyzer merged into QueryBox) ────────────────────────────
+function _dead_() {
   const [query, setQuery] = useState("");
   const [context, setContext] = useState("");
   const [running, setRunning] = useState(false);
@@ -673,8 +673,6 @@ export default function ProviderKeyManager() {
       )}
 
       <SwarmConfigPanel />
-
-      <ClinicalSwarmAnalyzer />
     </div>
   );
 }

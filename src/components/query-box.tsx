@@ -426,6 +426,21 @@ export default function QueryBox() {
   const [labUploading, setLabUploading] = useState(false);
   const [labError, setLabError] = useState<string | null>(null);
 
+  const [mode, setMode] = useState<"nvidia" | "multi">("nvidia");
+  const [hasProviders, setHasProviders] = useState(false);
+  const [multiResult, setMultiResult] = useState<{
+    synthesis: string;
+    agents: Array<{ role: string; model: string; providerId: string; content: string }>;
+    swarmSize: number;
+  } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/provider-key/status")
+      .then((r) => r.json())
+      .then((d: { providers?: unknown[] }) => { if ((d.providers?.length ?? 0) > 0) setHasProviders(true); })
+      .catch(() => {});
+  }, []);
+
   const selectedMeta = MODELS.find((m) => m.id === model) ?? MODELS[0];
 
   function formatPatientContext(info: PatientInfo): string {
@@ -460,6 +475,38 @@ export default function QueryBox() {
     e.preventDefault();
     setLoading(true);
     setResult(null);
+    setMultiResult(null);
+
+    // ── Multi-provider path ──────────────────────────────────────────────────
+    if (mode === "multi") {
+      setLiveStatus("Running multi-provider clinical swarm…");
+      setRoutingPhase(true);
+      try {
+        const ctx = [formatPatientContext(patientInfo), labText].filter(Boolean).join("\n\n");
+        const res = await fetch("/api/clinical-swarm/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: question, context: ctx || undefined }),
+        });
+        const data = (await res.json()) as { synthesis?: string; agents?: Array<{ role: string; model: string; providerId: string; content: string }>; swarmSize?: number; error?: string };
+        if (data.error) { setStatus(data.error); }
+        else {
+          setMultiResult({ synthesis: data.synthesis ?? "", agents: data.agents ?? [], swarmSize: data.swarmSize ?? 0 });
+          if (saveCase) {
+            await fetch("/api/cases", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ title: caseFields.title || question.slice(0, 80), question, answer: data.synthesis ?? "" }),
+            });
+            setStatus("Saved as case profile");
+          }
+        }
+      } catch (err) { setStatus((err as Error).message); }
+      finally { setLoading(false); setLiveStatus(null); setRoutingPhase(false); }
+      return;
+    }
+    // ── NVIDIA swarm path ────────────────────────────────────────────────────
+
     setLiveRound1([]);
     setLiveRound2([]);
     setLiveStatus(null);
@@ -703,6 +750,28 @@ export default function QueryBox() {
           )}
         </div>
 
+        {hasProviders && (
+          <div className="flex items-center gap-2 rounded-xl border px-3 py-2"
+            style={{ borderColor: "var(--card-border)", backgroundColor: "var(--card)" }}>
+            <span className="text-xs shrink-0" style={{ color: "var(--muted)" }}>Swarm source:</span>
+            {(["nvidia", "multi"] as const).map((m) => (
+              <button key={m} type="button" onClick={() => setMode(m)}
+                className="rounded-full px-3 py-1.5 text-xs font-semibold transition"
+                style={{
+                  backgroundColor: mode === m ? "var(--accent)" : "var(--pill)",
+                  color: mode === m ? "#0f172a" : "var(--muted)",
+                }}>
+                {m === "nvidia" ? "NVIDIA NIM (free)" : "My Providers"}
+              </button>
+            ))}
+            {mode === "multi" && (
+              <span className="text-[10px] ml-1" style={{ color: "var(--muted)" }}>
+                Uses your configured provider keys + active swarm config
+              </span>
+            )}
+          </div>
+        )}
+
         <p className="text-xs text-amber-400">For clinician use only. Always verify with current guidelines.</p>
 
         <div>
@@ -932,6 +1001,67 @@ export default function QueryBox() {
           </div>
         </div>
       )}
+
+      {/* ── MULTI-PROVIDER RESULT ── */}
+      {multiResult && !loading && (() => {
+        const ROLE_COLORS: Record<string, string> = {
+          "Case Summarizer": "#38bdf8", "Differential Diagnosis": "#818cf8",
+          "Red Flag / Safety": "#f87171", "Evidence Reasoner": "#4ade80",
+          "Specialist Clinician": "#fbbf24", "Skeptical Debate": "#f472b6",
+          "Final Synthesis": "#a78bfa",
+        };
+        const PROV_COLORS: Record<string, string> = {
+          openrouter: "#f97316", nvidia: "#76b900", openai: "#10a37f", anthropic: "#d97706",
+          gemini: "#4285f4", mistral: "#ff6d00", groq: "#f472b6", together: "#818cf8",
+          fireworks: "#f43f5e", cerebras: "#a855f7", deepseek: "#06b6d4", custom: "#94a3b8",
+        };
+        return (
+          <div className="space-y-4 rounded-2xl border p-4"
+            style={{ borderColor: "var(--card-border)", backgroundColor: "var(--card)" }}>
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px" style={{ backgroundColor: "var(--card-border)" }} />
+              <span className="text-[10px] uppercase tracking-widest font-bold" style={{ color: "#a78bfa" }}>
+                Multi-Provider Clinical Synthesis — {multiResult.swarmSize} agents
+              </span>
+              <div className="flex-1 h-px" style={{ backgroundColor: "var(--card-border)" }} />
+            </div>
+            <div className="rounded-xl border p-4"
+              style={{ borderColor: "rgba(167,139,250,0.3)", background: "linear-gradient(135deg,rgba(167,139,250,0.04),var(--card))" }}>
+              <ReportView text={multiResult.synthesis} />
+            </div>
+            {multiResult.agents.length > 0 && (
+              <details>
+                <summary className="cursor-pointer text-xs uppercase tracking-wide list-none flex items-center gap-2"
+                  style={{ color: "var(--muted)" }}>
+                  <span>Individual agent assessments ({multiResult.agents.length}) ▼</span>
+                </summary>
+                <div className="mt-2 space-y-1.5">
+                  {multiResult.agents.map((agent, i) => {
+                    const color = ROLE_COLORS[agent.role] ?? "#94a3b8";
+                    const pColor = PROV_COLORS[agent.providerId] ?? "#94a3b8";
+                    return (
+                      <details key={i} className="rounded-xl border overflow-hidden" style={{ borderColor: `${color}33` }}>
+                        <summary className="flex cursor-pointer items-center justify-between px-3 py-2 list-none"
+                          style={{ backgroundColor: `${color}08` }}>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold" style={{ color }}>{agent.role}</span>
+                            <span className="rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase"
+                              style={{ backgroundColor: `${pColor}20`, color: pColor }}>{agent.providerId}</span>
+                            <span className="text-[10px] font-mono truncate max-w-[160px]" style={{ color: "var(--muted)" }}>{agent.model}</span>
+                          </div>
+                          <span className="text-[10px] shrink-0" style={{ color: "var(--muted)" }}>▼</span>
+                        </summary>
+                        <div className="px-3 py-2 text-xs whitespace-pre-wrap border-t"
+                          style={{ borderColor: `${color}22`, color: "var(--muted)" }}>{agent.content}</div>
+                      </details>
+                    );
+                  })}
+                </div>
+              </details>
+            )}
+          </div>
+        );
+      })()}
 
       {/* ── FINAL RESULT ── */}
       {result && !loading && (
