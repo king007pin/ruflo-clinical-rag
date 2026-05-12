@@ -146,10 +146,10 @@ function ReportView({ text }: { text: string }) {
     if (isAllCapsHeader(line)) {
       elements.push(
         <div key={key++} className="mt-5 mb-1">
-          <p className="text-[11px] font-bold uppercase tracking-[0.18em]" style={{ color: "var(--accent)" }}>
-            {line.trim()}
+          <p className="text-[15px] font-extrabold uppercase tracking-[0.06em] flex items-center gap-1.5" style={{ color: "var(--accent)" }}>
+            <span>•</span>
+            <span className="underline underline-offset-4">{line.trim()}</span>
           </p>
-          <div className="mt-0.5 h-px" style={{ backgroundColor: "var(--card-border)" }} />
         </div>
       );
       i++;
