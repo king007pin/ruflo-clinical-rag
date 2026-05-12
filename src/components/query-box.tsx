@@ -679,6 +679,7 @@ export default function QueryBox() {
 
   function stop() {
     abortRef.current?.abort();
+    setStopped(true);
   }
 
   useEffect(() => {
@@ -750,10 +751,12 @@ export default function QueryBox() {
     finally { setSharingPdf(false); }
   }
 
-  async function ask(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  const [stopped, setStopped] = useState(false);
+
+  async function runSwarm() {
     const ctrl = new AbortController();
     abortRef.current = ctrl;
+    setStopped(false);
     setLoading(true);
     setResult(null);
     setMultiResult(null);
@@ -785,7 +788,7 @@ export default function QueryBox() {
         }
       } catch (err) {
         if ((err as Error).name !== "AbortError") setStatus((err as Error).message);
-        else setStatus("Stopped — modify your query and try again.");
+        else { setStopped(true); setStatus(null); }
       }
       finally { setLoading(false); setLiveStatus(null); setRoutingPhase(false); abortRef.current = null; }
       return;
@@ -896,7 +899,7 @@ export default function QueryBox() {
       }
     } catch (err) {
       if ((err as Error).name !== "AbortError") setStatus((err as Error).message);
-      else setStatus("Stopped — modify your query and try again.");
+      else { setStopped(true); setStatus(null); }
     } finally {
       setLoading(false);
       setLiveStatus(null);
@@ -905,6 +908,11 @@ export default function QueryBox() {
       setSynthesisPhase(false);
       abortRef.current = null;
     }
+  }
+
+  async function ask(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    await runSwarm();
   }
 
   async function submitFeedback(rating: number, helpful: boolean, issueType?: string) {
@@ -1105,11 +1113,15 @@ export default function QueryBox() {
             style={{ background: "linear-gradient(90deg, #818cf8, #f472b6)", color: "#0f172a", boxShadow: "0 10px 30px rgba(99,102,241,0.25)" }}>
             {loading ? "Debating…" : "Ask the swarm"}
           </button>
-          {loading && (
-            <button type="button" onClick={stop}
+          {(loading || stopped) && (
+            <button type="button"
+              onClick={loading ? stop : () => void runSwarm()}
               className="rounded-2xl px-6 py-3 text-sm font-semibold transition"
-              style={{ backgroundColor: "rgba(239,68,68,0.12)", color: "#f87171", border: "1px solid rgba(239,68,68,0.35)" }}>
-              Stop
+              style={loading
+                ? { backgroundColor: "rgba(239,68,68,0.12)", color: "#f87171", border: "1px solid rgba(239,68,68,0.35)" }
+                : { backgroundColor: "rgba(129,140,248,0.12)", color: "#818cf8", border: "1px solid rgba(129,140,248,0.35)" }
+              }>
+              {loading ? "Stop" : "Resume"}
             </button>
           )}
           <label className="flex items-center gap-2 text-sm" style={{ color: "var(--text)" }}>
