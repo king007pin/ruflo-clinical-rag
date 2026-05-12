@@ -33,7 +33,7 @@ export const MEDICAL_SEED_FEEDS: SeedFeed[] = [
   {
     name: "India — India Today Health",
     type: "rss",
-    url: "https://www.indiatoday.in/rss/health",
+    url: "https://www.indiatoday.in/rss/1206514",
     maxItems: 15,
     intervalHours: 1,
   },

@@ -21,6 +21,7 @@ export async function GET(req: NextRequest) {
 
   const all = await db.select().from(sourceFeeds).where(eq(sourceFeeds.enabled, true));
   const due = all.filter((f) => {
+    if (f.type === "website") return false; // deep crawlers run via their own UI, not cron
     if (!f.lastFetchedAt) return true;
     return f.lastFetchedAt.getTime() + f.intervalHours * 3_600_000 <= now.getTime();
   });

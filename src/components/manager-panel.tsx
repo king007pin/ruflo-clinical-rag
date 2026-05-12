@@ -85,12 +85,11 @@ function FeedHealthPanel() {
     setFixing(true);
     setMsg(null);
     try {
-      await fetch("/api/admin/feeds", { method: "DELETE" });
-      const res = await fetch("/api/admin/seed", { method: "POST" });
-      const data = (await res.json()) as { seeded: number };
-      setMsg(`Auto-healed: reset & reseeded ${data.seeded} feed(s) with verified URLs.`);
+      const res = await fetch("/api/admin/feeds/probe", { method: "POST" });
+      const data = (await res.json()) as { cleared: number; disabled: number; healed: number };
+      setMsg(`Auto-healed: cleared ${data.cleared} false errors, re-enabled ${data.healed} healthy feeds, disabled ${data.disabled} unreachable feeds.`);
       await loadFeeds();
-    } catch { setMsg("Fix failed — try manually via Feed panel."); }
+    } catch { setMsg("Probe failed — try Reset & Reseed from the Feed panel."); }
     finally { setFixing(false); }
   }
 
