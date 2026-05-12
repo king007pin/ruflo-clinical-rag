@@ -280,8 +280,8 @@ function AgentCard({ agent, meta, color, idx, phase, pending, compact }: {
   agent?: AgentReply; meta?: ModelMeta | null; color: (typeof MODEL_COLORS)[0];
   idx: number; phase: "r1" | "r2"; pending?: boolean; compact?: boolean;
 }) {
-  const [expanded, setExpanded] = useState(!compact);
-  useEffect(() => { setExpanded(!compact); }, [compact]);
+  const [expanded, setExpanded] = useState(false);
+  useEffect(() => { if (compact) setExpanded(false); }, [compact]);
   const label = meta?.label ?? agent?.model ?? `Agent ${idx + 1}`;
   const role = meta?.role ?? "";
   const strategy = agent ? (MODEL_STRATEGY_LABELS[agent.model] ?? agent.reasoning) : "";
