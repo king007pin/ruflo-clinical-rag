@@ -63,8 +63,8 @@ function scoreComplexity(query: string, isEmergency: boolean): Complexity {
 const SWARM_SIZE_MAP: Record<Complexity, number> = {
   simple:    2,
   moderate:  3,
-  complex:   5,
-  emergency: 7,
+  complex:   3,
+  emergency: 5,
 };
 
 // ── Post-answer escalation check ─────────────────────────────────────────────

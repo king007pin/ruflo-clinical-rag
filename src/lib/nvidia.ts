@@ -15,22 +15,29 @@ export const NVIDIA_SWARM_MODELS = [
 
 export type NvidiaModel = (typeof NVIDIA_SWARM_MODELS)[number];
 
-async function nvidiaFetch(path: string, body: unknown): Promise<unknown> {
+async function nvidiaFetch(path: string, body: unknown, timeoutMs = 60_000): Promise<unknown> {
   const apiKey = process.env.NVIDIA_API_KEY;
   if (!apiKey) throw new Error("NVIDIA_API_KEY not configured");
-  const res = await fetch(`${NVIDIA_BASE}${path}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`NVIDIA API ${path} failed (${res.status}): ${text.slice(0, 200)}`);
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${NVIDIA_BASE}${path}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(body),
+      signal: ctrl.signal,
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`NVIDIA API ${path} failed (${res.status}): ${text.slice(0, 200)}`);
+    }
+    return res.json();
+  } finally {
+    clearTimeout(timer);
   }
-  return res.json();
 }
 
 export async function nvidiaEmbedBatch(
@@ -68,7 +75,7 @@ const MODEL_CONFIGS: Record<string, { maxTokens: number; temperature: number }> 
   "nvidia/nemotron-nano-12b-v2-vl":              { maxTokens: 2048, temperature: 0.3 },
 };
 
-export async function nvidiaChat(model: string, system: string, user: string, temperatureOverride?: number): Promise<string> {
+export async function nvidiaChat(model: string, system: string, user: string, temperatureOverride?: number, maxTokensOverride?: number): Promise<string> {
   const cfg = MODEL_CONFIGS[model] ?? { maxTokens: 4096, temperature: 0.3 };
   const data = (await nvidiaFetch("/chat/completions", {
     model,
@@ -76,7 +83,7 @@ export async function nvidiaChat(model: string, system: string, user: string, te
       { role: "system", content: system },
       { role: "user", content: user },
     ],
-    max_tokens: cfg.maxTokens,
+    max_tokens: maxTokensOverride ?? cfg.maxTokens,
     temperature: temperatureOverride ?? cfg.temperature,
     top_p: 0.9,
   })) as { choices: Array<{ message: { content: string } }> };

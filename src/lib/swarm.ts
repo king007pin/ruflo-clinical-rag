@@ -1,6 +1,13 @@
 import { assembleContext } from "./rag";
 import { hasNvidiaKey, nvidiaChat, NVIDIA_SWARM_MODELS } from "./nvidia";
 
+// Fast small models for simple/moderate queries — lower latency, adequate quality
+const NVIDIA_SWARM_MODELS_FAST = [
+  "mistralai/ministral-14b-instruct-2512",
+  "nvidia/nemotron-nano-12b-v2-vl",
+  "meta/llama-4-maverick-17b-128e-instruct",
+] as const;
+
 export type AgentReply = {
   model: string;
   message: string;
@@ -392,7 +399,7 @@ async function runDebateAgent(
 
   if (hasNvidiaKey()) {
     try {
-      const message = await nvidiaChat(model, system, user);
+      const message = await nvidiaChat(model, system, user, undefined, 1024);
       return { model, message, reasoning: tag, round: 2 };
     } catch (err) {
       return { model, message: buildDebateFallback(question, myAssessment, peers, agentIndex), reasoning: `fallback (${(err as Error).message.slice(0, 60)})`, round: 2 };
@@ -499,10 +506,12 @@ export async function runSwarm({
   onDebateStart?: () => void;
   onSynthesisStart?: () => void;
 }) {
-  const models = model
+  const pool = model
     ? [model, ...NVIDIA_SWARM_MODELS.filter((m) => m !== model)]
-    : [...NVIDIA_SWARM_MODELS];
-  const selected = models.slice(0, Math.max(1, Math.min(swarmSize, models.length)));
+    : swarmSize <= 3
+      ? [...NVIDIA_SWARM_MODELS_FAST, ...NVIDIA_SWARM_MODELS.filter((m) => !(NVIDIA_SWARM_MODELS_FAST as readonly string[]).includes(m))]
+      : [...NVIDIA_SWARM_MODELS];
+  const selected = pool.slice(0, Math.max(1, Math.min(swarmSize, pool.length)));
 
   // Each model uses its capability-matched specialty (static map)
   const specialties = selected.map((m, idx) => getSpecialtyForModel(m, idx));
@@ -520,10 +529,10 @@ export async function runSwarm({
   );
   const round1Agents = selected.map((m) => round1Map.get(m)!);
 
-  // ── Round 2: Peer debate ─────────────────────────────────────────────────
+  // ── Round 2: Peer debate — only for complex/emergency (4+ agents) ────────
   let round2Agents: Array<AgentReply & { round: 2 }> = [];
 
-  if (selected.length > 1) {
+  if (selected.length >= 4) {
     onDebateStart?.();
 
     const round2Map = new Map<string, AgentReply & { round: 2 }>();

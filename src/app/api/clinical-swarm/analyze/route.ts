@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 const bodySchema = z.object({
   query: z.string().min(5).max(4000),

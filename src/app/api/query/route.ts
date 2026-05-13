@@ -28,21 +28,24 @@ export async function POST(req: NextRequest) {
 
   const { question, model, swarmSize, topK = 10, patientContext, labText } = parsed.data;
 
-  const rows = await db
-    .select({
-      chunk: embeddings.chunk,
-      embedding: embeddings.embedding,
-      sourceId: embeddings.sourceId,
-      position: embeddings.position,
-      sourceTitle: sources.title,
-      sourceType: sources.type,
-      sourceUrl: sources.url,
-    })
-    .from(embeddings)
-    .leftJoin(sources, eq(embeddings.sourceId, sources.id))
-    .where(and(isNotNull(embeddings.embedding), isNotNull(embeddings.chunk)))
-    .orderBy(desc(embeddings.createdAt))
-    .limit(250);
+  const [rows, qEmbedding] = await Promise.all([
+    db
+      .select({
+        chunk: embeddings.chunk,
+        embedding: embeddings.embedding,
+        sourceId: embeddings.sourceId,
+        position: embeddings.position,
+        sourceTitle: sources.title,
+        sourceType: sources.type,
+        sourceUrl: sources.url,
+      })
+      .from(embeddings)
+      .leftJoin(sources, eq(embeddings.sourceId, sources.id))
+      .where(and(isNotNull(embeddings.embedding), isNotNull(embeddings.chunk)))
+      .orderBy(desc(embeddings.createdAt))
+      .limit(250),
+    embedText(question, "query"),
+  ]);
 
   if (!rows.length) {
     return NextResponse.json(
@@ -50,8 +53,6 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
-
-  const qEmbedding = await embedText(question, "query");
   const matches = pickTopMatches(
     qEmbedding,
     rows.map((row) => ({
