@@ -71,7 +71,22 @@ export const pubmedCentralCrawler: CrawlerDef = {
       const text = await res.text();
       if (text.length < 100) return null;
 
-      // First non-empty line is usually the title
+      // NCBI sometimes returns XML despite retmode=text — detect and extract
+      if (text.trimStart().startsWith("<?xml") || text.trimStart().startsWith("<!DOCTYPE")) {
+        const titleMatch = text.match(/<article-title[^>]*>([\s\S]*?)<\/article-title>/i);
+        const abstractMatch = text.match(/<abstract[^>]*>([\s\S]*?)<\/abstract>/i);
+        const rawTitle = titleMatch?.[1]?.replace(/<[^>]+>/g, " ").replace(/\s{2,}/g, " ").trim();
+        const rawAbstract = abstractMatch?.[1]?.replace(/<[^>]+>/g, " ").replace(/\s{2,}/g, " ").trim();
+        if (!rawAbstract || rawAbstract.length < 100) return null;
+        return {
+          url,
+          title: rawTitle?.slice(0, 200) || `PMC${pmcId} — PubMed Central Article`,
+          content: rawAbstract.slice(0, 10_000),
+          description: "PubMed Central — open-access biomedical research article",
+        };
+      }
+
+      // Plain-text response — first non-empty line is the title
       const lines = text.split("\n").filter((l) => l.trim().length > 0);
       const title = lines[0]?.slice(0, 200) ?? `PMC${pmcId} — PubMed Central Article`;
 
