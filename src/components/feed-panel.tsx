@@ -637,8 +637,11 @@ export default function FeedPanel() {
   const loadFeeds = useCallback(async () => {
     try {
       const res = await fetch("/api/admin/feeds");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as { feeds: Feed[] };
       setFeeds(data.feeds ?? []);
+    } catch (err) {
+      setMsg(`Could not load feeds: ${(err as Error).message}`);
     } finally {
       setLoading(false);
     }
@@ -651,10 +654,11 @@ export default function FeedPanel() {
     setMsg(null);
     try {
       const res = await fetch("/api/admin/seed", { method: "POST" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as { seeded: number };
       setMsg(`Seeded ${data.seeded} feed(s). Click "Refresh now" to start ingesting.`);
       await loadFeeds();
-    } catch { setMsg("Seed failed."); }
+    } catch (err) { setMsg(`Seed failed: ${(err as Error).message}`); }
     finally { setSeeding(false); }
   }
 
@@ -667,7 +671,7 @@ export default function FeedPanel() {
       const data = (await res.json()) as { seeded: number };
       setMsg(`Reset complete. Seeded ${data.seeded} feed(s) with verified URLs. Click "Refresh now" to ingest.`);
       await loadFeeds();
-    } catch { setMsg("Reset failed."); }
+    } catch (err) { setMsg(`Reset failed: ${(err as Error).message}`); }
     finally { setSeeding(false); }
   }
 

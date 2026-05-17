@@ -55,7 +55,7 @@ export const feedTypeEnum = pgEnum("feed_type", ["rss", "pubmed", "website"]);
 
 export const sourceFeeds = pgTable("source_feeds", {
   id: serial("id").primaryKey(),
-  name: text("name").notNull(),
+  name: text("name").notNull().unique(),
   type: feedTypeEnum("type").notNull(),
   url: text("url"),
   query: text("query"),
