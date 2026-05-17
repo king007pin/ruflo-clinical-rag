@@ -1,6 +1,21 @@
 // Keep the schema entrypoint present so models can define tables and run
 // `npx drizzle-kit push` without bootstrapping Drizzle config first.
-import { boolean, integer, jsonb, pgEnum, pgTable, real, serial, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, customType, integer, jsonb, pgEnum, pgTable, real, serial, text, timestamp } from "drizzle-orm/pg-core";
+
+// pgvector custom type — stores as binary vector(N) instead of jsonb, ~3x space savings
+function vector(dimensions: number) {
+  return customType<{ data: number[]; driverData: string }>({
+    dataType() {
+      return `vector(${dimensions})`;
+    },
+    fromDriver(value: string): number[] {
+      return value.slice(1, -1).split(",").map(Number);
+    },
+    toDriver(value: number[]): string {
+      return `[${value.join(",")}]`;
+    },
+  });
+}
 
 export const sourceTypeEnum = pgEnum("source_type", ["pdf", "youtube", "website", "text"]);
 
@@ -19,7 +34,7 @@ export const embeddings = pgTable("embeddings", {
     .notNull()
     .references(() => sources.id, { onDelete: "cascade" }),
   chunk: text("chunk").notNull(),
-  embedding: jsonb("embedding").$type<number[]>().notNull(),
+  embedding: vector(1024)("embedding").notNull(),
   position: integer("position").default(0).notNull(),
   createdAt: timestamp("created_at", { withTimezone: false }).defaultNow().notNull(),
 });
@@ -66,7 +81,7 @@ export type SourceFeedInsert = typeof sourceFeeds.$inferInsert;
 export const querySessions = pgTable("query_sessions", {
   id: serial("id").primaryKey(),
   query: text("query").notNull(),
-  queryEmbedding: jsonb("query_embedding").$type<number[]>(),
+  queryEmbedding: vector(1024)("query_embedding"),
   matchCount: integer("match_count").default(0).notNull(),
   maxScore: real("max_score").default(0).notNull(),
   agentCount: integer("agent_count").default(0).notNull(),
