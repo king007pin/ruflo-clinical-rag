@@ -23,7 +23,7 @@ export function requireAuth(req: NextRequest): NextResponse | null {
 
 export function requireCron(req: Request): NextResponse | null {
   const secret = process.env.CRON_SECRET;
-  if (!secret) throw new Error("CRON_SECRET must be set");
+  if (!secret) return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 500 });
 
   const token = req.headers.get("x-cron-secret") ?? "";
   let authorized = false;
