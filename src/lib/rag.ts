@@ -157,7 +157,17 @@ export function pickTopMatches(
   return scored.slice(0, limit);
 }
 
-export function assembleContext(top: ReturnType<typeof pickTopMatches>) {
+export type Match = {
+  chunk: string;
+  sourceId?: number | null;
+  sourceTitle?: string | null;
+  sourceType?: string | null;
+  sourceUrl?: string | null;
+  position?: number | null;
+  score?: number;
+};
+
+export function assembleContext(top: Match[]) {
   return top
     .map((match, idx) => {
       const parts = [

@@ -1,9 +1,7 @@
-import { db } from "@/db";
-import { embeddings, sources } from "@/db/schema";
-import { assembleContext, embedText, pickTopMatches } from "@/lib/rag";
+import { pool } from "@/db";
+import { assembleContext, embedText, type Match } from "@/lib/rag";
 import { getSimilarPastCases, logSession } from "@/lib/session-learning";
 import { runManagedSwarm } from "@/lib/manager";
-import { and, desc, eq, isNotNull } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -19,6 +17,16 @@ const bodySchema = z.object({
   labText: z.string().max(12000).optional(),
 });
 
+type PgRow = {
+  source_id: number;
+  source_title: string | null;
+  source_type: string | null;
+  source_url: string | null;
+  chunk: string;
+  position: number;
+  distance: number;
+};
+
 export async function POST(req: NextRequest) {
   const json = await req.json().catch(() => null);
   const parsed = bodySchema.safeParse(json);
@@ -28,24 +36,20 @@ export async function POST(req: NextRequest) {
 
   const { question, model, swarmSize, topK = 10, patientContext, labText } = parsed.data;
 
-  const [rows, qEmbedding] = await Promise.all([
-    db
-      .select({
-        chunk: embeddings.chunk,
-        embedding: embeddings.embedding,
-        sourceId: embeddings.sourceId,
-        position: embeddings.position,
-        sourceTitle: sources.title,
-        sourceType: sources.type,
-        sourceUrl: sources.url,
-      })
-      .from(embeddings)
-      .leftJoin(sources, eq(embeddings.sourceId, sources.id))
-      .where(and(isNotNull(embeddings.embedding), isNotNull(embeddings.chunk)))
-      .orderBy(desc(embeddings.createdAt))
-      .limit(250),
-    embedText(question, "query"),
-  ]);
+  const qEmbedding = await embedText(question, "query");
+  const vecStr = `[${qEmbedding.join(",")}]`;
+
+  const { rows } = await pool.query<PgRow>(
+    `SELECT e.source_id, e.chunk, e.position,
+            s.title AS source_title, s.type AS source_type, s.url AS source_url,
+            (e.embedding <=> $1::vector) AS distance
+     FROM embeddings e
+     JOIN sources s ON s.id = e.source_id
+     WHERE e.embedding IS NOT NULL AND e.chunk IS NOT NULL
+     ORDER BY e.embedding <=> $1::vector
+     LIMIT $2`,
+    [vecStr, topK],
+  );
 
   if (!rows.length) {
     return NextResponse.json(
@@ -53,19 +57,16 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
-  const matches = pickTopMatches(
-    qEmbedding,
-    rows.map((row) => ({
-      chunk: row.chunk,
-      embedding: (row.embedding ?? []) as number[],
-      sourceId: row.sourceId,
-      sourceTitle: row.sourceTitle,
-      sourceType: row.sourceType,
-      sourceUrl: row.sourceUrl,
-      position: row.position,
-    })),
-    topK,
-  );
+
+  const matches: Match[] = rows.map((r) => ({
+    chunk: r.chunk,
+    sourceId: r.source_id,
+    sourceTitle: r.source_title,
+    sourceType: r.source_type,
+    sourceUrl: r.source_url,
+    position: r.position,
+    score: 1 - r.distance,
+  }));
 
   const pastCases = await getSimilarPastCases(qEmbedding, 2).catch(() => []);
   const pastCasesContext =

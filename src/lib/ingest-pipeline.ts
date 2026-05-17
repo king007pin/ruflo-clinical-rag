@@ -29,9 +29,11 @@ export async function persistSource({
   const conditions = [eq(sources.contentHash, contentHash)];
   if (urlHash) conditions.push(eq(sources.urlHash, urlHash));
 
-  const existing = await db.query.sources.findFirst({
-    where: or(...conditions),
-  });
+  const [existing] = await db
+    .select({ id: sources.id })
+    .from(sources)
+    .where(or(...conditions))
+    .limit(1);
   if (existing) return { sourceId: existing.id, chunkCount: 0, duplicate: true };
 
   const chunks = chunkText(rawText);
