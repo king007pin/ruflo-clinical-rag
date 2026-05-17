@@ -23,7 +23,7 @@ export const cochraneSummariesCrawler: CrawlerDef = {
   name: "Cochrane Systematic Reviews",
   description: "Cochrane Library — CDSR systematic reviews summarising RCT evidence for clinical practice decisions",
   category: "Clinical Guidelines",
-  batchSize: 6,
+  batchSize: 10,
   intervalHours: 168,
   delayMs: 800,
 

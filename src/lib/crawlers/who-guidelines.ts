@@ -23,7 +23,7 @@ export const whoGuidelinesCrawler: CrawlerDef = {
   name: "WHO Global Clinical Guidelines",
   description: "WHO — global treatment guidelines, disease fact sheets, NCD protocols, infectious disease management",
   category: "Clinical Guidelines",
-  batchSize: 8,
+  batchSize: 12,
   intervalHours: 168,
   delayMs: 700,
 

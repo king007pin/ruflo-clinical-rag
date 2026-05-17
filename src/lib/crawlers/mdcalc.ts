@@ -78,7 +78,7 @@ export const mdcalcCrawler: CrawlerDef = {
   name: "MDCalc — Clinical Scoring Systems",
   description: "MDCalc — evidence-based clinical scoring systems and diagnostic criteria",
   category: "Scoring Systems",
-  batchSize: 8,
+  batchSize: 12,
   intervalHours: 168,
   delayMs: DELAY_MS,
 

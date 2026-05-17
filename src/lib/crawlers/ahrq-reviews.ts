@@ -23,7 +23,7 @@ export const ahrqReviewsCrawler: CrawlerDef = {
   name: "AHRQ Evidence Reviews",
   description: "AHRQ — US Agency for Healthcare Research and Quality: clinical practice guidelines, systematic reviews, patient safety",
   category: "Clinical Guidelines",
-  batchSize: 6,
+  batchSize: 10,
   intervalHours: 168,
   delayMs: 700,
 

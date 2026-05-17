@@ -1,6 +1,6 @@
 import type { CrawlerDef, CrawlerArticle } from "./types";
 
-const WIKEM_API = "https://wikem.org/api.php";
+const WIKEM_API = "https://wikem.org/w/api.php";
 const UA = "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)";
 
 export const wikiEmCrawler: CrawlerDef = {
@@ -8,7 +8,7 @@ export const wikiEmCrawler: CrawlerDef = {
   name: "WikiEM — Emergency Medicine",
   description: "WikiEM — free open-access emergency medicine wiki: toxicology, resuscitation, procedures, rapid assessment",
   category: "Clinical Reference",
-  batchSize: 8,
+  batchSize: 12,
   intervalHours: 168,
   delayMs: 500,
 

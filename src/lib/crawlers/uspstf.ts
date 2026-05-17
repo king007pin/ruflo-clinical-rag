@@ -23,7 +23,7 @@ export const uspstfCrawler: CrawlerDef = {
   name: "USPSTF Preventive Services",
   description: "USPSTF — evidence-based screening and preventive medication recommendations with letter-grade evidence ratings",
   category: "Scoring Systems",
-  batchSize: 6,
+  batchSize: 10,
   intervalHours: 336,
   delayMs: 700,
 

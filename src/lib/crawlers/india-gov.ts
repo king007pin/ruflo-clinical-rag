@@ -88,7 +88,7 @@ export const indiaGovCrawler: CrawlerDef = {
   name: "India Govt Clinical Guidelines",
   description: "India Govt Guidelines — MoHFW STG, NTEP TB, NCVBDC dengue/malaria, NACO HIV, ICMR",
   category: "India Guidelines",
-  batchSize: 5,
+  batchSize: 8,
   intervalHours: 168,
   delayMs: DELAY_MS,
 

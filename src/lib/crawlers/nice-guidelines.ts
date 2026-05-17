@@ -32,7 +32,7 @@ export const niceGuidelinesCrawler: CrawlerDef = {
   name: "NICE Clinical Guidelines",
   description: "NICE Clinical Guidelines — UK evidence-based recommendations for clinical practice",
   category: "Clinical Guidelines",
-  batchSize: 8,
+  batchSize: 12,
   intervalHours: 168,
   delayMs: DELAY_MS,
 
@@ -56,15 +56,19 @@ export const niceGuidelinesCrawler: CrawlerDef = {
         const html = await res.text();
 
         let foundAny = false;
-        // Match /guidance/ng123 or /guidance/cg456 etc.
-        for (const match of html.matchAll(/href="(\/guidance\/[a-z]{2}\d+)"/gi)) {
-          const path = match[1].toLowerCase();
-          const full = `${NICE_BASE}${path}`;
+        // NICE now embeds URLs as JSON: "url":"https://www.nice.org.uk/guidance/ngXXX"
+        for (const match of html.matchAll(/"url":"(https:\/\/www\.nice\.org\.uk\/guidance\/[a-z][a-z0-9-]*)"/g)) {
+          const full = match[1].toLowerCase();
           if (!seen.has(full)) {
             seen.add(full);
             urls.push(full);
             foundAny = true;
           }
+        }
+        // Fallback: old href pattern still present on some pages
+        for (const match of html.matchAll(/href="(\/guidance\/[a-z]{2}\d+)"/gi)) {
+          const full = `${NICE_BASE}${match[1].toLowerCase()}`;
+          if (!seen.has(full)) { seen.add(full); urls.push(full); foundAny = true; }
         }
 
         // If no new items found, we've reached the end

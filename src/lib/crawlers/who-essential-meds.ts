@@ -52,7 +52,7 @@ export const whoEssentialMedsCrawler: CrawlerDef = {
   name: "WHO Essential Medicines List",
   description: "WHO EML — 500+ essential medicines with evidence levels, dosing guidelines, and therapeutic equivalents",
   category: "Drug Database",
-  batchSize: 8,
+  batchSize: 12,
   intervalHours: 336,
   delayMs: 600,
 

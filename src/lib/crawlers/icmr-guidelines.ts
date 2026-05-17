@@ -23,7 +23,7 @@ export const icmrGuidelinesCrawler: CrawlerDef = {
   name: "ICMR Research Guidelines",
   description: "ICMR — Indian Council of Medical Research: national disease guidelines, COVID-19, TB, NCD, and outbreak protocols",
   category: "India Guidelines",
-  batchSize: 6,
+  batchSize: 10,
   intervalHours: 168,
   delayMs: 700,
 

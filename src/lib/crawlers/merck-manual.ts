@@ -98,7 +98,7 @@ export const merckManualCrawler: CrawlerDef = {
   name: "Merck Manual Professional",
   description: "Merck Manual Professional — disease symptoms, diagnosis, treatment, DDx",
   category: "Clinical Reference",
-  batchSize: 8,
+  batchSize: 12,
   intervalHours: 168,
   delayMs: DELAY_MS,
 

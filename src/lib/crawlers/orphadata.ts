@@ -33,7 +33,7 @@ export const orphadataCrawler: CrawlerDef = {
   name: "Orphadata — Rare Diseases",
   description: "Orphadata — 10,000+ rare disease profiles (CC BY 4.0)",
   category: "Rare Diseases",
-  batchSize: 8,
+  batchSize: 12,
   intervalHours: 168,
   delayMs: DELAY_MS,
 
@@ -96,8 +96,8 @@ export const orphadataCrawler: CrawlerDef = {
     const urls: string[] = [];
     const seen = new Set<string>();
 
-    // Parse <Disorder> elements for OrphaCode
-    for (const match of xml.matchAll(/<Disorder>([\s\S]*?)<\/Disorder>/g)) {
+    // Parse <Disorder id="..."> elements for OrphaCode
+    for (const match of xml.matchAll(/<Disorder[^>]*>([\s\S]*?)<\/Disorder>/g)) {
       const block = match[1];
       const codeMatch = block.match(/<OrphaCode>(\d+)<\/OrphaCode>/);
       if (!codeMatch) continue;

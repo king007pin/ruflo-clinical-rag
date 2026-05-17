@@ -17,7 +17,7 @@ export const omimCrawler: CrawlerDef = {
   name: "OMIM — Mendelian Inheritance",
   description: "OMIM — comprehensive catalog of human genes and genetic disorders; clinical synopses and molecular genetics",
   category: "Rare Diseases",
-  batchSize: 8,
+  batchSize: 12,
   intervalHours: 336,
   delayMs: 500,
 

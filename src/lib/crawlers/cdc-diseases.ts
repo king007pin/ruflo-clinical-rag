@@ -37,83 +37,50 @@ export const cdcDiseasesCrawler: CrawlerDef = {
   delayMs: DELAY_MS,
 
   async fetchUrls(): Promise<string[]> {
-    const seen = new Set<string>();
-    const urls: string[] = [];
+    // CDC restructured to React SPA — API and A-Z pages no longer serve static links.
+    // Use curated list of known CDC disease category pages that return crawlable HTML.
+    const SEED_PAGES = [
+      `${CDC_BASE}/flu/`, `${CDC_BASE}/covid/`, `${CDC_BASE}/rsv/`,
+      `${CDC_BASE}/diabetes/`, `${CDC_BASE}/cancer/`, `${CDC_BASE}/heartdisease/`,
+      `${CDC_BASE}/stroke/`, `${CDC_BASE}/hiv/`, `${CDC_BASE}/std/`,
+      `${CDC_BASE}/hepatitis/`, `${CDC_BASE}/tb/`, `${CDC_BASE}/malaria/`,
+      `${CDC_BASE}/dengue/`, `${CDC_BASE}/zika/`, `${CDC_BASE}/ebola/`,
+      `${CDC_BASE}/lyme/`, `${CDC_BASE}/rabies/`, `${CDC_BASE}/tetanus/`,
+      `${CDC_BASE}/measles/`, `${CDC_BASE}/mumps/`, `${CDC_BASE}/rubella/`,
+      `${CDC_BASE}/pertussis/`, `${CDC_BASE}/polio/`, `${CDC_BASE}/meningitis/`,
+      `${CDC_BASE}/pneumonia/`, `${CDC_BASE}/sepsis/`, `${CDC_BASE}/mrsa/`,
+      `${CDC_BASE}/foodsafety/`, `${CDC_BASE}/salmonella/`, `${CDC_BASE}/ecoli/`,
+      `${CDC_BASE}/norovirus/`, `${CDC_BASE}/campylobacter/`,
+      `${CDC_BASE}/asthma/`, `${CDC_BASE}/copd/`, `${CDC_BASE}/arthritis/`,
+      `${CDC_BASE}/lupus/`, `${CDC_BASE}/epilepsy/`, `${CDC_BASE}/alzheimers/`,
+      `${CDC_BASE}/obesity/`, `${CDC_BASE}/kidneyurologicaldiseases/`,
+      `${CDC_BASE}/niosh/topics/`, `${CDC_BASE}/ncbddd/`, `${CDC_BASE}/nceh/`,
+    ];
 
-    // Try CDC's public content API first (most reliable)
-    try {
-      for (let page = 1; page <= 10 && urls.length < 500; page++) {
-        const p = new URLSearchParams({
-          mediaTypes: "HTML",
-          language: "English",
-          fields: "id,name,sourceUrl",
-          pageSize: "100",
-          page: String(page),
+    const seen = new Set<string>(SEED_PAGES);
+    const urls: string[] = [...SEED_PAGES];
+
+    // Expand by scraping sub-links from each seed page
+    for (const seedUrl of SEED_PAGES) {
+      if (urls.length >= 600) break;
+      try {
+        await new Promise((r) => setTimeout(r, 300));
+        const res = await fetch(seedUrl, {
+          headers: { "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)", Accept: "text/html" },
+          signal: AbortSignal.timeout(15000),
         });
-        const apiRes = await fetch(`https://tools.cdc.gov/api/v2/resources/media?${p}`, {
-          headers: { "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)" },
-          signal: AbortSignal.timeout(20000),
-        });
-        if (!apiRes.ok) break;
-        const data = (await apiRes.json()) as { results?: Array<{ sourceUrl?: string }> };
-        let foundAny = false;
-        for (const item of data.results ?? []) {
-          const src = item.sourceUrl ?? "";
-          if (src.startsWith("https://www.cdc.gov/") && !seen.has(src)) {
-            seen.add(src);
-            urls.push(src);
-            foundAny = true;
+        if (!res.ok) continue;
+        const html = await res.text();
+        for (const match of html.matchAll(/href="(https?:\/\/www\.cdc\.gov\/[a-z][a-z0-9/-]+\/)"/g)) {
+          const full = match[1].split("?")[0].split("#")[0];
+          if (!seen.has(full) && !full.includes("/media/") && !full.includes("/images/")) {
+            seen.add(full); urls.push(full);
           }
         }
-        if (!foundAny) break;
-      }
-    } catch { /* fall through */ }
-
-    // Fallback: try CDC A-Z index pages (old + new URL patterns)
-    if (urls.length < 50) {
-      const letters = "abcdefghijklmnopqrstuvwxyz".split("");
-      const azPatterns = (l: string) => [
-        `${CDC_BASE}/az/${l}.html`,
-        `${CDC_BASE}/health/${l}/`,
-        `${CDC_BASE}/health-topics/${l}/`,
-      ];
-
-      for (const letter of letters) {
-        if (urls.length >= 1000) break;
-        for (const pageUrl of azPatterns(letter)) {
-          try {
-            const res = await fetch(pageUrl, {
-              headers: {
-                "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
-                Accept: "text/html",
-              },
-              signal: AbortSignal.timeout(15000),
-            });
-            if (!res.ok) continue;
-            const html = await res.text();
-
-            for (const match of html.matchAll(/href="(https?:\/\/www\.cdc\.gov\/[a-z][a-z0-9/-]+)"/g)) {
-              const full = match[1].split("?")[0].split("#")[0];
-              if (!seen.has(full) && !full.includes("/az/") && !full.endsWith(".pdf")) {
-                seen.add(full);
-                urls.push(full);
-              }
-            }
-            for (const match of html.matchAll(/href="(\/[a-z][a-z0-9-]+(?:\/[a-z0-9-]+)*)"/g)) {
-              const path = match[1];
-              if (path.length < 5 || path.startsWith("/az/")) continue;
-              const full = `${CDC_BASE}${path}`;
-              if (!seen.has(full)) { seen.add(full); urls.push(full); }
-            }
-            if (urls.length > 0) break; // found URLs from this letter, move on
-          } catch {
-            continue;
-          }
-        }
-      }
+      } catch { continue; }
     }
 
-    return urls.slice(0, 1000);
+    return urls.slice(0, 600);
   },
 
   async fetchArticle(url: string): Promise<CrawlerArticle | null> {

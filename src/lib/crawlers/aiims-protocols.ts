@@ -23,7 +23,7 @@ export const aiimProtocolsCrawler: CrawlerDef = {
   name: "AIIMS Clinical Protocols",
   description: "AIIMS — All India Institute of Medical Sciences treatment protocols and clinical practice guidelines",
   category: "India Guidelines",
-  batchSize: 5,
+  batchSize: 8,
   intervalHours: 336,
   delayMs: 800,
 

@@ -26,7 +26,7 @@ export const whoDrugSafetyCrawler: CrawlerDef = {
   name: "WHO Drug Safety — VigiAccess",
   description: "WHO VigiAccess — global pharmacovigilance database of individual case safety reports from 130+ countries",
   category: "Pharmacovigilance",
-  batchSize: 8,
+  batchSize: 12,
   intervalHours: 168,
   delayMs: 300,
 
