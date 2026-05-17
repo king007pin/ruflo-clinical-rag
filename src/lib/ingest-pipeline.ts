@@ -1,8 +1,14 @@
+import { createHash } from "crypto";
+import { or, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { embeddings, sources } from "@/db/schema";
 import { chunkText, embedBatch } from "./rag";
 
 export type IngestKind = "pdf" | "youtube" | "website" | "text" | "rss";
+
+function sha256(s: string) {
+  return createHash("sha256").update(s).digest("hex");
+}
 
 export async function persistSource({
   kind,
@@ -16,7 +22,18 @@ export async function persistSource({
   url?: string;
   title?: string | null;
   description?: string | null;
-}): Promise<{ sourceId: number; chunkCount: number }> {
+}): Promise<{ sourceId: number; chunkCount: number; duplicate?: boolean }> {
+  const urlHash = url ? sha256(url) : undefined;
+  const contentHash = sha256(rawText);
+
+  const conditions = [eq(sources.contentHash, contentHash)];
+  if (urlHash) conditions.push(eq(sources.urlHash, urlHash));
+
+  const existing = await db.query.sources.findFirst({
+    where: or(...conditions),
+  });
+  if (existing) return { sourceId: existing.id, chunkCount: 0, duplicate: true };
+
   const chunks = chunkText(rawText);
   if (!chunks.length) throw new Error("No content to persist");
 
@@ -30,6 +47,8 @@ export async function persistSource({
         type: kind === "rss" ? "website" : kind,
         url,
         description,
+        urlHash,
+        contentHash,
       })
       .returning();
 

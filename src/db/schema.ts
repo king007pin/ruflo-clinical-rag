@@ -25,6 +25,8 @@ export const sources = pgTable("sources", {
   type: sourceTypeEnum("type").notNull(),
   url: text("url"),
   description: text("description"),
+  urlHash: text("url_hash"),
+  contentHash: text("content_hash"),
   createdAt: timestamp("created_at", { withTimezone: false }).defaultNow().notNull(),
 });
 
