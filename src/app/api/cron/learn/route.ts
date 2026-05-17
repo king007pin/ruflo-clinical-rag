@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { knowledgeGaps } from "@/db/schema";
 import { fetchPubmedAbstracts } from "@/lib/feeds";
 import { persistSource } from "@/lib/ingest-pipeline";
+import { requireCron } from "@/lib/auth-guard";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
@@ -9,11 +10,8 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 export async function GET(req: Request) {
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret) {
-    const auth = new URL(req.url).searchParams.get("secret");
-    if (auth !== cronSecret) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const authError = requireCron(req);
+  if (authError) return authError;
 
   // Find gaps not yet resolved, ordered by most-asked first
   const gaps = await db

@@ -1,12 +1,15 @@
 import { db } from "@/db";
 import { sourceFeeds } from "@/db/schema";
+import { requireAuth } from "@/lib/auth-guard";
 import { asc, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const authError = requireAuth(req);
+  if (authError) return authError;
   const feeds = await db.select().from(sourceFeeds).orderBy(asc(sourceFeeds.name));
   return NextResponse.json({ feeds });
 }
@@ -20,6 +23,8 @@ const patchSchema = z.object({
 });
 
 export async function PATCH(req: NextRequest) {
+  const authError = requireAuth(req);
+  if (authError) return authError;
   const body = await req.json().catch(() => null);
   const parsed = patchSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
@@ -35,7 +40,9 @@ export async function PATCH(req: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
-export async function DELETE() {
+export async function DELETE(req: NextRequest) {
+  const authError = requireAuth(req);
+  if (authError) return authError;
   await db.delete(sourceFeeds);
   return NextResponse.json({ ok: true });
 }

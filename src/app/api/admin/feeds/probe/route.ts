@@ -1,7 +1,8 @@
 import { db } from "@/db";
 import { sourceFeeds } from "@/db/schema";
+import { requireAuth } from "@/lib/auth-guard";
 import { eq } from "drizzle-orm";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -35,7 +36,9 @@ async function probeUrl(url: string, timeoutMs = 8000): Promise<{ ok: boolean; s
   }
 }
 
-export async function POST() {
+export async function POST(req: NextRequest) {
+  const authError = requireAuth(req);
+  if (authError) return authError;
   const all = await db.select().from(sourceFeeds);
   const results: ProbeResult[] = [];
 

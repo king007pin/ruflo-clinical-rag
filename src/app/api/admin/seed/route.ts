@@ -1,11 +1,14 @@
 import { db } from "@/db";
 import { sourceFeeds } from "@/db/schema";
 import { MEDICAL_SEED_FEEDS } from "@/lib/medical-sources";
-import { NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth-guard";
+import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-export async function POST() {
+export async function POST(req: NextRequest) {
+  const authError = requireAuth(req);
+  if (authError) return authError;
   const inserted = await db
     .insert(sourceFeeds)
     .values(

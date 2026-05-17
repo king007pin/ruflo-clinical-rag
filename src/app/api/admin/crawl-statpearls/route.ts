@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { sourceFeeds } from "@/db/schema";
 import { persistSource } from "@/lib/ingest-pipeline";
 import { fetchStatpearlsArticle, fetchStatpearlsArticleUrls } from "@/lib/statpearls";
+import { requireAuth } from "@/lib/auth-guard";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -29,7 +30,9 @@ async function getOrCreateCrawlFeed() {
   return created;
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const authError = requireAuth(req);
+  if (authError) return authError;
   const feed = await db.select().from(sourceFeeds).where(eq(sourceFeeds.name, FEED_NAME));
   const offset = Number(feed[0]?.query ?? "0");
   return NextResponse.json({
@@ -43,6 +46,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const authError = requireAuth(req);
+  if (authError) return authError;
   const { batchSize = 20, reset = false } = await req.json().catch(() => ({})) as {
     batchSize?: number;
     reset?: boolean;
@@ -121,7 +126,9 @@ export async function POST(req: NextRequest) {
   });
 }
 
-export async function DELETE() {
+export async function DELETE(req: NextRequest) {
+  const authError = requireAuth(req);
+  if (authError) return authError;
   await db.update(sourceFeeds).set({ query: "0", lastFetchCount: 0 }).where(eq(sourceFeeds.name, FEED_NAME));
   return NextResponse.json({ ok: true, message: "Crawl progress reset" });
 }

@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { sourceFeeds } from "@/db/schema";
 import { persistSource } from "@/lib/ingest-pipeline";
 import { CRAWLERS } from "@/lib/crawl-registry";
+import { requireAuth } from "@/lib/auth-guard";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -31,9 +32,11 @@ async function getOrCreateCrawlFeed(crawlerName: string, crawlerUrl: string, cra
 }
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ source: string }> },
 ) {
+  const authError = requireAuth(req);
+  if (authError) return authError;
   const { source } = await params;
   const crawler = CRAWLERS[source];
   if (!crawler) {
@@ -60,6 +63,8 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ source: string }> },
 ) {
+  const authError = requireAuth(req);
+  if (authError) return authError;
   const { source } = await params;
   const crawler = CRAWLERS[source];
   if (!crawler) {
@@ -159,9 +164,11 @@ export async function POST(
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ source: string }> },
 ) {
+  const authError = requireAuth(req);
+  if (authError) return authError;
   const { source } = await params;
   const crawler = CRAWLERS[source];
   if (!crawler) {
