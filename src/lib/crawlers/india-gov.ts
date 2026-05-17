@@ -2,9 +2,11 @@ import type { CrawlerDef, CrawlerArticle } from "./types";
 
 async function parsePdfBuffer(arrayBuffer: ArrayBuffer): Promise<string> {
   try {
-    const { PDFParse } = await import("pdf-parse");
-    const parser = new PDFParse({ data: arrayBuffer });
-    const result = await parser.getText();
+    const pdfModule = await import("pdf-parse");
+    const parse = (pdfModule as unknown as { default?: (b: Buffer) => Promise<{ text: string }> }).default
+      ?? (pdfModule as unknown as (b: Buffer) => Promise<{ text: string }>);
+    const buffer = Buffer.from(arrayBuffer);
+    const result = await parse(buffer);
     return (result.text ?? "").replace(/\s{2,}/g, " ").trim();
   } catch {
     return "";

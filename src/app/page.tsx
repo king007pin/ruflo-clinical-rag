@@ -11,6 +11,16 @@ import { db } from "@/db";
 import { embeddings, sources } from "@/db/schema";
 import { desc, sql } from "drizzle-orm";
 
+function cleanTitle(raw: string | null | undefined): string {
+  if (!raw) return "Untitled Source";
+  if (raw.trimStart().startsWith("<?xml") || raw.trimStart().startsWith("<!DOCTYPE")) return "Untitled Source";
+  return raw
+    .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'").replace(/&nbsp;/g, " ")
+    .trim() || "Untitled Source";
+}
+
 export const dynamic = "force-dynamic";
 
 async function loadStats() {
@@ -218,7 +228,7 @@ export default async function HomePage() {
                     <span>{new Date(source.createdAt ?? new Date()).toLocaleString()}</span>
                   </div>
                   <h4 className="mt-3 text-lg font-semibold" style={{ color: "var(--text)" }}>
-                    {source.title}
+                    {cleanTitle(source.title)}
                   </h4>
                   {source.url && (
                     <a
