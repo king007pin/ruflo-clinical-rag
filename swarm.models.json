@@ -58,10 +58,10 @@
       "avoid": ["embed", "rerank", "ocr", "asr", "safety", "guard"]
     },
     {
-      "role": "deepseek_chain_of_thought",
-      "model": "deepseek-ai/deepseek-r1-distill-llama-70b",
+      "role": "mixtral_pathophysiology_chain",
+      "model": "mistralai/mixtral-8x22b-instruct-v0.1",
       "required_capability": "chat",
-      "prefer": ["deepseek", "r1", "distill", "llama", "70b", "reasoning", "chain-of-thought"],
+      "prefer": ["mistral", "mixtral", "8x22b", "instruct", "reasoning", "chain-of-thought"],
       "avoid": ["embed", "rerank", "ocr", "asr", "safety", "guard", "image", "video"]
     },
     {
@@ -73,9 +73,9 @@
     },
     {
       "role": "mistral_large_evidence_grader",
-      "model": "mistralai/mistral-large-2-instruct",
+      "model": "mistralai/mistral-large-3-675b-instruct-2512",
       "required_capability": "chat",
-      "prefer": ["mistral", "large", "2", "instruct", "reasoning", "evidence"],
+      "prefer": ["mistral", "large", "3", "675b", "instruct", "reasoning", "evidence"],
       "avoid": ["embed", "rerank", "ocr", "asr", "safety", "guard", "image", "video"]
     }
   ]

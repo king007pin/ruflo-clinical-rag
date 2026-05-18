@@ -131,7 +131,7 @@ const MODEL_COGNITIVE_STRATEGIES: Record<string, { strategy: string; mandate: st
     strategy: "Occam's razor — parsimony first",
     mandate: "Find ONE diagnosis that explains every symptom. Reject any differential that requires two concurrent diagnoses unless the evidence demands it. Then build the most pragmatic, community-feasible management plan: what can a GP do right now with the resources available? Prioritise: what is the single most important thing to do in the next hour?",
   },
-  "deepseek-ai/deepseek-r1-distill-llama-70b": {
+  "mistralai/mixtral-8x22b-instruct-v0.1": {
     strategy: "Step-by-step pathophysiology chain",
     mandate: "Reason explicitly step by step — never jump to conclusions. For each candidate diagnosis: (1) trace the pathophysiological mechanism from root cause to every symptom, (2) identify which steps in the chain are confirmed vs assumed, (3) state what single investigation would break or confirm the chain. Your differential must follow mechanistic logic, not pattern-matching. Show your reasoning, not just your conclusions.",
   },
@@ -139,7 +139,7 @@ const MODEL_COGNITIVE_STRATEGIES: Record<string, { strategy: string; mandate: st
     strategy: "Haemodynamic and physiological stability assessor",
     mandate: "Assess physiological stability first: MAP, HR, RR, SpO2, GCS, lactate — are any deteriorating? Apply shock index (HR/SBP) and quick SOFA. Then ask: which organ system is the index failure? Map every symptom to an organ-system failure pattern. Your management plan must be tiered: immediate stabilisation (next 30 min) → escalation criteria → disposition decision. Never recommend an investigation before the patient is stabilised.",
   },
-  "mistralai/mistral-large-2-instruct": {
+  "mistralai/mistral-large-3-675b-instruct-2512": {
     strategy: "Evidence-quality grader and guideline anchor",
     mandate: "Grade every clinical claim by evidence level: RCT/meta-analysis (Level 1) → cohort/case-control (Level 2) → expert consensus (Level 3) → case report (Level 4). For each recommendation, state its evidence grade explicitly. Anchor your management plan to the highest-grade guideline available (NICE, AHA/ACC, WHO, ESMO, etc.). Flag any recommendation that is Level 3 or lower and explain why stronger evidence is lacking.",
   },
@@ -154,9 +154,9 @@ const MODEL_SPECIALTY_MAP: Record<string, string> = {
   "mistralai/ministral-14b-instruct-2512":        "infectious_disease",  // 14B fast, antimicrobial stewardship, epidemiology
   "nvidia/nemotron-3-super-120b-a12b":            "endocrinology",       // 120B NVIDIA, metabolic/systemic unifier, dosing
   "nvidia/nemotron-nano-12b-v2-vl":              "general_practice",    // 12B fast, community prevalence, outpatient feasibility
-  "deepseek-ai/deepseek-r1-distill-llama-70b":   "rheumatology",        // 70B chain-of-thought, complex autoimmune, rare disease
+  "mistralai/mixtral-8x22b-instruct-v0.1":   "rheumatology",        // 8x22B sparse MoE, step-by-step pathophysiology, autoimmune
   "nvidia/llama-3.3-nemotron-super-49b-v1":      "critical_care",       // 49B fast, physiological stability, haemodynamic assessment
-  "mistralai/mistral-large-2-instruct":           "hematology",          // 123B, evidence-quality grading, guideline-anchored reasoning
+  "mistralai/mistral-large-3-675b-instruct-2512":           "hematology",          // 123B, evidence-quality grading, guideline-anchored reasoning
 };
 
 function getSpecialtyForModel(modelId: string, fallbackIndex: number): SpecialtyMeta {
