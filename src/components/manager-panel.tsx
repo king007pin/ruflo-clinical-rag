@@ -317,7 +317,7 @@ export default function ManagerPanel() {
                 const total = stats.totalQueries || 1;
                 const pct = Math.round((count / total) * 100);
                 const cs = complexityStyle(c);
-                const agentMap: Record<string, number> = { simple: 2, moderate: 3, complex: 5, emergency: 7 };
+                const agentMap: Record<string, number> = { simple: 2, moderate: 3, complex: 5, emergency: 10 };
                 return (
                   <div key={c} className="rounded-xl border p-3 space-y-1"
                     style={{ borderColor: `${cs.fg}33`, backgroundColor: `${cs.fg}08` }}>
