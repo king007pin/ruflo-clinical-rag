@@ -7,7 +7,7 @@ import InsightsPanel from "@/components/insights-panel";
 import ManagerPanel, { ManagerPreview } from "@/components/manager-panel";
 import ProviderKeyManager from "@/components/provider-key-manager";
 import CollapsibleSection from "@/components/collapsible-section";
-import { db } from "@/db";
+import { dbCorpus } from "@/db";
 import { embeddings, sources } from "@/db/schema";
 import { desc, sql } from "drizzle-orm";
 
@@ -24,9 +24,9 @@ function cleanTitle(raw: string | null | undefined): string {
 export const dynamic = "force-dynamic";
 
 async function loadStats() {
-  const [sourceCount] = await db.select({ count: sql<number>`count(*)` }).from(sources);
-  const [chunkCount] = await db.select({ count: sql<number>`count(*)` }).from(embeddings);
-  const latest = await db.select().from(sources).orderBy(desc(sources.createdAt)).limit(6);
+  const [sourceCount] = await dbCorpus.select({ count: sql<number>`count(*)` }).from(sources);
+  const [chunkCount] = await dbCorpus.select({ count: sql<number>`count(*)` }).from(embeddings);
+  const latest = await dbCorpus.select().from(sources).orderBy(desc(sources.createdAt)).limit(6);
   return {
     sourceCount: Number(sourceCount?.count ?? 0),
     chunkCount: Number(chunkCount?.count ?? 0),

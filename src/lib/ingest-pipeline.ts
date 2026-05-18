@@ -1,6 +1,6 @@
 import { createHash } from "crypto";
 import { or, eq } from "drizzle-orm";
-import { db } from "@/db";
+import { dbCorpus } from "@/db";
 import { embeddings, sources } from "@/db/schema";
 import { chunkText, embedBatch } from "./rag";
 
@@ -29,7 +29,7 @@ export async function persistSource({
   const conditions = [eq(sources.contentHash, contentHash)];
   if (urlHash) conditions.push(eq(sources.urlHash, urlHash));
 
-  const [existing] = await db
+  const [existing] = await dbCorpus
     .select({ id: sources.id })
     .from(sources)
     .where(or(...conditions))
@@ -41,7 +41,7 @@ export async function persistSource({
 
   const vectors = await embedBatch(chunks, "passage");
 
-  const source = await db.transaction(async (tx) => {
+  const source = await dbCorpus.transaction(async (tx) => {
     const [created] = await tx
       .insert(sources)
       .values({

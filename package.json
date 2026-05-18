@@ -7,7 +7,8 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "db:migrate-corpus": "node scripts/migrate-corpus-to-rivestack.mjs"
   },
   "dependencies": {
     "@extractus/article-extractor": "^8.1.0",

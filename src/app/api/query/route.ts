@@ -1,4 +1,4 @@
-import { pool } from "@/db";
+import { poolCorpus } from "@/db";
 import { assembleContext, embedText, type Match } from "@/lib/rag";
 import { getSimilarPastCases, logSession } from "@/lib/session-learning";
 import { runManagedSwarm } from "@/lib/manager";
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
   const qEmbedding = await embedText(question, "query");
   const vecStr = `[${qEmbedding.join(",")}]`;
 
-  const { rows } = await pool.query<PgRow>(
+  const { rows } = await poolCorpus.query<PgRow>(
     `SELECT e.source_id, e.chunk, e.position,
             s.title AS source_title, s.type AS source_type, s.url AS source_url,
             (e.embedding <=> $1::vector) AS distance
