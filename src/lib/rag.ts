@@ -1,6 +1,7 @@
 import { extract } from "@extractus/article-extractor";
 import { YoutubeTranscript } from "youtube-transcript";
-import { hasNvidiaKey, nvidiaEmbed, nvidiaEmbedBatch } from "./nvidia";
+import { hasNvidiaKey, nvidiaEmbed, nvidiaEmbedBatch, nvidiaChat } from "./nvidia";
+import { poolCorpus, corpusRetry } from "@/db";
 
 function normalizeWhitespace(input: string) {
   return input.replace(/\s+/g, " ").trim();
@@ -166,6 +167,62 @@ export type Match = {
   position?: number | null;
   score?: number;
 };
+
+type PgVectorRow = {
+  source_id: number;
+  source_title: string | null;
+  source_type: string | null;
+  source_url: string | null;
+  chunk: string;
+  position: number;
+  distance: number;
+};
+
+export async function searchByVector(queryEmbedding: number[], topK = 10): Promise<Match[]> {
+  const vecStr = `[${queryEmbedding.join(",")}]`;
+  const { rows } = await corpusRetry(() =>
+    poolCorpus.query<PgVectorRow>(
+      `SELECT e.source_id, e.chunk, e.position,
+              s.title AS source_title, s.type AS source_type, s.url AS source_url,
+              (e.embedding <=> $1::vector) AS distance
+       FROM embeddings e
+       JOIN sources s ON s.id = e.source_id
+       WHERE e.embedding IS NOT NULL AND e.chunk IS NOT NULL
+       ORDER BY e.embedding <=> $1::vector
+       LIMIT $2`,
+      [vecStr, topK],
+    ),
+  );
+  return rows.map((r) => ({
+    chunk: r.chunk,
+    sourceId: r.source_id,
+    sourceTitle: r.source_title,
+    sourceType: r.source_type,
+    sourceUrl: r.source_url,
+    position: r.position,
+    score: 1 - r.distance,
+  }));
+}
+
+export async function rewriteQueryForRetrieval(question: string): Promise<string[]> {
+  if (!hasNvidiaKey()) return [question];
+  try {
+    const result = await nvidiaChat(
+      "microsoft/phi-3-mini-128k-instruct",
+      "You are a clinical search assistant. Your only job is to rewrite clinical questions into search queries.",
+      `Rewrite this clinical question into exactly 3 distinct search queries optimised for medical literature retrieval.
+Each query should target a different aspect: (1) primary diagnosis, (2) key symptoms and investigations, (3) treatment and management.
+Expand all abbreviations. Include relevant clinical synonyms.
+Return ONLY the 3 queries, one per line, no numbering, no explanation.
+
+Clinical question: ${question}`,
+    );
+    const queries = result.split("\n").map((l) => l.trim()).filter((l) => l.length > 5).slice(0, 3);
+    return queries.length >= 2 ? [question, ...queries] : [question];
+  } catch {
+    return [question];
+  }
+}
 
 export function assembleContext(top: Match[]) {
   return top

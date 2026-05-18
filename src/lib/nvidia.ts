@@ -96,3 +96,58 @@ export async function nvidiaChat(model: string, system: string, user: string, te
 export function hasNvidiaKey(): boolean {
   return Boolean(process.env.NVIDIA_API_KEY);
 }
+
+export async function nvidiaChatStream(
+  model: string,
+  system: string,
+  user: string,
+  temperatureOverride?: number,
+): Promise<ReadableStream<string>> {
+  const cfg = MODEL_CONFIGS[model] ?? { maxTokens: 4096, temperature: 0.3 };
+  const apiKey = process.env.NVIDIA_API_KEY;
+  if (!apiKey) throw new Error("NVIDIA_API_KEY not configured");
+
+  const res = await fetch(`${NVIDIA_BASE}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+      max_tokens: cfg.maxTokens,
+      temperature: temperatureOverride ?? cfg.temperature,
+      top_p: 0.9,
+      stream: true,
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`NVIDIA stream failed (${res.status}): ${text.slice(0, 200)}`);
+  }
+
+  const reader = res.body!.getReader();
+  const decoder = new TextDecoder();
+
+  return new ReadableStream<string>({
+    async pull(controller) {
+      const { done, value } = await reader.read();
+      if (done) { controller.close(); return; }
+      const lines = decoder.decode(value).split("\n").filter((l) => l.startsWith("data: "));
+      for (const line of lines) {
+        const data = line.slice(6);
+        if (data === "[DONE]") { controller.close(); return; }
+        try {
+          const parsed = JSON.parse(data) as { choices?: Array<{ delta?: { content?: string } }> };
+          const delta = parsed.choices?.[0]?.delta?.content;
+          if (delta) controller.enqueue(delta);
+        } catch { /* ignore malformed SSE chunks */ }
+      }
+    },
+  });
+}

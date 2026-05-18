@@ -112,6 +112,7 @@ export async function runManagedSwarm(params: {
   onAgentDone?: Parameters<typeof runSwarm>[0]["onAgentDone"];
   onDebateStart?: () => void;
   onSynthesisStart?: () => void;
+  onSynthesisToken?: (token: string) => void;
   onManagerStatus?: (msg: string) => void;
   logSessionFn?: (opts: {
     query: string;
@@ -126,7 +127,7 @@ export async function runManagedSwarm(params: {
   const {
     question, context, matches, model, patientContext, labText,
     queryEmbedding = [], onAgentDone, onDebateStart, onSynthesisStart,
-    onManagerStatus, logSessionFn,
+    onSynthesisToken, onManagerStatus, logSessionFn,
   } = params;
 
   const t0 = Date.now();
@@ -158,6 +159,7 @@ export async function runManagedSwarm(params: {
     onAgentDone,
     onDebateStart,
     onSynthesisStart,
+    onSynthesisToken,
   });
 
   const totalLatencyMs = Date.now() - t0;

@@ -1,7 +1,7 @@
-import { poolCorpus, corpusRetry } from "@/db";
-import { assembleContext, embedText, type Match } from "@/lib/rag";
+import { assembleContext, embedText, searchByVector, rewriteQueryForRetrieval, type Match } from "@/lib/rag";
 import { getSimilarPastCases, logSession } from "@/lib/session-learning";
 import { runManagedSwarm } from "@/lib/manager";
+import { checkDrugInteractions, extractDrugNamesFromReport } from "@/lib/drug-safety";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -17,16 +17,6 @@ const bodySchema = z.object({
   labText: z.string().max(12000).optional(),
 });
 
-type PgRow = {
-  source_id: number;
-  source_title: string | null;
-  source_type: string | null;
-  source_url: string | null;
-  chunk: string;
-  position: number;
-  distance: number;
-};
-
 export async function POST(req: NextRequest) {
   const json = await req.json().catch(() => null);
   const parsed = bodySchema.safeParse(json);
@@ -36,39 +26,38 @@ export async function POST(req: NextRequest) {
 
   const { question, model, swarmSize, topK = 10, patientContext, labText } = parsed.data;
 
-  const qEmbedding = await embedText(question, "query");
-  const vecStr = `[${qEmbedding.join(",")}]`;
+  // Item 5: multi-query retrieval with deduplication
+  const [qEmbedding, rewrittenQueries] = await Promise.all([
+    embedText(question, "query"),
+    rewriteQueryForRetrieval(question),
+  ]);
 
-  const { rows } = await corpusRetry(() =>
-    poolCorpus.query<PgRow>(
-      `SELECT e.source_id, e.chunk, e.position,
-            s.title AS source_title, s.type AS source_type, s.url AS source_url,
-            (e.embedding <=> $1::vector) AS distance
-     FROM embeddings e
-     JOIN sources s ON s.id = e.source_id
-     WHERE e.embedding IS NOT NULL AND e.chunk IS NOT NULL
-     ORDER BY e.embedding <=> $1::vector
-     LIMIT $2`,
-      [vecStr, topK],
-    ),
+  const queryEmbeddings = await Promise.all(
+    rewrittenQueries.slice(1).map((q) => embedText(q, "query")),
   );
 
-  if (!rows.length) {
+  const allEmbeddings = [qEmbedding, ...queryEmbeddings];
+  const allResults = await Promise.all(allEmbeddings.map((emb) => searchByVector(emb, topK)));
+
+  const seen = new Set<string>();
+  const matches: Match[] = [];
+  for (const batch of allResults) {
+    for (const m of batch) {
+      if (!seen.has(m.chunk)) {
+        seen.add(m.chunk);
+        matches.push(m);
+      }
+    }
+  }
+  matches.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+  const topMatches = matches.slice(0, topK);
+
+  if (!topMatches.length) {
     return NextResponse.json(
       { error: "No knowledge ingested yet. Add PDF, YouTube, or website content first." },
       { status: 400 },
     );
   }
-
-  const matches: Match[] = rows.map((r) => ({
-    chunk: r.chunk,
-    sourceId: r.source_id,
-    sourceTitle: r.source_title,
-    sourceType: r.source_type,
-    sourceUrl: r.source_url,
-    position: r.position,
-    score: 1 - r.distance,
-  }));
 
   const pastCases = await getSimilarPastCases(qEmbedding, 2).catch(() => []);
   const pastCasesContext =
@@ -77,7 +66,7 @@ export async function POST(req: NextRequest) {
         pastCases.map((c, i) => `[PC${i + 1}] Query: "${c.query}" -> Summary: ${c.consensusSnippet}`).join("\n")
       : "";
 
-  const context = assembleContext(matches);
+  const context = assembleContext(topMatches);
   const contextWithMemory = context + pastCasesContext;
 
   const encoder = new TextEncoder();
@@ -99,7 +88,7 @@ export async function POST(req: NextRequest) {
         const result = await runManagedSwarm({
           question,
           context: contextWithMemory,
-          matches,
+          matches: topMatches,
           model,
           swarmSize,
           patientContext,
@@ -110,9 +99,15 @@ export async function POST(req: NextRequest) {
             send({ type: "debate_start", message: "Agents reviewing each other's reasoning…" }),
           onSynthesisStart: () =>
             send({ type: "synthesis_start", message: "Synthesising final report from debate…" }),
+          // Item 2: stream synthesis tokens to client
+          onSynthesisToken: (token) => send({ type: "synthesis_token", token }),
           onManagerStatus: (msg) => send({ type: "status", message: msg }),
           logSessionFn: logSession,
         });
+
+        // Item 6: DDI check post-synthesis
+        const drugNames = extractDrugNamesFromReport(result.answer);
+        const ddiFlags = await checkDrugInteractions(drugNames).catch(() => []);
 
         send({
           type: "done",
@@ -121,7 +116,8 @@ export async function POST(req: NextRequest) {
           round1Agents: result.round1Agents,
           sessionId: result.sessionId,
           managerReport: result.managerReport,
-          matches: matches.map((m) => ({
+          ddiFlags,
+          matches: topMatches.map((m) => ({
             sourceId: m.sourceId,
             sourceTitle: m.sourceTitle,
             sourceType: m.sourceType,

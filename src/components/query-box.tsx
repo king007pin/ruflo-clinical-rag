@@ -12,12 +12,15 @@ type Match = {
   chunk: string;
   score: number;
 };
+type DDIFlag = { drug: string; warning: string; severity: "BLACK_BOX" | "SERIOUS" | "MODERATE" };
+type LabCritical = { name: string; value: number; unit: string };
 type ResponseShape = {
   answer: string;
   agents: AgentReply[];
   round1Agents: AgentReply[];
   matches: Match[];
   sessionId: number | null;
+  ddiFlags?: DDIFlag[];
 };
 type SavePayload = {
   title?: string;
@@ -674,8 +677,10 @@ export default function QueryBox() {
   const [patientInfo, setPatientInfo] = useState<PatientInfo>({ name: "", age: "", gender: "", phone: "", address: "" });
   const [labFile, setLabFile] = useState<File | null>(null);
   const [labText, setLabText] = useState<string>("");
+  const [labCriticals, setLabCriticals] = useState<LabCritical[]>([]);
   const [labUploading, setLabUploading] = useState(false);
   const [labError, setLabError] = useState<string | null>(null);
+  const [synthesisStream, setSynthesisStream] = useState("");
 
   const [mode, setMode] = useState<"nvidia" | "multi">("nvidia");
   const [hasProviders, setHasProviders] = useState(false);
@@ -719,15 +724,24 @@ export default function QueryBox() {
     if (!file) return;
     setLabFile(file);
     setLabText("");
+    setLabCriticals([]);
     setLabError(null);
     setLabUploading(true);
     try {
       const fd = new FormData();
       fd.append("file", file);
       const res = await fetch("/api/lab-extract", { method: "POST", body: fd });
-      const data = await res.json() as { text?: string; error?: string };
+      const data = await res.json() as {
+        text?: string;
+        panel?: { structuredText: string; criticals: LabCritical[] };
+        error?: string;
+      };
       if (!res.ok || data.error) { setLabError(data.error ?? "Extraction failed"); setLabFile(null); }
-      else setLabText(data.text ?? "");
+      else {
+        // Item 4: use structured text (includes CRITICAL VALUES header) for better LLM context
+        setLabText(data.panel?.structuredText ?? data.text ?? "");
+        setLabCriticals(data.panel?.criticals ?? []);
+      }
     } catch { setLabError("Upload failed — check file format."); setLabFile(null); }
     finally { setLabUploading(false); }
   }
@@ -814,6 +828,7 @@ export default function QueryBox() {
     setRoutingPhase(true);
     setDebatePhase(false);
     setSynthesisPhase(false);
+    setSynthesisStream("");
     setStatus(null);
     setFeedbackGiven(false);
     setFeedbackSessionId(null);
@@ -879,14 +894,18 @@ export default function QueryBox() {
               setSynthesisPhase(true);
               setDebatePhase(false);
               setLiveStatus(payload.message as string ?? "Synthesising final report…");
+            } else if (payload.type === "synthesis_token") {
+              setSynthesisStream((prev) => prev + (payload.token as string));
             } else if (payload.type === "done") {
               const p = payload as {
                 answer: string; agents: AgentReply[];
                 round1Agents: AgentReply[]; matches: Match[]; sessionId: number | null;
+                ddiFlags?: DDIFlag[];
               };
               setResult({
                 answer: p.answer, agents: p.agents,
                 round1Agents: p.round1Agents ?? [], matches: p.matches, sessionId: p.sessionId ?? null,
+                ddiFlags: p.ddiFlags ?? [],
               });
               setFeedbackSessionId(p.sessionId ?? null);
               if (saveCase) {
@@ -1025,7 +1044,7 @@ export default function QueryBox() {
               Lab report <span className="text-xs font-normal" style={{ color: "var(--muted)" }}>(optional — PDF or .txt)</span>
             </span>
             {labFile && (
-              <button type="button" onClick={() => { setLabFile(null); setLabText(""); setLabError(null); }}
+              <button type="button" onClick={() => { setLabFile(null); setLabText(""); setLabCriticals([]); setLabError(null); }}
                 className="text-xs px-2 py-0.5 rounded-full"
                 style={{ backgroundColor: "rgba(239,68,68,0.15)", color: "#f87171" }}>
                 Remove
@@ -1058,6 +1077,33 @@ export default function QueryBox() {
             </div>
           )}
         </div>
+
+        {/* Item 4: Critical lab value banner */}
+        {labCriticals.length > 0 && (
+          <div className="rounded-xl border px-4 py-3 space-y-2"
+            style={{ borderColor: "rgba(239,68,68,0.5)", background: "rgba(239,68,68,0.08)" }}>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: "#f87171" }}>
+                CRITICAL LAB VALUES DETECTED
+              </span>
+              <span className="rounded-full px-2 py-0.5 text-[10px] font-bold"
+                style={{ backgroundColor: "rgba(239,68,68,0.2)", color: "#f87171" }}>
+                {labCriticals.length} value{labCriticals.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {labCriticals.map((c, i) => (
+                <span key={i} className="rounded-lg px-2 py-1 text-xs font-semibold"
+                  style={{ backgroundColor: "rgba(239,68,68,0.15)", color: "#fca5a5", border: "1px solid rgba(239,68,68,0.3)" }}>
+                  {c.name.toUpperCase()} = {c.value} {c.unit}
+                </span>
+              ))}
+            </div>
+            <p className="text-[11px]" style={{ color: "#fca5a5" }}>
+              These values have been highlighted for the clinical swarm. Verify urgently.
+            </p>
+          </div>
+        )}
 
         {hasProviders && (
           <div className="flex items-center gap-2 rounded-xl border px-3 py-2"
@@ -1113,8 +1159,8 @@ export default function QueryBox() {
 
         <label className="block text-sm" style={{ color: "var(--text)" }}>
           Swarm size
-          <span className="ml-2 text-xs" style={{ color: "var(--muted)" }}>(agents in parallel — max 7)</span>
-          <input type="number" min={1} max={7} value={swarmSize}
+          <span className="ml-2 text-xs" style={{ color: "var(--muted)" }}>(agents in parallel — max 10)</span>
+          <input type="number" min={1} max={10} value={swarmSize}
             onChange={(e) => setSwarmSize(Number(e.target.value))}
             className="mt-1 w-24 rounded-xl border px-3 py-2 text-sm focus:outline-none"
             style={{ borderColor: "var(--card-border)", backgroundColor: "var(--bg)", color: "var(--text)" }} />
@@ -1296,18 +1342,25 @@ export default function QueryBox() {
             </div>
           )}
 
-          {/* Synthesis transition */}
+          {/* Synthesis transition — Item 2: stream tokens live */}
           {synthesisPhase && (
-            <div className="rounded-xl border px-4 py-3"
+            <div className="rounded-xl border px-4 py-3 space-y-2"
               style={{ borderColor: "rgba(74,222,128,0.35)", background: "linear-gradient(135deg,rgba(74,222,128,0.06),rgba(6,182,212,0.06))" }}>
-              <div className="flex items-center gap-3 mb-1">
+              <div className="flex items-center gap-3">
                 <div className="flex-1 h-px" style={{ backgroundColor: "rgba(74,222,128,0.3)" }} />
                 <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#4ade80" }}>Synthesising Report</span>
                 <div className="flex-1 h-px" style={{ backgroundColor: "rgba(6,182,212,0.3)" }} />
               </div>
-              <p className="text-[11px] text-center" style={{ color: "var(--muted)" }}>
-                Primary model generating structured clinical report from full debate<ThinkingDots />
-              </p>
+              {synthesisStream ? (
+                <p className="text-xs leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto" style={{ color: "var(--muted)" }}>
+                  {synthesisStream}
+                  <span className="inline-block w-0.5 h-3 ml-0.5 align-middle animate-pulse" style={{ backgroundColor: "#4ade80" }} />
+                </p>
+              ) : (
+                <p className="text-[11px] text-center" style={{ color: "var(--muted)" }}>
+                  Primary model generating structured clinical report from full debate<ThinkingDots />
+                </p>
+              )}
             </div>
           )}
 
@@ -1503,6 +1556,34 @@ export default function QueryBox() {
               </span>
             </div>
           </div>
+
+          {/* Item 6: DDI banners */}
+          {(result.ddiFlags?.length ?? 0) > 0 && (
+            <div className="space-y-2">
+              <p className="text-[10px] uppercase tracking-widest font-bold" style={{ color: "#fbbf24" }}>
+                Drug Interaction Alerts ({result.ddiFlags!.length})
+              </p>
+              {result.ddiFlags!.map((flag, i) => {
+                const isBlackBox = flag.severity === "BLACK_BOX";
+                const color = isBlackBox ? "#f87171" : flag.severity === "SERIOUS" ? "#fb923c" : "#fbbf24";
+                const bg = isBlackBox ? "rgba(239,68,68,0.08)" : flag.severity === "SERIOUS" ? "rgba(251,146,60,0.08)" : "rgba(251,191,36,0.08)";
+                const border = isBlackBox ? "rgba(239,68,68,0.4)" : flag.severity === "SERIOUS" ? "rgba(251,146,60,0.4)" : "rgba(251,191,36,0.4)";
+                return (
+                  <div key={i} className="rounded-xl border px-3 py-2.5"
+                    style={{ borderColor: border, backgroundColor: bg }}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-bold" style={{ color }}>{flag.drug.toUpperCase()}</span>
+                      <span className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase"
+                        style={{ backgroundColor: bg, color, border: `1px solid ${border}` }}>
+                        {isBlackBox ? "BLACK BOX" : flag.severity}
+                      </span>
+                    </div>
+                    <p className="text-xs leading-relaxed" style={{ color: "var(--muted)" }}>{flag.warning}</p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           {/* Feedback */}
           {feedbackSessionId && !feedbackGiven && (

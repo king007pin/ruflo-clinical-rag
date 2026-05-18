@@ -1,4 +1,5 @@
 import { textFromPdfBuffer } from "@/lib/rag";
+import { parseLabText } from "@/lib/lab-parser";
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -18,23 +19,23 @@ export async function POST(req: NextRequest) {
 
   const buffer = Buffer.from(await file.arrayBuffer());
 
+  let rawText: string;
+
   if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
     try {
-      const text = await textFromPdfBuffer(buffer);
-      return NextResponse.json({ text: text.slice(0, MAX_CHARS), chars: text.length });
+      rawText = (await textFromPdfBuffer(buffer)).slice(0, MAX_CHARS);
     } catch (err) {
       return NextResponse.json({ error: `PDF extraction failed: ${(err as Error).message}` }, { status: 422 });
     }
+  } else if (file.type.startsWith("text/") || file.name.match(/\.(txt|csv|md)$/i)) {
+    rawText = buffer.toString("utf-8").slice(0, MAX_CHARS);
+  } else {
+    return NextResponse.json(
+      { error: "Unsupported file type. Upload PDF or plain text (.txt, .csv) lab reports." },
+      { status: 415 },
+    );
   }
 
-  // Plain text files
-  if (file.type.startsWith("text/") || file.name.match(/\.(txt|csv|md)$/i)) {
-    const text = buffer.toString("utf-8").slice(0, MAX_CHARS);
-    return NextResponse.json({ text, chars: text.length });
-  }
-
-  return NextResponse.json(
-    { error: "Unsupported file type. Upload PDF or plain text (.txt, .csv) lab reports." },
-    { status: 415 },
-  );
+  const panel = parseLabText(rawText);
+  return NextResponse.json({ text: rawText, chars: rawText.length, panel, criticals: panel.criticals });
 }

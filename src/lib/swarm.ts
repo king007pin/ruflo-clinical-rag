@@ -1,5 +1,5 @@
 import { assembleContext } from "./rag";
-import { hasNvidiaKey, nvidiaChat, NVIDIA_SWARM_MODELS } from "./nvidia";
+import { hasNvidiaKey, nvidiaChat, nvidiaChatStream, NVIDIA_SWARM_MODELS } from "./nvidia";
 
 // Fast small models for simple/moderate queries — lower latency, adequate quality
 const NVIDIA_SWARM_MODELS_FAST = [
@@ -162,6 +162,52 @@ const MODEL_SPECIALTY_MAP: Record<string, string> = {
 function getSpecialtyForModel(modelId: string, fallbackIndex: number): SpecialtyMeta {
   const id = MODEL_SPECIALTY_MAP[modelId];
   return SPECIALTY_POOL.find((s) => s.id === id) ?? SPECIALTY_POOL[fallbackIndex % SPECIALTY_POOL.length];
+}
+
+function selectSpecialtiesForQuery(question: string, models: string[]): SpecialtyMeta[] {
+  const q = question.toLowerCase();
+  const count = models.length;
+  const gp = SPECIALTY_POOL.find((s) => s.id === "general_practice")!;
+  const em = SPECIALTY_POOL.find((s) => s.id === "emergency_medicine")!;
+
+  const scored = SPECIALTY_POOL
+    .filter((s) => s.id !== "general_practice")
+    .map((s) => ({
+      specialty: s,
+      score: s.keywords.filter((kw) => q.includes(kw.toLowerCase())).length,
+    }))
+    .sort((a, b) => b.score - a.score);
+
+  const primary = scored[0]?.specialty ?? gp;
+  const selected: SpecialtyMeta[] = [primary];
+
+  if (count > 1 && !selected.find((s) => s.id === "emergency_medicine")) {
+    selected.push(em);
+  }
+
+  for (const { specialty } of scored.slice(1)) {
+    if (selected.length >= count - 1) break;
+    if (!selected.find((s) => s.id === specialty.id)) selected.push(specialty);
+  }
+
+  if (count > 1 && !selected.find((s) => s.id === "general_practice")) {
+    selected.push(gp);
+  }
+
+  while (selected.length < count) {
+    const modelAtIdx = models[selected.length];
+    const fallbackId = MODEL_SPECIALTY_MAP[modelAtIdx] ?? "general_practice";
+    const fallback = SPECIALTY_POOL.find((s) => s.id === fallbackId) ?? gp;
+    selected.push(selected.find((s) => s.id === fallback.id) ? gp : fallback);
+  }
+
+  // Diversity safety: if fewer than 3 distinct specialties in a 3+ swarm, fall back to static map
+  const uniqueIds = new Set(selected.map((s) => s.id));
+  if (uniqueIds.size < Math.min(count, 3)) {
+    return models.map((m, idx) => getSpecialtyForModel(m, idx));
+  }
+
+  return selected.slice(0, count);
 }
 
 const DIAGNOSTIC_FRAMEWORKS: Record<string, string> = {
@@ -393,7 +439,16 @@ CAVEATS AND LIMITATIONS
 ----------------------------------------
 Write 3-5 case-specific caveats. Each caveat must reference a concrete aspect of THIS case — not generic disclaimers.
 Consider: which diagnoses remain unruled-out, what evidence gaps exist in the snippets, what bedside findings are essential before acting, any demographic or population-specific limitations, and any agent disagreements left unresolved.
-Format each as a dash-bullet: -  [specific caveat]`;
+Format each as a dash-bullet: -  [specific caveat]
+
+PHARMACOLOGY SELF-AUDIT
+----------------------------------------
+Before finalising this report, verify every drug in the treatment tables above:
+-  For each drug: confirm the dose is within the standard WHO/BNF range. If any dose appears >2x standard, write: [DOSE REVIEW: drug -- concern]
+-  For each drug: check for contraindications against patient demographics (age, renal function if creatinine mentioned, hepatic status, pregnancy). Write: [SAFE] or [CONTRAINDICATED: specific reason]
+-  For each drug not supported by a [S#] citation: write: [UNSUPPORTED: evidence gap -- rationale for inclusion]
+-  Flag any combination of drugs that could cause: QT prolongation, serotonin syndrome, additive nephrotoxicity, bleeding risk, or hypoglycaemia. Write: [INTERACTION: drug A + drug B -- effect]
+This audit section appears at the END of the report. Do not skip it.`;
 }
 
 function buildUserPrompt(question: string, context: string, patientContext?: string, labText?: string): string {
@@ -412,15 +467,73 @@ ${question}
 Apply your specialty diagnostic framework now. Produce all 7 required sections. Minimum 450 words. Be clinically specific.`;
 }
 
+const ESSENTIAL_DEBATE_SECTIONS = [
+  "WORKING DIFFERENTIAL",
+  "MOST LIKELY DIAGNOSIS",
+  "INVESTIGATIONS",
+  "PHARMACOLOGICAL RECOMMENDATIONS",
+  "EVIDENCE GAPS",
+];
+
+function compressAgentResponse(response: string, targetWords = 500): string {
+  const words = response.split(/\s+/);
+  if (words.length <= targetWords) return response;
+  const floor = Math.max(250, targetWords);
+
+  const lines = response.split("\n");
+  const important: string[] = [];
+  let capturing = false;
+  let capturedWords = 0;
+
+  for (let li = 0; li < lines.length; li++) {
+    const line = lines[li];
+    const isEssentialHeader = ESSENTIAL_DEBATE_SECTIONS.some((s) => line.toUpperCase().includes(s));
+
+    if (isEssentialHeader) {
+      capturing = true;
+      important.push(line);
+      continue;
+    }
+
+    const isCriticalLine =
+      /\[S\d+\]/.test(line) ||
+      /likelihood|probability|%/i.test(line) ||
+      /mg|mcg|units|dose|route|daily|bid|tid/i.test(line);
+
+    if (capturing || isCriticalLine) {
+      important.push(line);
+      capturedWords += line.split(/\s+/).length;
+    }
+
+    if (capturedWords >= floor && !isEssentialHeader) {
+      const remaining = lines.slice(li + 1);
+      const hasMoreEssential = remaining.some((l) =>
+        ESSENTIAL_DEBATE_SECTIONS.some((s) => l.toUpperCase().includes(s))
+      );
+      if (!hasMoreEssential) break;
+    }
+  }
+
+  const compressed = important.join("\n").trim();
+  return compressed.split(/\s+/).length >= 200
+    ? compressed
+    : words.slice(0, floor).join(" ") + "\n…[truncated for debate efficiency]";
+}
+
 function buildDebateUserPrompt(
   question: string,
   context: string,
   ownRole: string,
   myAssessment: string,
   peers: Array<{ role: string; message: string }>,
+  swarmSize = 1,
 ): string {
+  const shouldCompress = swarmSize >= 5;
   const peerBlock = peers
-    .map((p) => `=== Colleague (${p.role}) ===\n${p.message}`)
+    .map((p) => {
+      const content = shouldCompress ? compressAgentResponse(p.message) : p.message;
+      return `=== Colleague (${p.role}) ===\n${content}`;
+    })
     .join("\n\n");
   return `Evidence:\n${context}\n\nClinical question: ${question}\n\nYOU are the ${ownRole} on this panel — debate in that character.\n\n=== YOUR Initial Assessment ===\n${myAssessment}\n\n=== PEER ASSESSMENTS FOR REVIEW (each labelled by specialty) ===\n${peerBlock}\n\nProvide your REFINED peer-reviewed response, critiquing each colleague by their specialty from your ${ownRole} perspective:`;
 }
@@ -497,6 +610,7 @@ async function runDebateAgent(
   peers: Array<{ model: string; role: string; message: string }>,
   matches: MatchMeta[],
   agentIndex: number,
+  swarmSize: number,
   specialty: SpecialtyMeta,
 ): Promise<AgentReply & { round: 2 }> {
   const cognitiveStrategy = MODEL_COGNITIVE_STRATEGIES[model];
@@ -507,6 +621,7 @@ async function runDebateAgent(
     specialty.role,
     myAssessment,
     peers.map((p) => ({ role: p.role, message: p.message })),
+    swarmSize,
   );
   const tag = `${specialty.role} (debate)`;
 
@@ -532,6 +647,7 @@ async function runSynthesisAgent(
   round1Agents: AgentReply[],
   round2Agents: AgentReply[],
   matches: MatchMeta[],
+  onSynthesisToken?: (token: string) => void,
 ): Promise<string> {
   const system = buildSynthesisSystemPrompt(round1Agents.length);
   const user = buildSynthesisUserPrompt(question, context, round1Agents, round2Agents);
@@ -541,6 +657,18 @@ async function runSynthesisAgent(
 
   if (hasNvidiaKey()) {
     try {
+      if (onSynthesisToken) {
+        const stream = await nvidiaChatStream(model, system, user, 0.15);
+        const reader = stream.getReader();
+        const chunks: string[] = [];
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          chunks.push(value);
+          onSynthesisToken(value);
+        }
+        return chunks.join("");
+      }
       return await nvidiaChat(model, system, user, 0.15);
     } catch {
       // fall through to local fallback
@@ -610,6 +738,7 @@ export async function runSwarm({
   onAgentDone,
   onDebateStart,
   onSynthesisStart,
+  onSynthesisToken,
 }: {
   question: string;
   context: string;
@@ -621,6 +750,7 @@ export async function runSwarm({
   onAgentDone?: (agent: AgentReply & { round: 1 | 2 }) => void;
   onDebateStart?: () => void;
   onSynthesisStart?: () => void;
+  onSynthesisToken?: (token: string) => void;
 }) {
   const pool = model
     ? [model, ...NVIDIA_SWARM_MODELS.filter((m) => m !== model)]
@@ -629,8 +759,8 @@ export async function runSwarm({
       : [...NVIDIA_SWARM_MODELS];
   const selected = pool.slice(0, Math.max(1, Math.min(swarmSize, pool.length)));
 
-  // Each model uses its capability-matched specialty (static map)
-  const specialties = selected.map((m, idx) => getSpecialtyForModel(m, idx));
+  // Dynamic specialty selection — picks specialties most relevant to the query
+  const specialties = selectSpecialtiesForQuery(question, selected);
 
   // ── Round 1: Independent analysis ───────────────────────────────────────
   const round1Map = new Map<string, AgentReply & { round: 1 }>();
@@ -663,7 +793,7 @@ export async function runSwarm({
             role: specialtyByModel.get(a.model)?.role ?? a.model,
             message: a.message,
           }));
-        return runDebateAgent(m, question, context, myAssessment, peers, matches, idx, specialties[idx]).then((reply) => {
+        return runDebateAgent(m, question, context, myAssessment, peers, matches, idx, selected.length, specialties[idx]).then((reply) => {
           onAgentDone?.(reply);
           round2Map.set(m, reply);
         });
@@ -682,6 +812,7 @@ export async function runSwarm({
     round1Agents,
     round2Agents,
     matches,
+    onSynthesisToken,
   );
 
   const finalAgents = round2Agents.length > 0 ? round2Agents : round1Agents;
