@@ -3,7 +3,6 @@ import { sourceFeeds } from "@/db/schema";
 import { MEDICAL_SEED_FEEDS } from "@/lib/medical-sources";
 import { runFeedRefresh } from "@/lib/feed-refresh";
 import { requireCron } from "@/lib/auth-guard";
-import { sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -14,17 +13,21 @@ export async function GET(req: Request) {
   if (authError) return authError;
 
   try {
-    // Auto-seed if DB has no feeds yet
-    const [{ count }] = await db
-      .select({ count: sql<number>`count(*)` })
+    // Auto-seed any MEDICAL_SEED_FEEDS missing from the DB.
+    // Dedupe by name in code: the live source_feeds table has no unique
+    // constraint on name, so onConflictDoNothing cannot be relied on.
+    const existing = await db
+      .select({ name: sourceFeeds.name })
       .from(sourceFeeds);
+    const have = new Set(existing.map((r) => r.name));
+    const missing = MEDICAL_SEED_FEEDS.filter((f) => !have.has(f.name));
 
     let seeded = 0;
-    if (Number(count) === 0) {
+    if (missing.length > 0) {
       const inserted = await db
         .insert(sourceFeeds)
         .values(
-          MEDICAL_SEED_FEEDS.map((f) => ({
+          missing.map((f) => ({
             name: f.name,
             type: f.type,
             url: f.url ?? null,
@@ -34,7 +37,6 @@ export async function GET(req: Request) {
             enabled: true,
           })),
         )
-        .onConflictDoNothing()
         .returning({ id: sourceFeeds.id });
       seeded = inserted.length;
     }
