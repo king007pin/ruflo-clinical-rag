@@ -22,6 +22,15 @@ import { clinicaltrialsCrawler } from "./crawlers/clinicaltrials";
 import { pubmedCentralCrawler } from "./crawlers/pubmed-central";
 import { openfdaFaersCrawler } from "./crawlers/openfda-faers";
 import { whoDrugSafetyCrawler } from "./crawlers/who-drug-safety";
+// India-first new crawlers
+import { ntepTbCrawler } from "./crawlers/ntep-tb";
+import { nacoHivCrawler } from "./crawlers/naco-hiv";
+import { ncvbdcMalariaCrawler } from "./crawlers/ncvbdc-malaria";
+import { uipImmunizationCrawler } from "./crawlers/uip-immunization";
+import { nlem2022Crawler } from "./crawlers/nlem-2022";
+import { nfiCrawler } from "./crawlers/nfi";
+import { cdscoAlertsCrawler } from "./crawlers/cdsco-alerts";
+import { pvpiAlertsCrawler } from "./crawlers/pvpi-alerts";
 
 export const CRAWLERS: Record<string, CrawlerDef> = {
   [geneReviewsCrawler.id]: geneReviewsCrawler,
@@ -46,4 +55,13 @@ export const CRAWLERS: Record<string, CrawlerDef> = {
   [pubmedCentralCrawler.id]: pubmedCentralCrawler,
   [openfdaFaersCrawler.id]: openfdaFaersCrawler,
   [whoDrugSafetyCrawler.id]: whoDrugSafetyCrawler,
+  // India-first sources
+  [ntepTbCrawler.id]: ntepTbCrawler,
+  [nacoHivCrawler.id]: nacoHivCrawler,
+  [ncvbdcMalariaCrawler.id]: ncvbdcMalariaCrawler,
+  [uipImmunizationCrawler.id]: uipImmunizationCrawler,
+  [nlem2022Crawler.id]: nlem2022Crawler,
+  [nfiCrawler.id]: nfiCrawler,
+  [cdscoAlertsCrawler.id]: cdscoAlertsCrawler,
+  [pvpiAlertsCrawler.id]: pvpiAlertsCrawler,
 };
