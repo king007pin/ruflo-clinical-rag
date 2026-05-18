@@ -51,6 +51,15 @@ const MODELS: ModelMeta[] = [
   { id: "nvidia/nemotron-nano-12b-v2-vl", label: "Nemotron Nano 12B", role: "General Practice",
     description: "12B fast, vision-capable. Occam's razor. Community prevalence priors, outpatient feasibility, pragmatic single-diagnosis focus.",
     tags: ["free", "12B", "fast", "primary care"], size: "12B" },
+  { id: "mistralai/mixtral-8x22b-instruct-v0.1", label: "Mixtral 8x22B", role: "Rheumatology",
+    description: "Sparse MoE step-by-step pathophysiology. Traces mechanism from root cause to every symptom. Autoimmune, connective tissue, vasculitis workup.",
+    tags: ["free", "MoE", "8x22B", "pathophysiology"], size: "8x22B MoE" },
+  { id: "nvidia/llama-3.3-nemotron-super-49b-v1", label: "Nemotron Super 49B", role: "Critical Care",
+    description: "49B haemodynamic stability assessor. MAP, shock index, quick-SOFA. Tiered management: stabilise → escalate → disposition.",
+    tags: ["free", "49B", "NVIDIA", "critical care"], size: "49B" },
+  { id: "mistralai/mistral-large-3-675b-instruct-2512", label: "Mistral Large 3 675B", role: "Hematology",
+    description: "675B evidence-quality grader. Grades every claim RCT → cohort → consensus → case report. Anchors to NICE/AHA/WHO/ESMO guidelines.",
+    tags: ["free", "675B", "evidence grading", "guidelines"], size: "675B" },
 ];
 
 const MODEL_COLORS = [
@@ -60,6 +69,10 @@ const MODEL_COLORS = [
   { border: "#fb923c", bg: "rgba(251,146,60,0.08)",  dot: "#fb923c", glow: "rgba(251,146,60,0.25)"  },
   { border: "#38bdf8", bg: "rgba(56,189,248,0.08)",  dot: "#38bdf8", glow: "rgba(56,189,248,0.25)"  },
   { border: "#a78bfa", bg: "rgba(167,139,250,0.08)", dot: "#a78bfa", glow: "rgba(167,139,250,0.25)" },
+  { border: "#fbbf24", bg: "rgba(251,191,36,0.08)",  dot: "#fbbf24", glow: "rgba(251,191,36,0.25)"  },
+  { border: "#f87171", bg: "rgba(248,113,113,0.08)", dot: "#f87171", glow: "rgba(248,113,113,0.25)" },
+  { border: "#2dd4bf", bg: "rgba(45,212,191,0.08)",  dot: "#2dd4bf", glow: "rgba(45,212,191,0.25)"  },
+  { border: "#e879f9", bg: "rgba(232,121,249,0.08)", dot: "#e879f9", glow: "rgba(232,121,249,0.25)" },
 ];
 
 // ── Plain-text report renderer ───────────────────────────────────────────────
