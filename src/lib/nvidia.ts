@@ -9,8 +9,11 @@ export const NVIDIA_SWARM_MODELS = [
   "meta/llama-4-maverick-17b-128e-instruct",      // emergency/acute triage, Llama 4 MoE
   "qwen/qwen3-next-80b-a3b-instruct",             // neurology / stepwise reasoning, 80B MoE
   "mistralai/ministral-14b-instruct-2512",        // infectious disease / fast, 14B
-  "nvidia/nemotron-3-super-120b-a12b",            // cardiology / critical care, 120B NVIDIA
+  "nvidia/nemotron-3-super-120b-a12b",            // endocrinology / metabolic unifier, 120B NVIDIA
   "nvidia/nemotron-nano-12b-v2-vl",              // general practice / fast triage, 12B
+  "deepseek-ai/deepseek-r1-distill-llama-70b",   // rheumatology / chain-of-thought reasoning, 70B
+  "nvidia/llama-3.3-nemotron-super-49b-v1",      // critical care / physiological pattern, 49B fast
+  "mistralai/mistral-large-2-instruct",           // hematology / evidence-quality grader, 123B
 ] as const;
 
 export type NvidiaModel = (typeof NVIDIA_SWARM_MODELS)[number];

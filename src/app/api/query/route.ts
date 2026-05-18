@@ -11,7 +11,7 @@ export const maxDuration = 300;
 const bodySchema = z.object({
   question: z.string().min(4),
   model: z.string().optional(),
-  swarmSize: z.number().int().min(1).max(7).optional(),
+  swarmSize: z.number().int().min(1).max(10).optional(),
   topK: z.number().int().min(1).max(20).optional(),
   patientContext: z.string().max(800).optional(),
   labText: z.string().max(12000).optional(),

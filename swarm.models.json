@@ -56,6 +56,27 @@
       "required_capability": "chat",
       "prefer": ["nvidia", "nemotron", "nano", "12b", "vl", "vision", "fast"],
       "avoid": ["embed", "rerank", "ocr", "asr", "safety", "guard"]
+    },
+    {
+      "role": "deepseek_chain_of_thought",
+      "model": "deepseek-ai/deepseek-r1-distill-llama-70b",
+      "required_capability": "chat",
+      "prefer": ["deepseek", "r1", "distill", "llama", "70b", "reasoning", "chain-of-thought"],
+      "avoid": ["embed", "rerank", "ocr", "asr", "safety", "guard", "image", "video"]
+    },
+    {
+      "role": "nemotron_super_physiological",
+      "model": "nvidia/llama-3.3-nemotron-super-49b-v1",
+      "required_capability": "chat",
+      "prefer": ["nvidia", "nemotron", "super", "49b", "llama", "instruct", "fast"],
+      "avoid": ["embed", "rerank", "ocr", "asr", "safety", "guard", "image", "video"]
+    },
+    {
+      "role": "mistral_large_evidence_grader",
+      "model": "mistralai/mistral-large-2-instruct",
+      "required_capability": "chat",
+      "prefer": ["mistral", "large", "2", "instruct", "reasoning", "evidence"],
+      "avoid": ["embed", "rerank", "ocr", "asr", "safety", "guard", "image", "video"]
     }
   ]
 }
