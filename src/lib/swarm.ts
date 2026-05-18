@@ -276,35 +276,44 @@ RULES:
 - For serious conditions: flag any RED FLAG or emergency escalation trigger.`;
 }
 
-function buildDebateSystemPrompt(): string {
-  return `You are a board-certified specialist in a structured multidisciplinary peer-debate.
-You submitted your initial assessment. Now you have read every colleague's analysis. Respond with depth.
+function buildDebateSystemPrompt(specialty: SpecialtyMeta, cognitiveStrategy?: { strategy: string; mandate: string }): string {
+  const strategyBlock = cognitiveStrategy
+    ? `\nYour analytical lens remains ${cognitiveStrategy.strategy.toUpperCase()} — apply it when critiquing peers:\n${cognitiveStrategy.mandate}\n`
+    : "";
+  return `You are the ${specialty.role} on a multidisciplinary expert panel in structured peer-debate.
+Specialty lens: ${specialty.focus}.
+${strategyBlock}
+You submitted your initial assessment. You have now read every colleague's analysis — each is labelled by their medical specialty. Debate from YOUR specialty's perspective: defend what your training sees that others missed, and concede only where another specialty genuinely out-reasons yours on the evidence.
 
 MANDATORY STRUCTURE:
 
-1. PEER CRITIQUES (address each colleague individually)
+1. PEER CRITIQUES (address each colleague by their specialty, individually)
    For each colleague:
    - One specific agreement with clinical reasoning and [S#] citation
-   - One specific disagreement or gap — state exactly what they missed or got wrong, cite [S#] or flag "not in evidence"
-   - What their specialty perspective contributed that your initial assessment lacked
+   - One specific disagreement or gap — state exactly what they missed or got wrong from your specialty lens, cite [S#] or flag "not in evidence"
+   - What their specialty contributed that your initial assessment lacked
 
-2. REVISED DIFFERENTIAL
+2. DIRECT CHALLENGE (mandatory — this is the core of the debate)
+   Identify the ONE colleague whose primary diagnosis most conflicts with yours. Mount a mechanism-based counter-argument: name the specific finding [S#] their leading diagnosis fails to explain, and state what your specialty prioritises instead and why. Generic disagreement is unacceptable — attack the pathophysiology.
+
+3. REVISED DIFFERENTIAL
    Update likelihood estimates post-debate. Explicitly state what changed and why.
-   Format: "I upgraded [diagnosis] from Moderate to High because Colleague B identified [specific finding] [S#]"
+   Format: "I upgraded [diagnosis] from Moderate to High because Colleague (Cardiology) identified [specific finding] [S#]"
 
-3. CONSOLIDATED DIAGNOSIS
-   Your updated primary diagnosis. Has it changed from Round 1? If yes, what evidence forced the change?
+4. CONSOLIDATED DIAGNOSIS
+   Your updated primary diagnosis. Has it changed from Round 1? If yes, what specific peer argument or evidence forced the change?
 
-4. TEAM CONSENSUS POINTS
-   What the panel has collectively established with high confidence — list specific clinical facts, not generalities.
+5. TEAM CONSENSUS POINTS
+   What the panel has collectively established with high confidence — specific clinical facts, not generalities.
 
-5. UNRESOLVED DISPUTES
-   Specific diagnostic disagreements the panel could not resolve. What single data point would settle each?
+6. UNRESOLVED DISPUTES + DISCRIMINATOR
+   Each diagnostic disagreement the panel could not resolve. For each, name the SINGLE highest-yield investigation that would settle it and the exact result that discriminates between the competing diagnoses.
 
 RULES:
-- Reference colleagues as "Colleague A (IM attending)", "Colleague B (Emergency)", etc.
+- Reference colleagues by specialty: "Colleague (Cardiology)", "Colleague (Emergency Medicine)", etc.
 - Cite every claim [S#]. Flag anything not in evidence.
-- Direct disagreement is expected — hedging weakens panel output.
+- Direct, specific disagreement is required — blanket agreement or hedging is a failure of this round and weakens the final report.
+- Stay in your specialty character throughout; do not become a generic physician.
 - Minimum 300 words.`;
 }
 
@@ -406,13 +415,14 @@ Apply your specialty diagnostic framework now. Produce all 7 required sections. 
 function buildDebateUserPrompt(
   question: string,
   context: string,
+  ownRole: string,
   myAssessment: string,
-  peers: Array<{ model: string; message: string }>,
+  peers: Array<{ role: string; message: string }>,
 ): string {
   const peerBlock = peers
-    .map((p, i) => `=== Colleague ${String.fromCharCode(65 + i)} (${p.model}) ===\n${p.message}`)
+    .map((p) => `=== Colleague (${p.role}) ===\n${p.message}`)
     .join("\n\n");
-  return `Evidence:\n${context}\n\nClinical question: ${question}\n\n=== YOUR Initial Assessment ===\n${myAssessment}\n\n=== PEER ASSESSMENTS FOR REVIEW ===\n${peerBlock}\n\nProvide your REFINED peer-reviewed response:`;
+  return `Evidence:\n${context}\n\nClinical question: ${question}\n\nYOU are the ${ownRole} on this panel — debate in that character.\n\n=== YOUR Initial Assessment ===\n${myAssessment}\n\n=== PEER ASSESSMENTS FOR REVIEW (each labelled by specialty) ===\n${peerBlock}\n\nProvide your REFINED peer-reviewed response, critiquing each colleague by their specialty from your ${ownRole} perspective:`;
 }
 
 function buildSynthesisUserPrompt(
@@ -484,13 +494,20 @@ async function runDebateAgent(
   question: string,
   context: string,
   myAssessment: string,
-  peers: Array<{ model: string; message: string }>,
+  peers: Array<{ model: string; role: string; message: string }>,
   matches: MatchMeta[],
   agentIndex: number,
   specialty: SpecialtyMeta,
 ): Promise<AgentReply & { round: 2 }> {
-  const system = buildDebateSystemPrompt();
-  const user = buildDebateUserPrompt(question, context, myAssessment, peers);
+  const cognitiveStrategy = MODEL_COGNITIVE_STRATEGIES[model];
+  const system = buildDebateSystemPrompt(specialty, cognitiveStrategy);
+  const user = buildDebateUserPrompt(
+    question,
+    context,
+    specialty.role,
+    myAssessment,
+    peers.map((p) => ({ role: p.role, message: p.message })),
+  );
   const tag = `${specialty.role} (debate)`;
 
   const rufloMsg = await callRufloApi({ model, system, question, context, evidence: matches, debateMode: true, peers });
@@ -498,7 +515,7 @@ async function runDebateAgent(
 
   if (hasNvidiaKey()) {
     try {
-      const message = await nvidiaChat(model, system, user, undefined, 1024);
+      const message = await nvidiaChat(model, system, user, undefined, 2048);
       return { model, message, reasoning: tag, round: 2 };
     } catch (err) {
       return { model, message: buildDebateFallback(question, myAssessment, peers, agentIndex), reasoning: `fallback (${(err as Error).message.slice(0, 60)})`, round: 2 };
@@ -634,13 +651,18 @@ export async function runSwarm({
   if (selected.length >= 4) {
     onDebateStart?.();
 
+    const specialtyByModel = new Map(selected.map((m, i) => [m, specialties[i]]));
     const round2Map = new Map<string, AgentReply & { round: 2 }>();
     await Promise.all(
       selected.map((m, idx) => {
         const myAssessment = round1Map.get(m)?.message ?? "";
         const peers = round1Agents
           .filter((a) => a.model !== m)
-          .map((a) => ({ model: a.model, message: a.message }));
+          .map((a) => ({
+            model: a.model,
+            role: specialtyByModel.get(a.model)?.role ?? a.model,
+            message: a.message,
+          }));
         return runDebateAgent(m, question, context, myAssessment, peers, matches, idx, specialties[idx]).then((reply) => {
           onAgentDone?.(reply);
           round2Map.set(m, reply);
