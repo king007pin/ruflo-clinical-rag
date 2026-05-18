@@ -23,6 +23,22 @@ import { pubmedCentralCrawler } from "./crawlers/pubmed-central";
 import { openfdaFaersCrawler } from "./crawlers/openfda-faers";
 import { whoDrugSafetyCrawler } from "./crawlers/who-drug-safety";
 // India-first new crawlers
+import { idspCrawler } from "./crawlers/idsp";
+import { ncgIndiaCrawler } from "./crawlers/ncg-india";
+import { iapGuidelinesCrawler } from "./crawlers/iap-guidelines";
+import { fogsiGuidelinesCrawler } from "./crawlers/fogsi-guidelines";
+import { rssdiGuidelinesCrawler } from "./crawlers/rssdi-guidelines";
+import { inaslGuidelinesCrawler } from "./crawlers/inasl-guidelines";
+// Free international clinical references
+import { litflCrawler } from "./crawlers/litfl";
+import { radiopaediaCrawler } from "./crawlers/radiopaedia";
+import { dermnetCrawler } from "./crawlers/dermnet";
+import { survivingSepsisCrawler } from "./crawlers/surviving-sepsis";
+import { kdigoGuidelinesCrawler } from "./crawlers/kdigo-guidelines";
+import { goldCopdCrawler } from "./crawlers/gold-copd";
+import { ginaAsthmaCrawler } from "./crawlers/gina-asthma";
+import { statpearlsCrawler } from "./crawlers/statpearls";
+import { wsesGuidelinesCrawler } from "./crawlers/wses-guidelines";
 import { ntepTbCrawler } from "./crawlers/ntep-tb";
 import { nacoHivCrawler } from "./crawlers/naco-hiv";
 import { ncvbdcMalariaCrawler } from "./crawlers/ncvbdc-malaria";
@@ -64,4 +80,21 @@ export const CRAWLERS: Record<string, CrawlerDef> = {
   [nfiCrawler.id]: nfiCrawler,
   [cdscoAlertsCrawler.id]: cdscoAlertsCrawler,
   [pvpiAlertsCrawler.id]: pvpiAlertsCrawler,
+  // India specialty bodies
+  [idspCrawler.id]: idspCrawler,
+  [ncgIndiaCrawler.id]: ncgIndiaCrawler,
+  [iapGuidelinesCrawler.id]: iapGuidelinesCrawler,
+  [fogsiGuidelinesCrawler.id]: fogsiGuidelinesCrawler,
+  [rssdiGuidelinesCrawler.id]: rssdiGuidelinesCrawler,
+  [inaslGuidelinesCrawler.id]: inaslGuidelinesCrawler,
+  // Free international clinical references
+  [litflCrawler.id]: litflCrawler,
+  [radiopaediaCrawler.id]: radiopaediaCrawler,
+  [dermnetCrawler.id]: dermnetCrawler,
+  [survivingSepsisCrawler.id]: survivingSepsisCrawler,
+  [kdigoGuidelinesCrawler.id]: kdigoGuidelinesCrawler,
+  [goldCopdCrawler.id]: goldCopdCrawler,
+  [ginaAsthmaCrawler.id]: ginaAsthmaCrawler,
+  [statpearlsCrawler.id]: statpearlsCrawler,
+  [wsesGuidelinesCrawler.id]: wsesGuidelinesCrawler,
 };
