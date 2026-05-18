@@ -1,4 +1,4 @@
-import { poolCorpus } from "@/db";
+import { poolCorpus, corpusRetry } from "@/db";
 import { assembleContext, embedText, type Match } from "@/lib/rag";
 import { getSimilarPastCases, logSession } from "@/lib/session-learning";
 import { runManagedSwarm } from "@/lib/manager";
@@ -39,8 +39,9 @@ export async function POST(req: NextRequest) {
   const qEmbedding = await embedText(question, "query");
   const vecStr = `[${qEmbedding.join(",")}]`;
 
-  const { rows } = await poolCorpus.query<PgRow>(
-    `SELECT e.source_id, e.chunk, e.position,
+  const { rows } = await corpusRetry(() =>
+    poolCorpus.query<PgRow>(
+      `SELECT e.source_id, e.chunk, e.position,
             s.title AS source_title, s.type AS source_type, s.url AS source_url,
             (e.embedding <=> $1::vector) AS distance
      FROM embeddings e
@@ -48,7 +49,8 @@ export async function POST(req: NextRequest) {
      WHERE e.embedding IS NOT NULL AND e.chunk IS NOT NULL
      ORDER BY e.embedding <=> $1::vector
      LIMIT $2`,
-    [vecStr, topK],
+      [vecStr, topK],
+    ),
   );
 
   if (!rows.length) {

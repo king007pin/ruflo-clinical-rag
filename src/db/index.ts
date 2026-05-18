@@ -51,3 +51,25 @@ if (corpusUrl && process.env.NODE_ENV !== "production") {
 }
 
 export const dbCorpus = corpusUrl ? drizzle(poolCorpus) : db;
+
+// The corpus DB (Rivestack) has a low per-role connection cap and no pooler.
+// Retry transient connection-exhaustion errors with exponential backoff +
+// jitter so a brief spike past the cap degrades to a slower response instead
+// of a failed clinical query. No-op when the corpus is on the primary DB.
+const RETRYABLE = new Set(["53300", "57P03", "08006", "08001", "08004", "57P01"]);
+
+export async function corpusRetry<T>(fn: () => Promise<T>, attempts = 5): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      const code = (e as { code?: string } | null)?.code;
+      if (!code || !RETRYABLE.has(code) || i === attempts - 1) throw e;
+      lastErr = e;
+      const backoff = Math.min(2_500, 150 * 2 ** i) + Math.random() * 150;
+      await new Promise((r) => setTimeout(r, backoff));
+    }
+  }
+  throw lastErr;
+}

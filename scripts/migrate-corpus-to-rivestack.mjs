@@ -77,8 +77,11 @@ async function main() {
     await dst.query("TRUNCATE embeddings, sources RESTART IDENTITY CASCADE");
   }
 
+  // Copy only columns the source DB actually has. The primary `sources`
+  // table has drifted from schema.ts and lacks url_hash/content_hash; the
+  // target keeps those columns nullable, so they stay NULL after copy.
   const srcSources = (await src.query(
-    "SELECT id,title,type,url,description,url_hash,content_hash,created_at FROM sources ORDER BY id",
+    "SELECT id,title,type,url,description,created_at FROM sources ORDER BY id",
   )).rows;
   console.log(`Copying ${srcSources.length} sources…`);
   for (let i = 0; i < srcSources.length; i += 500) {
@@ -86,22 +89,26 @@ async function main() {
     const vals = [];
     const ph = batch
       .map((r, k) => {
-        const b = k * 8;
-        vals.push(r.id, r.title, r.type, r.url, r.description, r.url_hash, r.content_hash, r.created_at);
-        return `($${b + 1},$${b + 2},$${b + 3},$${b + 4},$${b + 5},$${b + 6},$${b + 7},$${b + 8})`;
+        const b = k * 6;
+        vals.push(r.id, r.title, r.type, r.url, r.description, r.created_at);
+        return `($${b + 1},$${b + 2},$${b + 3},$${b + 4},$${b + 5},$${b + 6})`;
       })
       .join(",");
     await dst.query(
-      `INSERT INTO sources (id,title,type,url,description,url_hash,content_hash,created_at) VALUES ${ph}`,
+      `INSERT INTO sources (id,title,type,url,description,created_at) VALUES ${ph}`,
       vals,
     );
   }
 
-  const total = (await src.query("SELECT count(*)::int c FROM embeddings")).rows[0].c;
-  console.log(`Copying ${total} embeddings…`);
+  // Primary `embedding` column is jsonb with mixed array lengths: legacy
+  // 96-dim rows from an old model are junk (RAG uses 1024-dim). Copy only
+  // valid 1024-length vectors; jsonb::text yields a valid pgvector literal.
+  const DIM_FILTER = "jsonb_array_length(embedding) = 1024";
+  const total = (await src.query(`SELECT count(*)::int c FROM embeddings WHERE ${DIM_FILTER}`)).rows[0].c;
+  console.log(`Copying ${total} embeddings (1024-dim only)…`);
   let done = 0;
   const cur = await src.query(
-    "SELECT id,source_id,chunk,embedding::text AS embedding,position,created_at FROM embeddings ORDER BY id",
+    `SELECT id,source_id,chunk,embedding::text AS embedding,position,created_at FROM embeddings WHERE ${DIM_FILTER} ORDER BY id`,
   );
   for (let i = 0; i < cur.rows.length; i += 300) {
     const batch = cur.rows.slice(i, i + 300);

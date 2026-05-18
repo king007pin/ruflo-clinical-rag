@@ -1,6 +1,6 @@
 # Mediq — Clinical RAG Platform
 
-A production-grade medical knowledge retrieval system powered by a 7-model NVIDIA NIM AI swarm, pgvector semantic search, and 22 curated clinical sources spanning 10,000+ rare diseases, guidelines, drug safety data, and peer-reviewed research.
+A production-grade medical knowledge retrieval system powered by a 10-model NVIDIA NIM AI swarm with a 52-specialty clinical pool and structured round-2 peer debate, pgvector semantic search, and 22 curated clinical sources + 22 RSS/PubMed feeds spanning 10,000+ rare diseases, guidelines, drug safety data, and peer-reviewed research.
 
 ---
 
@@ -15,17 +15,25 @@ Clinical Query
 pgvector Semantic Search  ──▶  Top-K relevant chunks
      │
      ▼
-7-Model NIM Swarm (parallel)
-  ├─ Llama 3.3 70B          (general reasoning)
-  ├─ GPT-OSS 120B            (OpenAI-class reasoning)
-  ├─ Llama 4 Maverick 17B   (multimodal / vision)
-  ├─ Qwen3 80B               (multilingual reasoning)
-  ├─ Mistral Ministral 14B  (fast fallback)
-  ├─ Nemotron Super 120B    (NVIDIA large reasoning)
-  └─ Nemotron Nano 12B VL   (compact fallback)
+10-Model NIM Swarm (parallel, each pinned to a specialty + cognitive lens)
+  ├─ Llama 3.3 70B            internal medicine   · Bayesian differential (synthesis anchor)
+  ├─ GPT-OSS 120B             oncology            · worst-case / red-flag hunter
+  ├─ Llama 4 Maverick 17B     emergency medicine  · time-critical life-threat triage
+  ├─ Qwen3 80B                neurology           · devil's-advocate / rare-dx hunter
+  ├─ Ministral 14B            infectious disease  · pathogen-first reasoning
+  ├─ Nemotron Super 120B      endocrinology       · metabolic/systemic unifier
+  ├─ Nemotron Nano 12B VL     general practice    · Occam's razor / parsimony
+  ├─ Mixtral 8x22B            rheumatology        · step-by-step pathophysiology
+  ├─ Nemotron Super 49B       critical care       · haemodynamic stability
+  └─ Mistral Large 3 675B     hematology          · evidence-quality grader
+     │
+     ▼  (complex/emergency queries, 4+ agents)
+Round 2 — specialty peer debate
+  each agent critiques colleagues BY specialty, mounts a mechanism-based
+  challenge, and revises its differential; 52-specialty pool backs routing
      │
      ▼
-Manager AI (GPT-OSS 120B) — consensus synthesis
+Manager AI (Llama 3.3 70B) — consensus synthesis
      │
      ▼
 Cited clinical answer
@@ -35,9 +43,11 @@ Cited clinical answer
 
 ## Features
 
-- **7-model AI consensus** — Parallel inference across NVIDIA NIM-hosted LLMs with automatic model health-checking and live replacement
-- **22 medical source crawlers** — WHO, CDC, NICE, PubMed Central, Cochrane, AHRQ, USPSTF, Orphadata (10,000+ rare diseases), OMIM, DailyMed, OpenFDA FAERS, ClinicalTrials.gov, WikiEM, MDCalc, Merck Manual, Gene Reviews, PubChem, India MoHFW/ICMR guidelines, and more
-- **pgvector semantic search** — 1024-dimension embeddings via NVIDIA `nv-embedqa-e5-v5`, stored natively in PostgreSQL — 3× more efficient than JSONB
+- **10-model AI consensus** — Parallel inference across NVIDIA NIM-hosted LLMs, each pinned to a medical specialty + distinct cognitive strategy, with automatic model health-checking and live replacement
+- **52-specialty clinical pool + round-2 peer debate** — Complex/emergency queries trigger a structured debate where each agent critiques colleagues *by specialty* and mounts mechanism-based challenges before synthesis
+- **22 medical source crawlers + 22 RSS/PubMed feeds** — WHO, CDC, NICE, PubMed Central, Cochrane, AHRQ, USPSTF, Orphadata (10,000+ rare diseases), OMIM, DailyMed, OpenFDA FAERS, ClinicalTrials.gov, WikiEM, MDCalc, Merck Manual, Gene Reviews, PubChem, India MoHFW/ICMR; live news from WHO/CDC/NEJM/Lancet/medRxiv + India health press
+- **Optional dual-DB split** — Operational tables on the primary DB; the large RAG corpus (`sources`+`embeddings`) can be offloaded to a secondary DB via `RIVESTACK_DATABASE_URL` (gated, zero-regression fallback, retry/backoff on connection-cap)
+- **pgvector semantic search** — 1024-dimension embeddings via NVIDIA `nv-embedqa-e5-v5`
 - **PDF ingestion** — Upload and parse medical PDFs directly into the knowledge base
 - **RSS feed panel** — Live medical news from WHO, CDC, NEJM, Lancet, BMJ, and specialty feeds
 - **Clinical case management** — Save, browse, and export cases to PDF
@@ -108,16 +118,29 @@ cp .env.example .env.local
 Edit `.env.local`:
 
 ```env
+# Primary DB — operational tables. Use a POOLED endpoint for serverless.
 DATABASE_URL=postgres://user:password@host:5432/dbname?sslmode=require
 NVIDIA_API_KEY=nvapi-...
 APP_PASSWORD=your-login-password
 AUTH_SECRET=your-random-64-char-secret
+CRON_SECRET=your-random-cron-secret
+
+# Optional: offload the RAG corpus (sources+embeddings) to a 2nd DB.
+# MUST be a POOLED endpoint (a direct host with a low per-role connection
+# cap fails under serverless — Postgres 53300). Unset = corpus on primary.
+# RIVESTACK_DATABASE_URL=postgres://user:password@pooled-host:5432/db?sslmode=require
 ```
 
-Generate `AUTH_SECRET`:
+Generate secrets:
 ```bash
-openssl rand -hex 32
+openssl rand -hex 32   # AUTH_SECRET
+openssl rand -hex 16   # CRON_SECRET
 ```
+
+> **Free-tier note:** Neon's free plan caps at 500MB and *pauses the
+> project* when exceeded. The RAG corpus is the storage hog — either
+> upgrade the primary DB or set `RIVESTACK_DATABASE_URL` and run
+> `npm run db:migrate-corpus` to move `sources`+`embeddings` off it.
 
 ### 3. Run database migrations
 
