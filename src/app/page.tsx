@@ -101,14 +101,14 @@ export default async function HomePage() {
             >
               Mediq synthesises multi-model clinical assessments grounded in your institutional corpus —
               textbooks, guidelines, and lecture transcripts. Present a case; receive ranked differentials,
-              cited evidence, and explicit uncertainty ratings from a seven-specialist AI panel.
+              cited evidence, and explicit uncertainty ratings from a ten-specialist AI panel.
             </p>
 
             {/* Stat pills */}
             <div className="mt-7 flex flex-wrap justify-center gap-3 text-sm">
               <StatPill label="Sources" value={sourceCount} />
               <StatPill label="Chunks" value={chunkCount} />
-              <StatPill label="Specialists" value={7} />
+              <StatPill label="Specialists" value={10} />
               <StatPill label="Consensus" value="live" />
             </div>
           </div>
@@ -182,10 +182,10 @@ export default async function HomePage() {
           <CollapsibleSection
             eyebrow="Multi-Provider AI"
             title="Provider & Swarm Manager"
-            subtitle="Add API keys from 12 providers, auto-configure a 7-role clinical swarm"
+            subtitle="Add API keys from 12 providers, auto-configure a 10-role clinical swarm"
             features={[
               { sub: "12", label: "Providers" },
-              { sub: "7", label: "Swarm Roles" },
+              { sub: "10", label: "Swarm Roles" },
               { sub: "Auto", label: "Model Select" },
               { sub: "Live", label: "Health Check" },
             ]}
