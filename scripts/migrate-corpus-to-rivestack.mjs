@@ -132,6 +132,18 @@ async function main() {
   await dst.query("SELECT setval(pg_get_serial_sequence('sources','id'), COALESCE((SELECT max(id) FROM sources),1))");
   await dst.query("SELECT setval(pg_get_serial_sequence('embeddings','id'), COALESCE((SELECT max(id) FROM embeddings),1))");
 
+  // Build HNSW index after full data load — building on complete dataset is
+  // ~10x faster than incremental updates during insert, and enables O(log N)
+  // ANN cosine search instead of O(N) sequential scan.
+  console.log("Building HNSW index on embeddings (this may take a few minutes)…");
+  await dst.query(`
+    CREATE INDEX IF NOT EXISTS embeddings_hnsw_idx
+    ON embeddings
+    USING hnsw (embedding vector_cosine_ops)
+    WITH (m = 16, ef_construction = 64)
+  `);
+  console.log("HNSW index built.");
+
   const s2 = (await dst.query("SELECT count(*)::int c FROM sources")).rows[0].c;
   const e2 = (await dst.query("SELECT count(*)::int c FROM embeddings")).rows[0].c;
   console.log(`Done. Target now: ${s2} sources, ${e2} embeddings (source had ${srcSources.length}/${total}).`);

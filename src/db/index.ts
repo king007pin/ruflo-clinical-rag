@@ -12,18 +12,24 @@ const globalForDb = globalThis as typeof globalThis & {
   __mediqCorpusPool?: Pool;
 };
 
+// Tuned for a low per-role connection cap with no external pooler under
+// Vercel serverless. Fluid Compute reuses warm instances, so this
+// module-scoped singleton pool multiplexes many requests over ONE
+// connection; cold-start bursts are absorbed by corpusRetry backoff.
 export const pool =
   globalForDb.__arenaNextJsPostgresqlPool ??
   new Pool({
     connectionString: databaseUrl,
-    max: 3,
-    idleTimeoutMillis: 10_000,
-    connectionTimeoutMillis: 5_000,
+    max: 1,
+    idleTimeoutMillis: 1_500,
+    connectionTimeoutMillis: 8_000,
+    allowExitOnIdle: true,
+    keepAlive: true,
   });
 
-if (process.env.NODE_ENV !== "production") {
-  globalForDb.__arenaNextJsPostgresqlPool = pool;
-}
+// Cache the singleton in every environment (incl. production) so accidental
+// re-imports never open a second connection against the cap.
+globalForDb.__arenaNextJsPostgresqlPool = pool;
 
 export const db = drizzle(pool);
 
@@ -46,7 +52,7 @@ export const poolCorpus: Pool = corpusUrl
       }))
   : pool;
 
-if (corpusUrl && process.env.NODE_ENV !== "production") {
+if (corpusUrl) {
   globalForDb.__mediqCorpusPool = poolCorpus;
 }
 
