@@ -25,7 +25,10 @@ export function requireCron(req: Request): NextResponse | null {
   const secret = process.env.CRON_SECRET;
   if (!secret) return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 500 });
 
-  const token = req.headers.get("x-cron-secret") ?? "";
+  // Vercel Cron sends `Authorization: Bearer <CRON_SECRET>`; also accept an
+  // explicit `x-cron-secret` header for manual / external triggers.
+  const bearer = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
+  const token = req.headers.get("x-cron-secret") || bearer;
   let authorized = false;
   try {
     authorized =
