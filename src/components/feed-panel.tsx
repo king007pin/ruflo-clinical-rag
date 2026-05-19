@@ -233,7 +233,6 @@ function StatpearlsCrawl() {
   const [crawling, setCrawling] = useState(false);
   const [totalUrls, setTotalUrls] = useState(0);
   const [currentOffset, setCurrentOffset] = useState(0);
-  const [sessionIngested, setSessionIngested] = useState(0);
   const [msg, setMsg] = useState<string | null>(null);
   const stopRef = useRef(false);
 
@@ -258,7 +257,6 @@ function StatpearlsCrawl() {
   async function startCrawl() {
     stopRef.current = false;
     setCrawling(true);
-    setSessionIngested(0);
     setMsg("Crawling StatPearls…");
 
     let sessionTotal = 0;
@@ -266,7 +264,6 @@ function StatpearlsCrawl() {
       const result = await runBatch();
       if (result.error) { setMsg(`Error: ${result.error}`); break; }
       sessionTotal += result.ingested;
-      setSessionIngested(sessionTotal);
       setCurrentOffset(result.nextOffset);
       setTotalUrls(result.totalUrls);
       setMsg(`${result.progress} articles processed · ${sessionTotal} ingested this session`);
@@ -286,7 +283,6 @@ function StatpearlsCrawl() {
       body: JSON.stringify({ reset: true }),
     });
     setCurrentOffset(0);
-    setSessionIngested(0);
     setMsg("Crawl progress reset to beginning.");
     await loadStatus();
   }

@@ -223,12 +223,9 @@ def test_chat_model(
 
             last_error = f"Unexpected status {resp.status_code}"
 
-        except requests.Timeout:
+        except (requests.Timeout, requests.RequestException) as e:
             latency_ms = (time.monotonic() - t0) * 1000
-            last_error = "Timeout"
-        except requests.RequestException as e:
-            latency_ms = (time.monotonic() - t0) * 1000
-            last_error = str(e)[:120]
+            last_error = "Timeout" if isinstance(e, requests.Timeout) else str(e)[:120]
 
     return ModelCheckResult(
         model_id=model_id, status=last_status, latency_ms=0,

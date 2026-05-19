@@ -11,14 +11,15 @@ import { dbCorpus } from "@/db";
 import { embeddings, sources } from "@/db/schema";
 import { desc, sql } from "drizzle-orm";
 
+const HTML_ENTITIES: Record<string, string> = {
+  "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": '"',
+  "&#x27;": "'", "&#39;": "'", "&apos;": "'", "&nbsp;": " ",
+};
+
 function cleanTitle(raw: string | null | undefined): string {
   if (!raw) return "Untitled Source";
   if (raw.trimStart().startsWith("<?xml") || raw.trimStart().startsWith("<!DOCTYPE")) return "Untitled Source";
-  return raw
-    .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&#39;/g, "'")
-    .replace(/&apos;/g, "'").replace(/&nbsp;/g, " ")
-    .trim() || "Untitled Source";
+  return raw.replace(/&[^;]{1,6};/g, e => HTML_ENTITIES[e] ?? e).trim() || "Untitled Source";
 }
 
 export const dynamic = "force-dynamic";

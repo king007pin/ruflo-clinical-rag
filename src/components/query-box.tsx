@@ -134,7 +134,7 @@ function ReportView({ text }: { text: string }) {
 
   const isAllCapsHeader = (l: string) =>
     /^[A-Z][A-Z\s\d&\/\-–—:()]+$/.test(l.trim()) && l.trim().length >= 4 && l.trim().length <= 60;
-  const isDashLine = (l: string) => /^[-─═─]+$/.test(l.trim()) && l.trim().length >= 8;
+  const isDashLine = (l: string) => /^[-─═]+$/.test(l.trim()) && l.trim().length >= 8;
   const isTableLine = (l: string) => l.trim().startsWith("|");
   const isNumbered = (l: string) => /^\d+\.\s{1,3}/.test(l.trim());
   const isBullet = (l: string) => /^[-•]\s{1,3}/.test(l.trim());
