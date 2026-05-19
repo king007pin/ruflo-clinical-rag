@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: mediq
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: oregon
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: NVIDIA_API_KEY
+        sync: false
+      - key: APP_PASSWORD
+        sync: false
+      - key: APP_SECRET_KEY
+        sync: false
+      - key: AUTH_SECRET
+        sync: false
+      - key: CRON_SECRET
+        sync: false
+      - key: RIVESTACK_DATABASE_URL
+        sync: false
+      - key: NCBI_API_KEY
+        sync: false
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
