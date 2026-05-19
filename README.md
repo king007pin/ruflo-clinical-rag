@@ -1,5 +1,7 @@
 # Mediq — Clinical RAG Platform
 
+**Live:** https://mediq-ehct.onrender.com
+
 Production medical knowledge retrieval: 10-model NVIDIA NIM swarm, 52-specialty peer debate, pgvector semantic search, 22 crawlers + 22 RSS/PubMed feeds, 10,000+ rare diseases.
 
 ---
