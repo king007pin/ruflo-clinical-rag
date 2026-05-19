@@ -1,0 +1,11 @@
+.next
+node_modules
+.git
+.env
+.env.local
+.env*.local
+*.log
+Dockerfile
+.dockerignore
+README.md
+NIM_SWARM_README.md
