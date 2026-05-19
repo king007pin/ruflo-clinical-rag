@@ -18,10 +18,7 @@ export const NVIDIA_SWARM_MODELS = [
 
 export type NvidiaModel = (typeof NVIDIA_SWARM_MODELS)[number];
 
-// Vercel Hobby: 60s hard cap. Use 50s per agent so failed calls abort fast.
-const DEFAULT_TIMEOUT = process.env.VERCEL === "1" ? 50_000 : 90_000;
-
-async function nvidiaFetch(path: string, body: unknown, timeoutMs = DEFAULT_TIMEOUT): Promise<unknown> {
+async function nvidiaFetch(path: string, body: unknown, timeoutMs = 90_000): Promise<unknown> {
   const apiKey = process.env.NVIDIA_API_KEY;
   if (!apiKey) throw new Error("NVIDIA_API_KEY not configured");
   const ctrl = new AbortController();

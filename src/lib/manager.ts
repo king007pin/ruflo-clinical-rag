@@ -60,14 +60,12 @@ function scoreComplexity(query: string, isEmergency: boolean): Complexity {
   return "simple";
 }
 
-// Vercel Hobby caps functions at 60s regardless of maxDuration.
-// Smaller swarm + no debate keeps each query under that limit.
-// Set ENABLE_SWARM_DEBATE=true + use Vercel Pro to unlock full swarm.
-const isVercel = process.env.VERCEL === "1";
-
-const SWARM_SIZE_MAP: Record<Complexity, number> = isVercel
-  ? { simple: 1, moderate: 2, complex: 3, emergency: 5 }
-  : { simple: 2, moderate: 3, complex: 5, emergency: 10 };
+const SWARM_SIZE_MAP: Record<Complexity, number> = {
+  simple:    2,
+  moderate:  3,
+  complex:   5,
+  emergency: 10,
+};
 
 // ── Post-answer escalation check ─────────────────────────────────────────────
 

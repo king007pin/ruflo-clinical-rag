@@ -1028,12 +1028,10 @@ export async function runSwarm({
   );
   const round1Agents = selected.map((m) => round1Map.get(m)!);
 
-  // ── Round 2: Peer debate — disabled on Vercel Hobby (60s limit).
-  // Set ENABLE_SWARM_DEBATE=true in env to enable (requires Vercel Pro or local).
+  // ── Round 2: Peer debate — only for complex/emergency (4+ agents) ────────
   let round2Agents: Array<AgentReply & { round: 2 }> = [];
-  const debateEnabled = process.env.ENABLE_SWARM_DEBATE === "true";
 
-  if (debateEnabled && selected.length >= 4) {
+  if (selected.length >= 4) {
     onDebateStart?.();
 
     const specialtyByModel = new Map(selected.map((m, i) => [m, specialties[i]]));
