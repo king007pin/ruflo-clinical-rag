@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { managerEvents, querySessions } from "@/db/schema";
+import { managerEvents } from "@/db/schema";
 import { desc, sql } from "drizzle-orm";
 import { runSwarm } from "./swarm";
 

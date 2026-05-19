@@ -1,4 +1,5 @@
 import type { CrawlerDef, CrawlerArticle } from "./types";
+import { stripHtml } from "../utils/html";
 
 const DELAY_MS = 1000;
 const USER_AGENT = "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)";
@@ -17,20 +18,6 @@ const FALLBACK_SPECIALTY_URLS = [
   "https://www.merckmanuals.com/professional/dermatologic-disorders",
 ];
 
-function stripHtml(html: string): string {
-  return html
-    .replace(/<script[\s\S]*?<\/script>/gi, "")
-    .replace(/<style[\s\S]*?<\/style>/gi, "")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\s{2,}/g, " ")
-    .trim();
-}
 
 function extractTag(html: string, tag: string, attr?: string): string {
   if (attr) {

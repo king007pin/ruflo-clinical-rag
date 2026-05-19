@@ -66,7 +66,6 @@ export const omimCrawler: CrawlerDef = {
       // Extract MIM number and title from OMIM text format
       const titleMatch = text.match(/^\*FIELD\*\s+TX\s*\n([\s\S]*?)(?=\n\*FIELD\*|$)/m);
       const noMatch = text.match(/^\*RECORD\*\s*\n\*FIELD\*\s+NO\s*\n(\d+)/m);
-      const mnMatch = text.match(/^\*FIELD\*\s+MN\s*\n([\s\S]*?)(?=\n\*FIELD\*|$)/m);
 
       const mimNumber = noMatch?.[1] ?? "unknown";
       const titleText = titleMatch?.[1]?.split("\n")[0]?.trim() ?? `OMIM Entry ${mimNumber}`;

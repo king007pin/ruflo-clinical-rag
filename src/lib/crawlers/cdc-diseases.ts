@@ -1,22 +1,9 @@
 import type { CrawlerDef, CrawlerArticle } from "./types";
+import { stripHtml } from "../utils/html";
 
 const DELAY_MS = 600;
 const CDC_BASE = "https://www.cdc.gov";
 
-function stripHtml(html: string): string {
-  return html
-    .replace(/<script[\s\S]*?<\/script>/gi, "")
-    .replace(/<style[\s\S]*?<\/style>/gi, "")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\s{2,}/g, " ")
-    .trim();
-}
 
 function extractTag(html: string, tag: string, attr?: string): string {
   if (attr) {

@@ -2,7 +2,6 @@ import { db } from "@/db";
 import { providerCredentials } from "@/db/schema";
 import { encrypt } from "@/lib/secretVault";
 import { PROVIDERS } from "@/lib/providerRegistry";
-import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 

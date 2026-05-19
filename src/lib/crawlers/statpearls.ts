@@ -1,17 +1,10 @@
 import type { CrawlerDef, CrawlerArticle } from "./types";
+import { stripHtml } from "../utils/html";
 
 const DELAY_MS = 800;
 const BASE = "https://www.ncbi.nlm.nih.gov";
 const UA = "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)";
 
-function stripHtml(html: string): string {
-  return html
-    .replace(/<script[\s\S]*?<\/script>/gi, "")
-    .replace(/<style[\s\S]*?<\/style>/gi, "")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
-    .replace(/\s{2,}/g, " ").trim();
-}
 
 // High-yield StatPearls chapters — free NCBI clinical textbook
 const SEED_CHAPTERS = [

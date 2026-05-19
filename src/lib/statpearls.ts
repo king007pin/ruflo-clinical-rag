@@ -1,21 +1,8 @@
+import { stripHtml } from "./utils/html";
 const NCBI_BASE = "https://www.ncbi.nlm.nih.gov";
 const STATPEARLS_TOC = "https://www.ncbi.nlm.nih.gov/books/NBK430685/";
 const NCBI_DELAY_MS = 500; // NCBI rate-limit: be polite
 
-function stripHtml(html: string): string {
-  return html
-    .replace(/<script[\s\S]*?<\/script>/gi, "")
-    .replace(/<style[\s\S]*?<\/style>/gi, "")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\s{2,}/g, " ")
-    .trim();
-}
 
 function extractTag(html: string, tag: string, attr?: string): string {
   if (attr) {
