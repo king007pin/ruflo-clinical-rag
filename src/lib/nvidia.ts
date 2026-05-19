@@ -13,7 +13,7 @@ export const NVIDIA_SWARM_MODELS = [
   "nvidia/nemotron-nano-12b-v2-vl",              // general practice / fast triage, 12B
   "mistralai/mixtral-8x22b-instruct-v0.1",   // rheumatology / step-by-step pathophysiology, 8x22B MoE
   "nvidia/llama-3.3-nemotron-super-49b-v1",      // critical care / physiological pattern, 49B fast
-  "mistralai/mistral-large-3-675b-instruct-2512",           // hematology / evidence-quality grader, 675B
+  "nvidia/llama-3.1-nemotron-70b-instruct",                 // hematology / evidence-quality grader, 70B fast
 ] as const;
 
 export type NvidiaModel = (typeof NVIDIA_SWARM_MODELS)[number];

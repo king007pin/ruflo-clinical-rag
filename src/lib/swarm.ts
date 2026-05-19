@@ -139,7 +139,7 @@ const MODEL_COGNITIVE_STRATEGIES: Record<string, { strategy: string; mandate: st
     strategy: "Haemodynamic and physiological stability assessor",
     mandate: "Assess physiological stability first: MAP, HR, RR, SpO2, GCS, lactate — are any deteriorating? Apply shock index (HR/SBP) and quick SOFA. Then ask: which organ system is the index failure? Map every symptom to an organ-system failure pattern. Your management plan must be tiered: immediate stabilisation (next 30 min) → escalation criteria → disposition decision. Never recommend an investigation before the patient is stabilised.",
   },
-  "mistralai/mistral-large-3-675b-instruct-2512": {
+  "nvidia/llama-3.1-nemotron-70b-instruct": {
     strategy: "Evidence-quality grader and guideline anchor",
     mandate: "Grade every clinical claim by evidence level: RCT/meta-analysis (Level 1) → cohort/case-control (Level 2) → expert consensus (Level 3) → case report (Level 4). For each recommendation, state its evidence grade explicitly. Anchor your management plan to the highest-grade guideline available (NICE, AHA/ACC, WHO, ESMO, etc.). Flag any recommendation that is Level 3 or lower and explain why stronger evidence is lacking.",
   },
@@ -156,7 +156,7 @@ const MODEL_SPECIALTY_MAP: Record<string, string> = {
   "nvidia/nemotron-nano-12b-v2-vl":              "general_practice",    // 12B fast, community prevalence, outpatient feasibility
   "mistralai/mixtral-8x22b-instruct-v0.1":   "rheumatology",        // 8x22B sparse MoE, step-by-step pathophysiology, autoimmune
   "nvidia/llama-3.3-nemotron-super-49b-v1":      "critical_care",       // 49B fast, physiological stability, haemodynamic assessment
-  "mistralai/mistral-large-3-675b-instruct-2512":           "hematology",          // 123B, evidence-quality grading, guideline-anchored reasoning
+  "nvidia/llama-3.1-nemotron-70b-instruct":                 "hematology",          // 70B fast, evidence-quality grading, guideline-anchored reasoning
 };
 
 function getSpecialtyForModel(modelId: string, fallbackIndex: number): SpecialtyMeta {

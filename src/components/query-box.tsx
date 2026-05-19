@@ -60,9 +60,9 @@ const MODELS: ModelMeta[] = [
   { id: "nvidia/llama-3.3-nemotron-super-49b-v1", label: "Nemotron Super 49B", role: "Critical Care",
     description: "49B haemodynamic stability assessor. MAP, shock index, quick-SOFA. Tiered management: stabilise → escalate → disposition.",
     tags: ["free", "49B", "NVIDIA", "critical care"], size: "49B" },
-  { id: "mistralai/mistral-large-3-675b-instruct-2512", label: "Mistral Large 3 675B", role: "Hematology",
-    description: "675B evidence-quality grader. Grades every claim RCT → cohort → consensus → case report. Anchors to NICE/AHA/WHO/ESMO guidelines.",
-    tags: ["free", "675B", "evidence grading", "guidelines"], size: "675B" },
+  { id: "nvidia/llama-3.1-nemotron-70b-instruct", label: "Nemotron 70B", role: "Hematology",
+    description: "70B NVIDIA Nemotron. Evidence-quality grader. Grades every claim RCT → cohort → consensus → case report. Anchors to NICE/AHA/WHO/ESMO guidelines.",
+    tags: ["free", "70B", "NVIDIA", "evidence grading", "guidelines"], size: "70B" },
 ];
 
 const MODEL_COLORS = [
