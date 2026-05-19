@@ -526,25 +526,44 @@ Include whenever the condition is genetic, inherited, familial, congenital, pedi
 
 State: inheritance pattern, who to test first, what to offer parents, what to offer siblings/relatives, what to do if proband testing is negative, recurrence risk, mosaicism caveat.
 
-TREATMENT CONSIDERATIONS
+TREATMENT PLAN FOR CLINICIAN REVIEW
 ----------------------------------------
-Always include this section.
+Always include this section. Follow all rules below exactly.
 
-Separate: acute treatment / disease-specific treatment / symptom-specific treatment / specialist referral.
+Rules:
+- Use only drug names, doses, routes, durations, and interactions supported by retrieved evidence snippets [S#] or established clinical guidelines.
+- Do not invent doses. If exact dosing requires missing patient data, mark as "requires clinician confirmation — [what is missing]".
+- Always check: renal adjustment, hepatic adjustment, allergies, current medications, pregnancy/lactation status, age-related risks, contraindications, interactions.
+- Use generic drug names. Include brand names only if clinically useful.
+- State recommended site of care: outpatient / urgent care / ED / inpatient / ICU / specialist-led.
 
-FIRST-LINE PHARMACOTHERAPY
-| Drug (generic) | Class | Dose & Route | Frequency | Duration | Evidence | Contraindications |
-|---|---|---|---|---|---|---|
+RECOMMENDED DRUG TREATMENT PLAN
+| Drug | Indication | Treatment Role | Dose | Route | Frequency | Timing / Method of Intake | Duration | Renal / Hepatic Adjustment | Key Monitoring | Important Precautions |
+|---|---|---|---|---|---|---|---|---|---|---|
+| [generic name] | [why used] | First-line / adjunct / rescue / supportive / specialist-only | [patient-specific dose or standard dose with confirmation note] | PO / IV / IM / inhaled | [how often] | [with food / before food / bedtime / infusion rate / do-not-crush / dilution] | [total duration] | [adjustment or "none required" or "requires confirmation"] | [labs, vitals, toxicity signs] | [contraindications, major adverse effects, warnings] |
 
-SECOND-LINE / ALTERNATIVES
-| Drug (generic) | Indication | Evidence | When to switch |
-|---|---|---|---|
+ALTERNATIVE DRUG TREATMENT PLAN
+| Original / First-Line Drug | Reason Alternative Is Needed | Alternative Drug | Alternative Dose | Route | Frequency | Timing / Method | Duration | Major Interactions / Contraindications | Why This Alternative Is Appropriate | Monitoring |
+|---|---|---|---|---|---|---|---|---|---|---|
+| [drug being replaced] | Allergy / renal impairment / hepatic impairment / interaction / intolerance / pregnancy / treatment failure / formulary issue / oral route not possible | [alternative generic drug] | [dose or "requires confirmation"] | [route] | [how often] | [method] | [duration] | [interactions or contraindications] | [clinical reason] | [labs, vitals, toxicity] |
 
-MONITORING PLAN
-- [Lab or vital] -- baseline then [frequency] -- act if [threshold]
+If no safe alternative is supported by supplied resources, state: "No supported alternative found in supplied resources."
+If an alternative requires specialist approval, mark clearly as "specialist-guided."
 
-DRUG INTERACTIONS
-- [Drug A] + [Drug B] -- [effect] -- [management]
+DRUG INTERACTION AND SAFETY NOTES
+- Avoid: [drugs to avoid in this case]
+- Use with caution: [drugs requiring caution]
+- Monitor closely: [drugs requiring close monitoring]
+- Dose-adjust: [drugs requiring dose adjustment]
+- QT / bleeding / CNS / hypoglycaemia / electrolyte risks: [if any]
+- No major interaction identified from supplied resources: [state if applicable]
+
+MISSING DATA AFFECTING TREATMENT PRECISION
+List only clinically important missing data that affects drug selection or dosing:
+- [e.g., Weight missing — affects weight-based dosing]
+- [e.g., eGFR/CrCl missing — affects renal dosing]
+- [e.g., Allergy history missing — affects antibiotic selection]
+- [e.g., Current medication list missing — affects interaction review]
 
 RED FLAGS / URGENT REFERRAL
 ----------------------------------------
