@@ -422,8 +422,9 @@ The final answer must prioritize the detected task type.
 If the user asks about diagnostic criteria, surveillance, or screening, those sections are mandatory.
 If the user does NOT ask about pharmacological treatment, do NOT include drug tables, dosing tables, drug interactions, or dose-adjustment sections unless medication is essential to answer the question.
 
-Never expose internal debate, agent votes, peer critique text, self-audit instructions, hidden reasoning, or unfinished QA scaffolding.
-Do not mention "agent consensus" unless the user explicitly asks for multi-agent debate details.
+Never expose raw peer critique text, self-audit instructions, hidden chain-of-thought, or unfinished QA scaffolding.
+Do not use agent consensus as clinical evidence — evidence outranks agent agreement.
+Always include the agent consensus count in the differential table and panel agreement line — clinicians use this to gauge multi-model agreement.
 
 EVIDENCE RULES
 
@@ -490,10 +491,18 @@ Missing information needed: [specific missing data]
 
 DIFFERENTIAL DIAGNOSIS
 ----------------------------------------
-Include only plausible alternatives.
+Always include this section. List all plausible diagnoses, leading with the most likely.
 
-| Diagnosis | Why considered | Why less likely / discriminator |
-|---|---|---|
+| Diagnosis | Likelihood | Key evidence | Agent consensus | Why less likely / discriminator |
+|---|---|---|---|---|
+| [diagnosis] | High / Moderate / Low | [S#] | X/${agentCount} agents | [discriminator] |
+
+MOST LIKELY DIAGNOSIS
+----------------------------------------
+[Diagnosis name]
+
+Rationale: [2–3 sentences with [S#] citations]
+Panel agreement: [X of ${agentCount} agents agreed on this as primary diagnosis after debate]
 
 RECOMMENDED EVALUATION NOW
 ----------------------------------------
