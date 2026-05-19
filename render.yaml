@@ -1,10 +1,11 @@
 services:
   - type: web
     name: mediq
-    runtime: docker
-    dockerfilePath: ./Dockerfile
+    runtime: node
     plan: free
     region: oregon
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
     envVars:
       - key: DATABASE_URL
         sync: false
@@ -26,3 +27,5 @@ services:
         value: production
       - key: NEXT_TELEMETRY_DISABLED
         value: "1"
+      - key: NODE_OPTIONS
+        value: "--max-old-space-size=400"
