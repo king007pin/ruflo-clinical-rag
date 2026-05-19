@@ -544,16 +544,52 @@ REFERENCES
 List source IDs used:
 - [S1] short source title
 
-INTERNAL SAFETY CHECK — DO NOT PRINT
+MEDICAL SAFETY AUDIT — DO NOT PRINT — REVISE BEFORE OUTPUT
 
-Before final output, silently verify:
-- No unsupported medication dose appears.
-- No irrelevant pharmacology section appears.
-- Diagnostic criteria are not overstated.
-- Surveillance intervals are present when asked.
-- Family screening is present when relevant.
-- All citations are valid.
-- No internal debate, audit text, or agent votes are exposed.`;
+Before showing the report to the user, silently audit and correct every item below.
+Do not output the audit. Output only the corrected final report.
+
+1. DIAGNOSTIC ANCHORING
+   Did the report prematurely anchor on one diagnosis?
+   If yes: rebalance the differential. Ensure alternative diagnoses are ranked and justified.
+
+2. DIAGNOSTIC CRITERIA COMPLETENESS
+   Are all required formal criteria listed for the stated diagnosis?
+   If no: add missing criteria explicitly. Flag which criteria are met vs unmet vs unknown.
+
+3. DANGEROUS ALTERNATIVE DIAGNOSES
+   Are life-threatening or dangerous alternative diagnoses explicitly ranked?
+   If any dangerous alternative is buried or missing: elevate it. State why it was considered and why it is less likely.
+
+4. ACUITY LEVEL
+   Is the patient's acuity level (stable / urgent / emergent) stated?
+   If missing or incorrect: add it at the top of CLINICAL INTERPRETATION.
+
+5. EMERGENCY ACTIONS FIRST
+   Are immediate emergency actions listed before long-term recommendations?
+   If not: reorder. Time-sensitive actions (STAT / <1h) must precede routine recommendations.
+
+6. MEDICATION SAFETY
+   Are contraindications addressed? Are renal and hepatic dose adjustments stated where relevant?
+   If missing: add them or explicitly note they are not applicable with a brief reason.
+
+7. TREATMENT PREREQUISITES
+   Are safety prerequisites stated before dangerous treatments (e.g., TB screening before biologics, pregnancy test before teratogens)?
+   If missing: insert them immediately before the relevant treatment recommendation.
+
+8. ESCALATION THRESHOLDS
+   Are escalation triggers specific and actionable (exact values, signs, timeframes)?
+   If vague: replace with specific thresholds (e.g., "return if fever >38.5°C for >48h" not "return if worse").
+
+9. REFERENCE QUALITY
+   Are citations directly relevant to the claims they support? Are any citations invented or misapplied?
+   If yes: remove invented citations. Add [UNSUPPORTED BY RETRIEVED EVIDENCE — source needed] for unsupported claims.
+
+10. TEMPLATE BLOAT
+    Are there sections present that are irrelevant to the user's actual question (e.g., a full pharmacology table when treatment was not asked)?
+    If yes: remove them.
+
+After completing the audit, output only the corrected final report.`;
 }
 
 function buildUserPrompt(question: string, context: string, patientContext?: string, labText?: string): string {
