@@ -270,10 +270,16 @@ async function generateClinicalPDF(reportText: string, query: string): Promise<B
     doc.text("CLINICAL ASSESSMENT REPORT", PW / 2, 42, { align: "center" });
     if (query.trim()) {
       doc.setFont("times", "italic"); doc.setFontSize(8); tc(MUTED);
-      const q = query.length > 130 ? query.slice(0, 130) + "…" : query;
-      doc.text(`Query: ${q}`, PW / 2, 48, { align: "center", maxWidth: CW });
+      const qLines = doc.splitTextToSize(`Query: ${query}`, CW) as string[];
+      doc.text(qLines, PW / 2, 48, { align: "center" });
+      // separator and content start track actual query height (each line ≈4mm at 8pt)
+      const qEndY = 48 + (qLines.length - 1) * 4;
+      dc(LIGHT); doc.setLineWidth(0.25); doc.line(ML, qEndY + 4, MR, qEndY + 4);
+      y = qEndY + 9;
+    } else {
+      dc(LIGHT); doc.setLineWidth(0.25); doc.line(ML, 52, MR, 52);
+      y = 57;
     }
-    dc(LIGHT); doc.setLineWidth(0.25); doc.line(ML, 52, MR, 52);
   }
 
   function drawFooter() {
