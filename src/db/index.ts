@@ -3,7 +3,8 @@ import { Pool } from "pg";
 
 const databaseUrl = process.env.DATABASE_URL;
 
-if (!databaseUrl) {
+// Skip at build time — Next.js collects page data without a live DB
+if (!databaseUrl && process.env.NEXT_PHASE !== "phase-production-build") {
   throw new Error("DATABASE_URL is required");
 }
 
