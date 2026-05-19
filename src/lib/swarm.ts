@@ -751,12 +751,23 @@ function buildSynthesisUserPrompt(
   round1Agents: AgentReply[],
   round2Agents: AgentReply[],
 ): string {
+  // Compress agent outputs before feeding synthesis — uncompressed 10×R1+10×R2
+  // balloons to ~8000 words of input context and is the primary latency driver.
+  const compress = round1Agents.length >= 4;
   const r1Block = round1Agents
-    .map((a, i) => `--- Agent ${i + 1} Initial (${a.model}) ---\n${a.message}`)
+    .map((a, i) => {
+      const text = compress ? compressAgentResponse(a.message, 280) : a.message;
+      return `--- Agent ${i + 1} Initial (${a.model}) ---\n${text}`;
+    })
     .join("\n\n");
   const r2Block = round2Agents.length > 0
     ? "\n\nROUND 2 - PEER-REVIEWED REFINEMENTS:\n\n" +
-      round2Agents.map((a, i) => `--- Agent ${i + 1} Refined (${a.model}) ---\n${a.message}`).join("\n\n")
+      round2Agents
+        .map((a, i) => {
+          const text = compress ? compressAgentResponse(a.message, 200) : a.message;
+          return `--- Agent ${i + 1} Refined (${a.model}) ---\n${text}`;
+        })
+        .join("\n\n")
     : "";
   const tscModule = buildTSCModule(question, context);
   return `Evidence base:\n${context}\n\nClinical question: ${question}${tscModule}\n\nROUND 1 - INITIAL ASSESSMENTS:\n\n${r1Block}${r2Block}\n\nGenerate the definitive clinical report now:`;
@@ -866,7 +877,7 @@ async function runSynthesisAgent(
   if (hasNvidiaKey()) {
     try {
       if (onSynthesisToken) {
-        const stream = await nvidiaChatStream(model, system, user, 0.15);
+        const stream = await nvidiaChatStream(model, system, user, 0.15, 3500);
         const reader = stream.getReader();
         const chunks: string[] = [];
         for (;;) {

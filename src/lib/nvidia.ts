@@ -102,6 +102,7 @@ export async function nvidiaChatStream(
   system: string,
   user: string,
   temperatureOverride?: number,
+  maxTokensOverride?: number,
 ): Promise<ReadableStream<string>> {
   const cfg = MODEL_CONFIGS[model] ?? { maxTokens: 4096, temperature: 0.3 };
   const apiKey = process.env.NVIDIA_API_KEY;
@@ -119,7 +120,7 @@ export async function nvidiaChatStream(
         { role: "system", content: system },
         { role: "user", content: user },
       ],
-      max_tokens: cfg.maxTokens,
+      max_tokens: maxTokensOverride ?? cfg.maxTokens,
       temperature: temperatureOverride ?? cfg.temperature,
       top_p: 0.9,
       stream: true,
