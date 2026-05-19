@@ -9,6 +9,7 @@ COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_OPTIONS="--max-old-space-size=1536"
 RUN npm run build
 
 FROM node:22-alpine AS runner
