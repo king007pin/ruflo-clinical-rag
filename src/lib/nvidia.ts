@@ -18,7 +18,7 @@ export const NVIDIA_SWARM_MODELS = [
 
 export type NvidiaModel = (typeof NVIDIA_SWARM_MODELS)[number];
 
-async function nvidiaFetch(path: string, body: unknown, timeoutMs = 60_000): Promise<unknown> {
+async function nvidiaFetch(path: string, body: unknown, timeoutMs = 90_000): Promise<unknown> {
   const apiKey = process.env.NVIDIA_API_KEY;
   if (!apiKey) throw new Error("NVIDIA_API_KEY not configured");
   const ctrl = new AbortController();

@@ -647,8 +647,16 @@ function AgentCard({ agent, meta, color, idx, phase, pending, compact }: {
 
       {agent && (
         <div className="px-3 py-1.5 border-t flex items-center gap-1" style={{ borderColor: color.border }}>
-          <span className="text-[10px]" style={{ color: color.dot }}>via</span>
-          <span className="text-[10px] truncate" style={{ color: "var(--muted)" }}>{agent.reasoning}</span>
+          {agent.reasoning.startsWith("fallback") ? (
+            <span className="text-[10px] truncate" style={{ color: "var(--warning, #f59e0b)" }}>
+              ⚠ API timeout — partial result shown
+            </span>
+          ) : (
+            <>
+              <span className="text-[10px]" style={{ color: color.dot }}>via</span>
+              <span className="text-[10px] truncate" style={{ color: "var(--muted)" }}>{agent.reasoning}</span>
+            </>
+          )}
         </div>
       )}
     </div>
