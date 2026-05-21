@@ -10,6 +10,8 @@ import CollapsibleSection from "@/components/collapsible-section";
 import { dbCorpus } from "@/db";
 import { embeddings, sources } from "@/db/schema";
 import { desc, sql } from "drizzle-orm";
+import { Suspense } from "react";
+import Image from "next/image";
 
 const HTML_ENTITIES: Record<string, string> = {
   "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": '"',
@@ -23,6 +25,8 @@ function cleanTitle(raw: string | null | undefined): string {
 }
 
 export const dynamic = "force-dynamic";
+
+export const fetchCache = "force-no-store";
 
 async function loadStats() {
   try {
@@ -70,14 +74,15 @@ export default async function HomePage() {
             {/* Hero headline */}
             {/* Brand — icon + logotype, independent elements */}
             <div className="mt-4 flex items-center justify-center gap-4">
-              {/* Brain icon — transparent PNG, no blend tricks needed */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              {/* Brain icon — optimized with next/image */}
+              <Image
                 src="/brain-icon.png"
                 alt=""
-                aria-hidden="true"
+                width={96}
+                height={96}
                 className="h-24 w-24"
                 style={{ filter: "drop-shadow(0 4px 20px rgba(13,148,136,0.4))" }}
+                priority
               />
               {/* Logotype text */}
               <span
@@ -111,10 +116,7 @@ export default async function HomePage() {
 
             {/* Stat pills */}
             <div className="mt-7 flex flex-wrap justify-center gap-3 text-sm">
-              <StatPill label="Sources" value={sourceCount} />
-              <StatPill label="Chunks" value={chunkCount} />
-              <StatPill label="Specialists" value={10} />
-              <StatPill label="Consensus" value="live" />
+              <StatsLoader initialStats={{ sourceCount, chunkCount }} />
             </div>
           </div>
 
@@ -354,25 +356,5 @@ export default async function HomePage() {
         </p>
       </div>
     </main>
-  );
-}
-
-function StatPill({ label, value }: { label: string; value: number | string }) {
-  return (
-    <span
-      className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm"
-      style={{
-        borderColor: "var(--card-border)",
-        backgroundColor: "var(--pill)",
-        color: "var(--text)",
-      }}
-    >
-      <span className="font-semibold" style={{ color: "var(--text)" }}>
-        {value}
-      </span>
-      <span className="uppercase tracking-wide" style={{ color: "var(--muted)" }}>
-        {label}
-      </span>
-    </span>
   );
 }
