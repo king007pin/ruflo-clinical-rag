@@ -10,6 +10,10 @@ export function requireAuth(req: NextRequest): NextResponse | null {
 export function requireCron(req: Request): NextResponse | null {
   if (process.env.NODE_ENV === "development") return null;
 
+  // Allow manual triggers from authenticated admin dashboard sessions (or when auth is bypassed)
+  const authError = requireAuth(req as NextRequest);
+  if (authError === null) return null;
+
   const secret = process.env.CRON_SECRET;
   if (!secret) return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 500 });
 
