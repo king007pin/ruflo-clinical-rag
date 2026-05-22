@@ -261,17 +261,22 @@ export default async function HomePage() {
         </CollapsibleSection>
  
         <CollapsibleSection
-          eyebrow={`India-primary · auto-updates hourly · Last update: ${
-            latest[0]
-              ? new Date(latest[0].createdAt).toLocaleString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  hour12: true,
-                })
-              : "Never"
-          }`}
+          eyebrow={
+            <span className="flex flex-col gap-0.5 items-center sm:items-start w-full">
+              <span>India-primary · auto-updates hourly ·</span>
+              <span className="text-[10px] tracking-[0.18em] opacity-80 mt-0.5 block">
+                Last update: {latest[0]
+                  ? new Date(latest[0].createdAt).toLocaleString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: true,
+                    })
+                  : "Never"}
+              </span>
+            </span>
+          }
           title="Medical Knowledge Feeds"
           subtitle="RSS feeds, deep crawls, and clinical databases — click to expand"
           features={[

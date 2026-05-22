@@ -6,7 +6,7 @@ export type SectionFeature = { label: string; sub?: string };
 
 type Props = {
   title: string;
-  eyebrow?: string;
+  eyebrow?: React.ReactNode;
   subtitle?: string;
   features?: SectionFeature[];
   preview?: React.ReactNode;
@@ -45,9 +45,9 @@ export default function CollapsibleSection({
         <div className="flex w-full flex-col items-center gap-3 text-center sm:flex-row sm:items-start sm:justify-between sm:text-left">
           <div className="flex flex-1 flex-col items-center gap-1 text-center sm:items-start sm:text-left min-w-0">
             {eyebrow && (
-              <p className="text-xs uppercase tracking-[0.28em] font-semibold break-words" style={{ color: "var(--accent)" }}>
+              <span className="text-xs uppercase tracking-[0.28em] font-semibold break-words block w-full" style={{ color: "var(--accent)" }}>
                 {eyebrow}
-              </p>
+              </span>
             )}
             <h3 className="text-xl font-semibold" style={{ color: "var(--text)" }}>
               {title}
