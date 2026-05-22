@@ -16,7 +16,8 @@ export async function GET() {
       sourceCount: Number(sourceResult[0]?.count ?? 0),
       chunkCount: Number(chunkResult[0]?.count ?? 0),
     });
-  } catch {
+  } catch (err) {
+    console.error("STATS_API_ERROR:", err);
     return NextResponse.json({ sourceCount: 0, chunkCount: 0 });
   }
 }

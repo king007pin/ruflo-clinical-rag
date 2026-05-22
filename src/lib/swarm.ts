@@ -210,6 +210,251 @@ function selectSpecialtiesForQuery(question: string, models: string[]): Specialt
   return selected.slice(0, count);
 }
 
+const SPECIALTY_MODEL_PREFERENCE: Record<string, string[]> = {
+  emergency_medicine: ["meta/llama-4-maverick-17b-128e-instruct", "nvidia/llama-3.3-nemotron-super-49b-v1", "nvidia/nemotron-nano-12b-v2-vl"],
+  trauma_surgeon: ["meta/llama-4-maverick-17b-128e-instruct", "nvidia/llama-3.3-nemotron-super-49b-v1", "meta/llama-3.3-70b-instruct"],
+  critical_care: ["nvidia/llama-3.3-nemotron-super-49b-v1", "meta/llama-4-maverick-17b-128e-instruct", "meta/llama-3.3-70b-instruct"],
+  anesthesiologist: ["nvidia/llama-3.3-nemotron-super-49b-v1", "meta/llama-4-maverick-17b-128e-instruct", "nvidia/nemotron-nano-12b-v2-vl"],
+  general_surgeon: ["meta/llama-4-maverick-17b-128e-instruct", "nvidia/llama-3.3-nemotron-super-49b-v1", "meta/llama-3.3-70b-instruct"],
+  cardiothoracic_surgeon: ["meta/llama-4-maverick-17b-128e-instruct", "nvidia/llama-3.3-nemotron-super-49b-v1", "meta/llama-3.3-70b-instruct"],
+  vascular_surgeon: ["meta/llama-4-maverick-17b-128e-instruct", "nvidia/llama-3.3-nemotron-super-49b-v1", "meta/llama-3.3-70b-instruct"],
+  neurosurgeon: ["qwen/qwen3-next-80b-a3b-instruct", "meta/llama-4-maverick-17b-128e-instruct", "meta/llama-3.3-70b-instruct"],
+  oncology: ["openai/gpt-oss-120b", "meta/llama-3.3-70b-instruct", "nvidia/llama-3.1-nemotron-70b-instruct"],
+  gynecologic_oncologist: ["openai/gpt-oss-120b", "meta/llama-3.3-70b-instruct", "nvidia/llama-3.1-nemotron-70b-instruct"],
+  palliative_care_specialist: ["openai/gpt-oss-120b", "nvidia/nemotron-nano-12b-v2-vl", "meta/llama-3.3-70b-instruct"],
+  rheumatology: ["mistralai/mixtral-8x22b-instruct-v0.1", "qwen/qwen3-next-80b-a3b-instruct", "meta/llama-3.3-70b-instruct"],
+  neurology: ["qwen/qwen3-next-80b-a3b-instruct", "mistralai/mixtral-8x22b-instruct-v0.1", "meta/llama-3.3-70b-instruct"],
+  nephrology: ["meta/llama-3.3-70b-instruct", "qwen/qwen3-next-80b-a3b-instruct", "nvidia/llama-3.3-nemotron-super-49b-v1"],
+  endocrinology: ["nvidia/nemotron-3-super-120b-a12b", "meta/llama-3.3-70b-instruct", "mistralai/mixtral-8x22b-instruct-v0.1"],
+  hepatologist: ["meta/llama-3.3-70b-instruct", "nvidia/nemotron-3-super-120b-a12b", "qwen/qwen3-next-80b-a3b-instruct"],
+  allergist_immunologist: ["mistralai/mixtral-8x22b-instruct-v0.1", "meta/llama-3.3-70b-instruct", "qwen/qwen3-next-80b-a3b-instruct"],
+  infectious_disease: ["mistralai/ministral-14b-instruct-2512", "meta/llama-3.3-70b-instruct", "qwen/qwen3-next-80b-a3b-instruct"],
+  general_practice: ["nvidia/nemotron-nano-12b-v2-vl", "meta/llama-3.3-70b-instruct", "nvidia/llama-3.1-nemotron-70b-instruct"],
+  pediatrics: ["nvidia/nemotron-nano-12b-v2-vl", "meta/llama-3.3-70b-instruct", "nvidia/nemotron-3-super-120b-a12b"],
+  neonatologist: ["nvidia/llama-3.3-nemotron-super-49b-v1", "nvidia/nemotron-nano-12b-v2-vl", "meta/llama-3.3-70b-instruct"],
+  obstetrics_gynecology: ["meta/llama-3.3-70b-instruct", "nvidia/nemotron-nano-12b-v2-vl", "openai/gpt-oss-120b"],
+  maternal_fetal_medicine: ["meta/llama-3.3-70b-instruct", "openai/gpt-oss-120b", "nvidia/nemotron-nano-12b-v2-vl"],
+  geriatrician: ["nvidia/nemotron-nano-12b-v2-vl", "meta/llama-3.3-70b-instruct", "nvidia/llama-3.1-nemotron-70b-instruct"],
+  dermatology: ["nvidia/nemotron-nano-12b-v2-vl", "meta/llama-3.3-70b-instruct", "qwen/qwen3-next-80b-a3b-instruct"],
+  psychiatry: ["nvidia/nemotron-nano-12b-v2-vl", "meta/llama-3.3-70b-instruct", "qwen/qwen3-next-80b-a3b-instruct"],
+  toxicologist: ["mistralai/ministral-14b-instruct-2512", "nvidia/nemotron-nano-12b-v2-vl", "meta/llama-4-maverick-17b-128e-instruct"],
+};
+
+export function allocateModelsToSpecialties(selectedSpecialtyIds: string[]): string[] {
+  const allocated: string[] = [];
+  const usedModels = new Set<string>();
+
+  for (const specId of selectedSpecialtyIds) {
+    const preferences = SPECIALTY_MODEL_PREFERENCE[specId] || [];
+    let assignedModel = preferences.find(m => !usedModels.has(m));
+    
+    if (!assignedModel) {
+      const directModel = Object.keys(MODEL_SPECIALTY_MAP).find(
+        m => MODEL_SPECIALTY_MAP[m] === specId && !usedModels.has(m)
+      );
+      if (directModel) {
+        assignedModel = directModel;
+      }
+    }
+    
+    if (!assignedModel) {
+      assignedModel = NVIDIA_SWARM_MODELS.find(m => !usedModels.has(m));
+    }
+    
+    if (!assignedModel) {
+      assignedModel = "meta/llama-3.3-70b-instruct";
+    }
+    
+    allocated.push(assignedModel);
+    usedModels.add(assignedModel);
+  }
+  
+  return allocated;
+}
+
+function cleanAndParseJSON(text: string) {
+  let cleaned = text.trim();
+  if (cleaned.startsWith("```")) {
+    cleaned = cleaned.replace(/^```[a-zA-Z]*\n?/, "");
+  }
+  if (cleaned.endsWith("```")) {
+    cleaned = cleaned.slice(0, -3).trim();
+  }
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  if (start !== -1 && end !== -1 && end > start) {
+    cleaned = cleaned.slice(start, end + 1);
+  }
+  return JSON.parse(cleaned);
+}
+
+export async function routeQueryAndAllocateSwarm(
+  question: string,
+  patientContext?: string,
+  labText?: string
+): Promise<{
+  hospitalDepartments: string[];
+  pgSubjects: string[];
+  swarmSize: number;
+  specialties: SpecialtyMeta[];
+  models: string[];
+}> {
+  if (!hasNvidiaKey()) {
+    throw new Error("NVIDIA_API_KEY is not configured");
+  }
+
+  const userPrompt = `USER QUESTION: "${question}"
+${patientContext ? `PATIENT HISTORY: "${patientContext}"` : ""}
+${labText ? `LAB/DIAGNOSTIC DATA: "${labText}"` : ""}
+
+Analyze the user's clinical presentation, map it to relevant Hospital Specialties (Dataset 1) and MBBS PG Subjects (Dataset 2), gauge clinical complexity, and output the dynamic swarm configuration. Only output valid JSON.`;
+
+  const ROUTER_SYSTEM_PROMPT = `You are the MedIQ Clinical Swarm Router, an expert AI medical triage director.
+Your job is to analyze the patient's symptoms/query, map it to our clinical datasets, gauge clinical complexity, and dynamically configure a collaborative specialist swarm of 3 to 10 AI agents.
+
+DATASET 1: HOSPITAL SPECIALTIES / DEPARTMENTS
+1. Cardiac Care
+2. Cancer Care
+3. Neurosciences
+4. Gastrosciences
+5. Orthopaedics
+6. Renal Care
+7. Liver Transplant
+8. Bone Marrow Transplant
+9. Lung Transplant
+10. Chest Surgery
+11. Gynaecology and GynaeOncology
+12. Paediatric Care
+13. Obstetrics & Gynaecology
+14. Emergency
+15. ENT, Head and Neck Surgery
+16. Plastic, Aesthetic and Reconstructive Surgery
+
+DATASET 2: 19 MBBS PG SUBJECTS
+- Pre-Clinical: Anatomy, Physiology, Biochemistry
+- Para-Clinical: Pathology, Pharmacology, Microbiology, Forensic Medicine, Social & Preventive Medicine (Community Medicine)
+- Clinical: General Medicine, General Surgery, Obstetrics & Gynaecology, Pediatrics, ENT, Ophthalmology, Orthopaedics, Anaesthesiology, Radiology, Psychiatry, Dermatology
+
+AVAILABLE MEDIQ SPECIALTIES (Choose only from these exact IDs):
+${SPECIALTY_POOL.map(s => `- ID: "${s.id}" (Role: ${s.role}, Focus: ${s.focus})`).join("\n")}
+
+COMPLEXITY AND SWARM SIZE CRITERIA:
+- Low Complexity (3-4 agents): Isolated single-system symptoms, simple outpatient cases, routine follow-ups.
+- Medium Complexity (5-7 agents): Multi-system presentations, chronic illnesses with comorbidities, atypical common conditions.
+- High Complexity (8-10 agents): Medical emergencies, transplant cases, complex oncology/staging, highly atypical or rare differentials.
+
+TASK:
+1. Analyze the user's question, patient context, and lab results.
+2. Determine which Hospital Specialties / Departments (Dataset 1) are relevant.
+3. Determine which MBBS PG Subjects (Dataset 2) are relevant.
+4. Determine the clinical complexity (Low, Medium, High) and select a swarm size N (3 to 10).
+5. Select exactly N unique specialties from the MedIQ Specialty IDs list. Choose the best fitting ones for the query.
+
+You MUST respond with a single, valid JSON object containing exactly these keys. No other text, markdown blocks, or conversational filler is allowed.
+
+JSON SCHEMA:
+{
+  "hospitalDepartments": ["<Department Name 1>", "<Department Name 2>"],
+  "pgSubjects": ["<Subject Name 1>", "<Subject Name 2>"],
+  "swarmSize": <number between 3 and 10>,
+  "specialties": ["<specialty_id_1>", "<specialty_id_2>", ... (length must match swarmSize exactly)]
+}`;
+
+  const routerModel = "meta/llama-3.3-70b-instruct";
+  const rawResponse = await nvidiaChat(routerModel, ROUTER_SYSTEM_PROMPT, userPrompt, 0.1, 2048);
+  const parsed = cleanAndParseJSON(rawResponse);
+
+  const hospitalDepartments = Array.isArray(parsed.hospitalDepartments) ? parsed.hospitalDepartments : [];
+  const pgSubjects = Array.isArray(parsed.pgSubjects) ? parsed.pgSubjects : [];
+  let swarmSize = typeof parsed.swarmSize === "number" ? parsed.swarmSize : 5;
+  swarmSize = Math.max(3, Math.min(10, swarmSize));
+
+  let specialtiesList: string[] = Array.isArray(parsed.specialties) ? parsed.specialties : [];
+  
+  let validSpecialties = specialtiesList
+    .map(id => SPECIALTY_POOL.find(s => s.id === id))
+    .filter((s): s is SpecialtyMeta => !!s);
+
+  const uniqueSpecs = new Map<string, SpecialtyMeta>();
+  for (const s of validSpecialties) {
+    uniqueSpecs.set(s.id, s);
+  }
+  validSpecialties = Array.from(uniqueSpecs.values());
+
+  const gp = SPECIALTY_POOL.find(s => s.id === "general_practice")!;
+  while (validSpecialties.length < swarmSize) {
+    const nextSpec = SPECIALTY_POOL.find(s => !validSpecialties.some(v => v.id === s.id));
+    if (nextSpec) {
+      validSpecialties.push(nextSpec);
+    } else {
+      validSpecialties.push(gp);
+    }
+  }
+
+  validSpecialties = validSpecialties.slice(0, swarmSize);
+
+  const selectedSpecialtyIds = validSpecialties.map(s => s.id);
+  const models = allocateModelsToSpecialties(selectedSpecialtyIds);
+
+  return {
+    hospitalDepartments,
+    pgSubjects,
+    swarmSize,
+    specialties: validSpecialties,
+    models,
+  };
+}
+
+function getFallbackAllocation(question: string, defaultSwarmSize = 10) {
+  const swarmSize = Math.max(3, Math.min(10, defaultSwarmSize));
+  const defaultModels = NVIDIA_SWARM_MODELS.slice(0, swarmSize);
+  const selectedSpecialties = selectSpecialtiesForQuery(question, [...defaultModels]);
+  
+  const hospitalDepartments: string[] = [];
+  const pgSubjects: string[] = [];
+  const q = question.toLowerCase();
+  
+  if (q.includes("heart") || q.includes("chest") || q.includes("cardiac")) {
+    hospitalDepartments.push("Cardiac Care");
+    pgSubjects.push("General Medicine");
+  }
+  if (q.includes("cancer") || q.includes("tumor") || q.includes("biopsy")) {
+    hospitalDepartments.push("Cancer Care");
+    pgSubjects.push("Pathology");
+  }
+  if (q.includes("brain") || q.includes("stroke") || q.includes("neuro")) {
+    hospitalDepartments.push("Neurosciences");
+    pgSubjects.push("Anatomy");
+  }
+  if (q.includes("child") || q.includes("pedi") || q.includes("neonate")) {
+    hospitalDepartments.push("Paediatric Care");
+    pgSubjects.push("Pediatrics");
+  }
+  if (q.includes("pregnant") || q.includes("obstetric")) {
+    hospitalDepartments.push("Obstetrics & Gynaecology");
+    pgSubjects.push("Obstetrics & Gynaecology");
+  }
+  if (q.includes("acute") || q.includes("sudden") || q.includes("severe")) {
+    hospitalDepartments.push("Emergency");
+    pgSubjects.push("Anaesthesiology");
+  }
+  
+  if (hospitalDepartments.length === 0) {
+    hospitalDepartments.push("Emergency");
+  }
+  if (pgSubjects.length === 0) {
+    pgSubjects.push("General Medicine");
+  }
+
+  return {
+    hospitalDepartments,
+    pgSubjects,
+    swarmSize,
+    specialties: selectedSpecialties,
+    models: defaultModels as string[],
+  };
+}
+
 const DIAGNOSTIC_FRAMEWORKS: Record<string, string> = {
   internal_medicine:     "Systematic organ-system review (HEENT→Cardio→Resp→GI→Renal→Neuro→MSK→Haem). Apply VINDICATE mnemonic per leading diagnosis.",
   emergency_medicine:    "ABCDE life-threats first. RRSIDEAD differential. Flag each item: immediate intervention / admission / safe discharge.",
@@ -992,6 +1237,7 @@ export async function runSwarm({
   onDebateStart,
   onSynthesisStart,
   onSynthesisToken,
+  onSwarmConfig,
 }: {
   question: string;
   context: string;
@@ -1004,16 +1250,40 @@ export async function runSwarm({
   onDebateStart?: () => void;
   onSynthesisStart?: () => void;
   onSynthesisToken?: (token: string) => void;
+  onSwarmConfig?: (config: { swarmSize: number; hospitalDepartments: string[]; pgSubjects: string[] }) => void;
 }) {
-  const pool = model
-    ? [model, ...NVIDIA_SWARM_MODELS.filter((m) => m !== model)]
-    : swarmSize <= 3
-      ? [...NVIDIA_SWARM_MODELS_FAST, ...NVIDIA_SWARM_MODELS.filter((m) => !(NVIDIA_SWARM_MODELS_FAST as readonly string[]).includes(m))]
-      : [...NVIDIA_SWARM_MODELS];
-  const selected = pool.slice(0, Math.max(1, Math.min(swarmSize, pool.length)));
+  let selected: string[] = [];
+  let specialties: SpecialtyMeta[] = [];
+  let hospitalDepts: string[] = [];
+  let pgSubjs: string[] = [];
 
-  // Dynamic specialty selection — picks specialties most relevant to the query
-  const specialties = selectSpecialtiesForQuery(question, selected);
+  try {
+    const routing = await routeQueryAndAllocateSwarm(question, patientContext, labText);
+    selected = routing.models;
+    specialties = routing.specialties;
+    hospitalDepts = routing.hospitalDepartments;
+    pgSubjs = routing.pgSubjects;
+
+    if (model) {
+      selected = [model, ...selected.filter((m) => m !== model)].slice(0, selected.length);
+    }
+
+    console.log(`[AI Swarm Router] Routed query to ${selected.length} agents. Departments: ${hospitalDepts.join(", ")}, PG Subjects: ${pgSubjs.join(", ")}`);
+    onSwarmConfig?.({ swarmSize: selected.length, hospitalDepartments: hospitalDepts, pgSubjects: pgSubjs });
+  } catch (err) {
+    console.error("[AI Swarm Router] Router failed, falling back to static keyword allocation:", err);
+    const fb = getFallbackAllocation(question, swarmSize);
+    selected = fb.models;
+    specialties = fb.specialties;
+    hospitalDepts = fb.hospitalDepartments;
+    pgSubjs = fb.pgSubjects;
+
+    if (model) {
+      selected = [model, ...selected.filter((m) => m !== model)].slice(0, selected.length);
+    }
+
+    onSwarmConfig?.({ swarmSize: selected.length, hospitalDepartments: hospitalDepts, pgSubjects: pgSubjs });
+  }
 
   // ── Round 1: Independent analysis ───────────────────────────────────────
   const round1Map = new Map<string, AgentReply & { round: 1 }>();
@@ -1070,7 +1340,7 @@ export async function runSwarm({
 
   const finalAgents = round2Agents.length > 0 ? round2Agents : round1Agents;
 
-  return { answer, agents: finalAgents, round1Agents, round2Agents };
+  return { answer, agents: finalAgents, round1Agents, round2Agents, hospitalDepartments: hospitalDepts, pgSubjects: pgSubjs };
 }
 
 export function buildContextFromMatches(

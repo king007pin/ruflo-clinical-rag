@@ -48,11 +48,20 @@ export default function InsightsPanel() {
   async function runLearn() {
     setRunning(true);
     setMsg(null);
-    const res = await fetch("/api/cron/learn");
-    const data = (await res.json()) as { processed: number; totalIngested: number; gaps: string[] };
-    setMsg(`Processed ${data.processed} gap(s), ingested ${data.totalIngested} article(s).`);
-    setRunning(false);
-    await load();
+    try {
+      const res = await fetch("/api/cron/learn");
+      if (!res.ok) {
+        const errData = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(errData.error || `Server responded with status ${res.status}`);
+      }
+      const data = (await res.json()) as { processed: number; totalIngested: number; gaps: string[] };
+      setMsg(`Processed ${data.processed ?? 0} gap(s), ingested ${data.totalIngested ?? 0} article(s).`);
+    } catch (err) {
+      setMsg((err as Error).message);
+    } finally {
+      setRunning(false);
+      await load();
+    }
   }
 
   async function clearSessions() {

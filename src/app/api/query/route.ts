@@ -95,6 +95,7 @@ export async function POST(req: NextRequest) {
           labText,
           queryEmbedding: qEmbedding,
           onAgentDone: (agent) => send({ type: "agent", ...agent }),
+          onSwarmConfig: (config) => send({ type: "swarm_config", ...config }),
           onDebateStart: () =>
             send({ type: "debate_start", message: "Agents reviewing each other's reasoning…" }),
           onSynthesisStart: () =>
@@ -116,6 +117,8 @@ export async function POST(req: NextRequest) {
           round1Agents: result.round1Agents,
           sessionId: result.sessionId,
           managerReport: result.managerReport,
+          hospitalDepartments: result.hospitalDepartments,
+          pgSubjects: result.pgSubjects,
           ddiFlags,
           matches: topMatches.map((m) => ({
             sourceId: m.sourceId,

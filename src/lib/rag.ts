@@ -104,7 +104,7 @@ export function chunkText(text: string, chunkSize = 900, overlap = 140) {
   return chunks;
 }
 
-export function cheapEmbedding(text: string, dims = 96): number[] {
+export function cheapEmbedding(text: string, dims = 1024): number[] {
   const encoder = new TextEncoder();
   const bytes = encoder.encode(text.toLowerCase());
   const vector = new Array(dims).fill(0) as number[];

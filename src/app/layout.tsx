@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
+import { Agentation } from "agentation";
 import "./globals.css";
 
 export const viewport: Viewport = {
@@ -24,7 +25,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en" className="dark">
       <body className="min-h-screen antialiased" style={{ background: "var(--bg)", color: "var(--text)" }}>
         {children}
-
+        {process.env.NODE_ENV === "development" && <Agentation />}
       </body>
     </html>
   );

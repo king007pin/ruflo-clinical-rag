@@ -589,29 +589,33 @@ function DeepCrawlsSection() {
 
       {/* Category grid — 2 categories per row on md+ */}
       <div className="grid gap-6 md:grid-cols-2">
-        {grouped.map((group) => (
-          <div key={group.label}
-            className="rounded-2xl border p-4 space-y-3"
-            style={{ borderColor: `${group.style.fg}33`, backgroundColor: `${group.style.fg}08` }}>
-            {/* Category header */}
-            <div className="flex items-center gap-2 pb-2 border-b" style={{ borderColor: `${group.style.fg}33` }}>
-              <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: group.style.fg }} />
-              <p className="text-xs font-bold uppercase tracking-wider" style={{ color: group.style.fg }}>
-                {group.label}
-              </p>
-              <span className="ml-auto text-[10px] rounded-full px-2 py-0.5"
-                style={{ backgroundColor: group.style.bg, color: group.style.fg }}>
-                {group.crawlers.length} source{group.crawlers.length !== 1 ? "s" : ""}
-              </span>
+        {grouped.map((group) => {
+          const totalSourcesCount = group.crawlers.length + (group.label === "Clinical Reference" ? 1 : 0);
+          return (
+            <div key={group.label}
+              className="rounded-2xl border p-4 space-y-3"
+              style={{ borderColor: `${group.style.fg}33`, backgroundColor: `${group.style.fg}08` }}>
+              {/* Category header */}
+              <div className="flex items-center gap-2 pb-2 border-b" style={{ borderColor: `${group.style.fg}33` }}>
+                <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: group.style.fg }} />
+                <p className="text-xs font-bold uppercase tracking-wider" style={{ color: group.style.fg }}>
+                  {group.label}
+                </p>
+                <span className="ml-auto text-[10px] rounded-full px-2 py-0.5"
+                  style={{ backgroundColor: group.style.bg, color: group.style.fg }}>
+                  {totalSourcesCount} source{totalSourcesCount !== 1 ? "s" : ""}
+                </span>
+              </div>
+              {/* Crawl cards stacked inside each category */}
+              <div className="space-y-3">
+                {group.label === "Clinical Reference" && <StatpearlsCrawl />}
+                {group.crawlers.map((crawler) => (
+                  <GenericCrawlCard key={crawler.id} crawler={crawler} />
+                ))}
+              </div>
             </div>
-            {/* Crawl cards stacked inside each category */}
-            <div className="space-y-3">
-              {group.crawlers.map((crawler) => (
-                <GenericCrawlCard key={crawler.id} crawler={crawler} />
-              ))}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -706,10 +710,28 @@ export default function FeedPanel() {
     setMasterIngested(0);
     setMasterMsg("Initialising master crawl...");
     let totalIngested = 0;
+
+    // 1. Crawl StatPearls (1 batch of 15 articles to kickstart it)
+    setMasterMsg("Crawling StatPearls (Clinical Reference) (1 / 23)…");
+    setMasterProgress(1);
+    try {
+      const res = await fetch("/api/admin/crawl-statpearls", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ batchSize: 15 }),
+      });
+      const data = (await res.json()) as { ingested?: number };
+      totalIngested += data.ingested ?? 0;
+      setMasterIngested(totalIngested);
+    } catch {
+      // skip failed crawler, continue
+    }
+
+    // 2. Crawl all other 22 sources
     for (let i = 0; i < CRAWLER_LIST.length; i++) {
       const crawler = CRAWLER_LIST[i];
-      setMasterMsg(`Crawling ${crawler.name} (${i + 1} / ${CRAWLER_LIST.length})…`);
-      setMasterProgress(i + 1);
+      setMasterMsg(`Crawling ${crawler.name} (${i + 2} / 23)…`);
+      setMasterProgress(i + 2);
       try {
         const res = await fetch(`/api/admin/crawl/${crawler.id}`, {
           method: "POST",
@@ -723,7 +745,7 @@ export default function FeedPanel() {
         // skip failed crawler, continue
       }
     }
-    setMasterMsg(`Done — ${totalIngested} article(s) ingested from ${CRAWLER_LIST.length} sources.`);
+    setMasterMsg(`Done — ${totalIngested} article(s) ingested from 23 sources.`);
     setMasterCrawling(false);
   }
 
@@ -769,7 +791,7 @@ export default function FeedPanel() {
             Crawl All Sources
           </h3>
           <p className="text-xs max-w-sm" style={{ color: "var(--muted)" }}>
-            Triggers all {CRAWLER_LIST.length} knowledge crawlers sequentially — one batch per source. Saves directly to Neon Postgres.
+            Triggers all 23 knowledge crawlers sequentially — including StatPearls and all 22 other databases. Saves directly to Neon Postgres.
           </p>
         </div>
 
@@ -780,14 +802,14 @@ export default function FeedPanel() {
               <div
                 className="h-full rounded-full transition-all duration-500"
                 style={{
-                  width: `${Math.round((masterProgress / CRAWLER_LIST.length) * 100)}%`,
+                  width: `${Math.round((masterProgress / 23) * 100)}%`,
                   backgroundColor: "var(--accent)",
                   boxShadow: "0 0 8px var(--accent)",
                 }}
               />
             </div>
             <div className="flex justify-between text-[10px]" style={{ color: "var(--muted)" }}>
-              <span>{masterProgress} / {CRAWLER_LIST.length} sources</span>
+              <span>{masterProgress} / 23 sources</span>
               <span>{masterIngested} articles ingested</span>
             </div>
           </div>
@@ -810,13 +832,10 @@ export default function FeedPanel() {
               boxShadow: masterCrawling ? "none" : "0 0 16px color-mix(in srgb, var(--accent) 40%, transparent)",
             }}
           >
-            {masterCrawling ? `Crawling ${masterProgress}/${CRAWLER_LIST.length}…` : "▶ Start Master Crawl"}
+            {masterCrawling ? `Crawling ${masterProgress}/23…` : "▶ Start Master Crawl"}
           </button>
         </div>
       </div>
-
-      {/* StatPearls deep crawler always shown first */}
-      <StatpearlsCrawl />
 
       {/* Multi-source deep crawl section */}
       <DeepCrawlsSection />

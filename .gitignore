@@ -27,3 +27,6 @@ npm-debug.log*
 !public/*.jpg
 !public/*.jpeg
 !public/*.svg
+.env*.local
+*.tsbuildinfo
+

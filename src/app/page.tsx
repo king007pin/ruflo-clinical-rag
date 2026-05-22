@@ -197,12 +197,12 @@ export default async function HomePage() {
               { sub: "Auto", label: "Model Select" },
               { sub: "Live", label: "Health Check" },
             ]}
-            defaultOpen={true}
+            defaultOpen={false}
           >
             <ProviderKeyManager />
           </CollapsibleSection>
         </section>
-
+ 
         <CollapsibleSection
           title="Document Corpus"
           subtitle="Latest 6 ingested sources — PDFs, URLs, and lecture transcripts"
@@ -259,9 +259,19 @@ export default async function HomePage() {
             </div>
           )}
         </CollapsibleSection>
-
+ 
         <CollapsibleSection
-          eyebrow="India-primary · auto-updates hourly"
+          eyebrow={`India-primary · auto-updates hourly · Last update: ${
+            latest[0]
+              ? new Date(latest[0].createdAt).toLocaleString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: true,
+                })
+              : "Never"
+          }`}
           title="Medical Knowledge Feeds"
           subtitle="RSS feeds, deep crawls, and clinical databases — click to expand"
           features={[
@@ -305,7 +315,7 @@ export default async function HomePage() {
         >
           <FeedPanel />
         </CollapsibleSection>
-
+ 
         <CollapsibleSection
           title="Case Profiles"
           subtitle="Saved swarm discussions you can revisit"
@@ -319,7 +329,7 @@ export default async function HomePage() {
         >
           <CaseList />
         </CollapsibleSection>
-
+ 
         <CollapsibleSection
           eyebrow="Swarm Operations"
           title="Manager Dashboard"
@@ -335,7 +345,7 @@ export default async function HomePage() {
         >
           <ManagerPanel />
         </CollapsibleSection>
-
+ 
         <CollapsibleSection
           eyebrow="Continuous Learning"
           title="Learning Insights"

@@ -20,6 +20,8 @@ type ResponseShape = {
   round1Agents: AgentReply[];
   matches: Match[];
   sessionId: number | null;
+  hospitalDepartments?: string[];
+  pgSubjects?: string[];
   ddiFlags?: DDIFlag[];
 };
 type SavePayload = {
@@ -852,7 +854,7 @@ export default function QueryBox() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          question, model, swarmSize,
+          question, model,
           patientContext: formatPatientContext(patientInfo) || undefined,
           labText: labText || undefined,
         }),
@@ -885,6 +887,8 @@ export default function QueryBox() {
             if (payload.type === "status") {
               setLiveStatus(payload.message as string);
               setRoutingPhase(true);
+            } else if (payload.type === "swarm_config") {
+              setSwarmSize(payload.swarmSize as number);
             } else if (payload.type === "agent") {
               const agent: AgentReply = {
                 model: payload.model as string,
@@ -914,11 +918,15 @@ export default function QueryBox() {
               const p = payload as {
                 answer: string; agents: AgentReply[];
                 round1Agents: AgentReply[]; matches: Match[]; sessionId: number | null;
+                hospitalDepartments?: string[];
+                pgSubjects?: string[];
                 ddiFlags?: DDIFlag[];
               };
               setResult({
                 answer: p.answer, agents: p.agents,
                 round1Agents: p.round1Agents ?? [], matches: p.matches, sessionId: p.sessionId ?? null,
+                hospitalDepartments: p.hospitalDepartments ?? [],
+                pgSubjects: p.pgSubjects ?? [],
                 ddiFlags: p.ddiFlags ?? [],
               });
               setFeedbackSessionId(p.sessionId ?? null);
@@ -1171,14 +1179,7 @@ export default function QueryBox() {
           )}
         </div>
 
-        <label className="block text-sm" style={{ color: "var(--text)" }}>
-          Swarm size
-          <span className="ml-2 text-xs" style={{ color: "var(--muted)" }}>(agents in parallel — max 10)</span>
-          <input type="number" min={1} max={10} value={swarmSize}
-            onChange={(e) => setSwarmSize(Number(e.target.value))}
-            className="mt-1 w-24 rounded-xl border px-3 py-2 text-sm focus:outline-none"
-            style={{ borderColor: "var(--card-border)", backgroundColor: "var(--bg)", color: "var(--text)" }} />
-        </label>
+
 
         <div className="flex flex-wrap items-center justify-center gap-4">
           <button type="submit" disabled={loading}
@@ -1559,6 +1560,33 @@ export default function QueryBox() {
               </div>
             </div>
             <ReportView text={result.answer} />
+            {((result.hospitalDepartments?.length ?? 0) > 0 || (result.pgSubjects?.length ?? 0) > 0) && (
+              <div className="mt-4 p-3 rounded-lg border flex flex-col gap-2 text-left"
+                style={{ borderColor: "rgba(74,222,128,0.2)", backgroundColor: "rgba(74,222,128,0.02)" }}>
+                {result.hospitalDepartments && result.hospitalDepartments.length > 0 && (
+                  <div className="flex items-center flex-wrap gap-2">
+                    <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: "var(--muted)" }}>Hospital Departments:</span>
+                    {result.hospitalDepartments.map((dept, i) => (
+                      <span key={i} className="text-[10px] rounded-full px-2 py-0.5 font-medium"
+                        style={{ backgroundColor: "rgba(59,130,246,0.1)", color: "#60a5fa", border: "1px solid rgba(59,130,246,0.2)" }}>
+                        {dept}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {result.pgSubjects && result.pgSubjects.length > 0 && (
+                  <div className="flex items-center flex-wrap gap-2">
+                    <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: "var(--muted)" }}>MBBS PG Subjects:</span>
+                    {result.pgSubjects.map((subj, i) => (
+                      <span key={i} className="text-[10px] rounded-full px-2 py-0.5 font-medium"
+                        style={{ backgroundColor: "rgba(168,85,247,0.1)", color: "#c084fc", border: "1px solid rgba(168,85,247,0.2)" }}>
+                        {subj}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             <div className="mt-4 rounded-lg border px-3 py-2 flex flex-wrap gap-x-4 gap-y-1 text-left"
               style={{ borderColor: "var(--card-border)", backgroundColor: "var(--pill)" }}>
               <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: "var(--muted)" }}>Citation key:</span>

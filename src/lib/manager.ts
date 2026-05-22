@@ -88,6 +88,8 @@ export type ManagerResult = {
   agents: Awaited<ReturnType<typeof runSwarm>>["agents"];
   round1Agents: Awaited<ReturnType<typeof runSwarm>>["round1Agents"];
   sessionId: number | null;
+  hospitalDepartments?: string[];
+  pgSubjects?: string[];
   managerReport: {
     complexity: Complexity;
     isMedical: boolean;
@@ -110,6 +112,7 @@ export async function runManagedSwarm(params: {
   labText?: string;
   queryEmbedding?: number[];
   onAgentDone?: Parameters<typeof runSwarm>[0]["onAgentDone"];
+  onSwarmConfig?: Parameters<typeof runSwarm>[0]["onSwarmConfig"];
   onDebateStart?: () => void;
   onSynthesisStart?: () => void;
   onSynthesisToken?: (token: string) => void;
@@ -126,7 +129,7 @@ export async function runManagedSwarm(params: {
 }): Promise<ManagerResult> {
   const {
     question, context, matches, model, patientContext, labText,
-    queryEmbedding = [], onAgentDone, onDebateStart, onSynthesisStart,
+    queryEmbedding = [], onAgentDone, onSwarmConfig, onDebateStart, onSynthesisStart,
     onSynthesisToken, onManagerStatus, logSessionFn,
   } = params;
 
@@ -157,6 +160,7 @@ export async function runManagedSwarm(params: {
     patientContext,
     labText,
     onAgentDone,
+    onSwarmConfig,
     onDebateStart,
     onSynthesisStart,
     onSynthesisToken,
@@ -209,6 +213,8 @@ export async function runManagedSwarm(params: {
     agents: swarm.agents,
     round1Agents: swarm.round1Agents,
     sessionId,
+    hospitalDepartments: swarm.hospitalDepartments,
+    pgSubjects: swarm.pgSubjects,
     managerReport: {
       complexity,
       isMedical,
