@@ -79,7 +79,7 @@ const MODEL_CONFIGS: Record<string, { maxTokens: number; temperature: number }> 
   "nvidia/llama-3.1-nemotron-70b-instruct":      { maxTokens: 4096, temperature: 0.3 },
 };
 
-function mapUnstableModel(model: string): string {
+export function mapUnstableModel(model: string): string {
   if (model === "nvidia/nemotron-3-super-120b-a12b") {
     return "nvidia/llama-3.1-nemotron-70b-instruct";
   }

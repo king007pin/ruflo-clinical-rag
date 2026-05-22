@@ -1,3 +1,5 @@
+import { mapUnstableModel } from "./nvidia";
+
 export type ProviderFormat = "openai" | "anthropic" | "gemini";
 
 export type Provider = {
@@ -143,6 +145,7 @@ export async function callProvider(
   messages: ChatMessage[],
   timeoutMs = 30_000,
 ): Promise<string> {
+  const targetModel = provider.id === "nvidia" ? mapUnstableModel(model) : model;
   const baseUrl = provider.baseUrl;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -155,7 +158,7 @@ export async function callProvider(
           "Content-Type": "application/json",
           Authorization: `Bearer ${apiKey}`,
         },
-        body: JSON.stringify({ model, messages, max_tokens: 1024, temperature: 0.4 }),
+        body: JSON.stringify({ model: targetModel, messages, max_tokens: 1024, temperature: 0.4 }),
         signal: ctrl.signal,
       });
       if (!res.ok) {
@@ -176,7 +179,7 @@ export async function callProvider(
           "anthropic-version": "2023-06-01",
         },
         body: JSON.stringify({
-          model,
+          model: targetModel,
           max_tokens: 1024,
           ...(system ? { system } : {}),
           messages: human,
@@ -194,7 +197,7 @@ export async function callProvider(
       // gemini
       const prompt = messages.map((m) => `${m.role}: ${m.content}`).join("\n");
       const res = await fetch(
-        `${baseUrl}/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        `${baseUrl}/v1beta/models/${targetModel}:generateContent?key=${apiKey}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
