@@ -7,6 +7,7 @@ import InsightsPanel from "@/components/insights-panel";
 import ManagerPanel, { ManagerPreview } from "@/components/manager-panel";
 import ProviderKeyManager from "@/components/provider-key-manager";
 import CollapsibleSection from "@/components/collapsible-section";
+import StatsLoader from "@/components/stats-loader";
 import { dbCorpus } from "@/db";
 import { embeddings, sources } from "@/db/schema";
 import { desc, sql } from "drizzle-orm";
