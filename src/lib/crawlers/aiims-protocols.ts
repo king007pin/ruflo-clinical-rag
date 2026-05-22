@@ -4,6 +4,23 @@ import { stripHtml } from "../utils/html";
 const AIIMS_BASE = "https://www.aiims.edu";
 const UA = "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)";
 
+async function parsePdfBuffer(arrayBuffer: ArrayBuffer | Buffer): Promise<string> {
+  try {
+    const pdfModule = await import("pdf-parse");
+    const parse = (pdfModule as unknown as { default?: (b: Buffer) => Promise<{ text: string }> }).default
+      ?? (pdfModule as unknown as (b: Buffer) => Promise<{ text: string }>);
+    const buffer = Buffer.isBuffer(arrayBuffer) ? arrayBuffer : Buffer.from(arrayBuffer);
+    const result = await parse(buffer);
+    return (result.text ?? "").replace(/\s{2,}/g, " ").trim();
+  } catch {
+    return "";
+  }
+}
+
+function sanitizeTextForPostgres(text: string): string {
+  // PostgreSQL does not support null bytes (\u0000) in text columns
+  return text.replace(/\u0000/g, "");
+}
 
 export const aiimProtocolsCrawler: CrawlerDef = {
   id: "aiims-protocols",
@@ -67,18 +84,69 @@ export const aiimProtocolsCrawler: CrawlerDef = {
   async fetchArticle(url: string): Promise<CrawlerArticle | null> {
     try {
       await new Promise((r) => setTimeout(r, 800));
-      if (url.endsWith(".pdf")) return null;
+
+      const isDirectPdf = url.toLowerCase().endsWith(".pdf");
 
       const res = await fetch(url, {
-        headers: { "User-Agent": UA, Accept: "text/html" },
+        headers: { "User-Agent": UA },
         signal: AbortSignal.timeout(30000),
       });
       if (!res.ok) return null;
+
+      const contentType = res.headers.get("content-type")?.toLowerCase() ?? "";
+      const isPdfResponse = contentType.includes("application/pdf") || isDirectPdf;
+
+      if (isPdfResponse) {
+        const arrayBuffer = await res.arrayBuffer();
+        const rawContent = await parsePdfBuffer(arrayBuffer);
+        const content = sanitizeTextForPostgres(rawContent);
+        if (content.length < 150) return null;
+
+        // Derive clean title from filename or URL
+        const filename = decodeURIComponent(url.split("/").pop() ?? "")
+          .replace(/\.pdf$/i, "")
+          .replace(/[-_]/g, " ")
+          .trim();
+        const title = sanitizeTextForPostgres(filename || "AIIMS Clinical Protocol PDF");
+
+        return {
+          url,
+          title,
+          content: content.slice(0, 10_000),
+          description: "AIIMS — All India Institute of Medical Sciences clinical protocol PDF",
+        };
+      }
+
+      // Handle as HTML
       const html = await res.text();
+      
+      // Secondary check: Did we get a mislabeled PDF (e.g. starts with %PDF)?
+      if (html.startsWith("%PDF-")) {
+        // Convert the string representation of PDF to Buffer and parse it
+        const buffer = Buffer.from(html, "binary");
+        const rawContent = await parsePdfBuffer(buffer);
+        const content = sanitizeTextForPostgres(rawContent);
+        if (content.length < 150) return null;
+
+        const filename = decodeURIComponent(url.split("/").pop() ?? "")
+          .replace(/\.pdf$/i, "")
+          .replace(/[-_]/g, " ")
+          .trim();
+        const title = sanitizeTextForPostgres(filename || "AIIMS Clinical Protocol PDF");
+
+        return {
+          url,
+          title,
+          content: content.slice(0, 10_000),
+          description: "AIIMS — All India Institute of Medical Sciences clinical protocol PDF",
+        };
+      }
 
       const h1 = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1] ?? "";
       const titleTag = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? "";
-      const title = stripHtml(h1 || titleTag).split("|")[0].trim() || "AIIMS Clinical Content";
+      const title = sanitizeTextForPostgres(
+        stripHtml(h1 || titleTag).split("|")[0].trim() || "AIIMS Clinical Content"
+      );
 
       const mainContent =
         html.match(/<div[^>]+class="[^"]*item-page[^"]*"[^>]*>([\s\S]*?)<\/div>/i)?.[1] ??
@@ -86,7 +154,7 @@ export const aiimProtocolsCrawler: CrawlerDef = {
         html.match(/<main[^>]*>([\s\S]*?)<\/main>/i)?.[1] ??
         html;
 
-      const content = stripHtml(mainContent);
+      const content = sanitizeTextForPostgres(stripHtml(mainContent));
       if (content.length < 150) return null;
 
       return {
