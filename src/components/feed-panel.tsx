@@ -633,6 +633,7 @@ export default function FeedPanel() {
   const [masterProgress, setMasterProgress] = useState(0);
   const [masterIngested, setMasterIngested] = useState(0);
   const [masterMsg, setMasterMsg] = useState<string | null>(null);
+  const crawlStartedRef = useRef(false);
 
   const loadFeeds = useCallback(async () => {
     try {
@@ -748,6 +749,12 @@ export default function FeedPanel() {
     setMasterMsg(`Done — ${totalIngested} article(s) ingested from 23 sources.`);
     setMasterCrawling(false);
   }
+
+  useEffect(() => {
+    if (crawlStartedRef.current) return;
+    crawlStartedRef.current = true;
+    void startMasterCrawl();
+  }, []);
 
   async function toggleFeed(id: number, enabled: boolean) {
     await fetch("/api/admin/feeds", {
