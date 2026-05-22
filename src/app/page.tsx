@@ -131,24 +131,24 @@ export default async function HomePage() {
             }}
           >
             <p className="text-xs uppercase tracking-[0.28em] mb-2" style={{ color: "var(--accent)" }}>
-              Safety rails
+              Clinical Safeguards
             </p>
             <h2 className="text-base font-semibold uppercase mb-3 text-center" style={{ color: "var(--text)" }}>
-              Built for licensed clinicians
+              Built for Licensed Clinicians
             </h2>
             <ul className="space-y-2.5 text-sm text-center" style={{ color: "var(--muted)" }}>
               <li>
-                Multi-model routing across 12 providers; configurable to your formulary
+                Multi-engine routing across 12 API providers, adaptable to your clinical formulary
               </li>
               <li>
-                Answers grounded in your uploaded corpus — no fabricated citations
+                Evidence-grounded responses anchored to your corpus, with zero fabricated citations
               </li>
               <li>
-                Two-round specialist debate before synthesis; disagreements surfaced explicitly
+                Two-round peer specialist debate before synthesis, explicitly surfacing diagnostic disagreements
               </li>
             </ul>
-            <p className="mt-4 text-[11px] font-medium text-center" style={{ color: "var(--accent)" }}>
-              Not a substitute for clinical judgement.
+            <p className="mt-4 text-[11px] font-semibold text-center uppercase tracking-wider" style={{ color: "var(--accent)" }}>
+              Not a substitute for independent clinical judgment.
             </p>
           </div>
         </header>
