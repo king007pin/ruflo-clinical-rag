@@ -76,12 +76,27 @@ const MODEL_CONFIGS: Record<string, { maxTokens: number; temperature: number }> 
   "mistralai/ministral-14b-instruct-2512":        { maxTokens: 4096, temperature: 0.3 },
   "nvidia/nemotron-3-super-120b-a12b":            { maxTokens: 4096, temperature: 0.3 },
   "nvidia/nemotron-nano-12b-v2-vl":              { maxTokens: 2048, temperature: 0.3 },
+  "nvidia/llama-3.1-nemotron-70b-instruct":      { maxTokens: 4096, temperature: 0.3 },
 };
 
+function mapUnstableModel(model: string): string {
+  if (model === "nvidia/nemotron-3-super-120b-a12b") {
+    return "nvidia/llama-3.1-nemotron-70b-instruct";
+  }
+  if (model === "nvidia/llama-3.3-nemotron-super-49b-v1") {
+    return "nvidia/llama-3.1-nemotron-70b-instruct";
+  }
+  if (model === "mistralai/ministral-14b-instruct-2512") {
+    return "meta/llama-3.3-70b-instruct";
+  }
+  return model;
+}
+
 export async function nvidiaChat(model: string, system: string, user: string, temperatureOverride?: number, maxTokensOverride?: number): Promise<string> {
-  const cfg = MODEL_CONFIGS[model] ?? { maxTokens: 4096, temperature: 0.3 };
+  const targetModel = mapUnstableModel(model);
+  const cfg = MODEL_CONFIGS[targetModel] ?? { maxTokens: 4096, temperature: 0.3 };
   const data = (await nvidiaFetch("/chat/completions", {
-    model,
+    model: targetModel,
     messages: [
       { role: "system", content: system },
       { role: "user", content: user },
@@ -104,7 +119,8 @@ export async function nvidiaChatStream(
   temperatureOverride?: number,
   maxTokensOverride?: number,
 ): Promise<ReadableStream<string>> {
-  const cfg = MODEL_CONFIGS[model] ?? { maxTokens: 4096, temperature: 0.3 };
+  const targetModel = mapUnstableModel(model);
+  const cfg = MODEL_CONFIGS[targetModel] ?? { maxTokens: 4096, temperature: 0.3 };
   const apiKey = process.env.NVIDIA_API_KEY;
   if (!apiKey) throw new Error("NVIDIA_API_KEY not configured");
 
@@ -115,7 +131,7 @@ export async function nvidiaChatStream(
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model,
+      model: targetModel,
       messages: [
         { role: "system", content: system },
         { role: "user", content: user },
