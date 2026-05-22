@@ -36,91 +36,191 @@ function formatCitation(m: MatchMeta) {
   return parts.length ? `[${parts.join(" ")}]` : "";
 }
 
-type SpecialtyMeta = { id: string; role: string; focus: string; keywords: string[] };
+type SpecialtyMeta = {
+  id: string;
+  role: string;
+  focus: string;
+  keywords: string[];
+  foundations: string[];
+  rulesets: string[];
+};
 
 const SPECIALTY_POOL: SpecialtyMeta[] = [
-  { id: "internal_medicine",   role: "internal medicine attending",                  focus: "systemic differentials, evidence-based workup, chronic disease context",                  keywords: ["fever", "fatigue", "weight loss", "systemic", "chronic", "history"] },
-  { id: "emergency_medicine",  role: "emergency medicine physician",                 focus: "acute presentations, triage priority, time-sensitive diagnoses, red flags, ABCDE",        keywords: ["acute", "sudden", "severe", "emergency", "trauma", "collapse", "unconscious"] },
-  { id: "infectious_disease",  role: "infectious disease specialist",                focus: "infectious etiologies, antimicrobial stewardship, epidemiological risk factors, travel hx", keywords: ["fever", "infection", "sepsis", "antibiotic", "pneumonia", "meningitis", "HIV", "TB", "culture"] },
-  { id: "pulmonology",         role: "pulmonologist",                                focus: "respiratory pathophysiology, pulmonary imaging, ventilation management, spirometry",       keywords: ["cough", "dyspnea", "shortness of breath", "respiratory", "lung", "pleural", "asthma", "COPD", "wheeze", "sputum"] },
-  { id: "cardiology",          role: "cardiologist",                                 focus: "cardiac pathophysiology, ECG interpretation, ACS, heart failure, valvular disease",        keywords: ["chest pain", "palpitation", "cardiac", "heart", "ECG", "MI", "syncope", "arrhythmia", "hypertension", "edema"] },
-  { id: "neurology",           role: "neurologist",                                  focus: "neurological examination, stroke, seizure, dementia, movement disorder workup",            keywords: ["headache", "seizure", "stroke", "weakness", "numbness", "confusion", "altered", "consciousness", "tremor", "paralysis"] },
-  { id: "gastroenterology",    role: "gastroenterologist",                           focus: "GI pathophysiology, endoscopy indications, liver disease, malabsorption",                  keywords: ["abdominal", "vomiting", "diarrhea", "nausea", "liver", "jaundice", "hepatic", "bowel", "GI bleed", "dysphagia"] },
-  { id: "nephrology",          role: "nephrologist",                                 focus: "renal function, electrolyte disorders, AKI, CKD, fluid balance",                          keywords: ["kidney", "renal", "AKI", "creatinine", "electrolyte", "proteinuria", "uremia", "oliguria", "dialysis"] },
-  { id: "endocrinology",       role: "endocrinologist",                              focus: "hormonal disorders, diabetes, thyroid, adrenal, pituitary pathology",                      keywords: ["diabetes", "thyroid", "hormone", "glucose", "insulin", "DKA", "adrenal", "hypothyroid", "hyperthyroid", "HbA1c"] },
-  { id: "rheumatology",        role: "rheumatologist",                               focus: "autoimmune disorders, joint pathology, vasculitis, inflammatory markers",                  keywords: ["arthritis", "joint", "lupus", "autoimmune", "inflammatory", "rheumatoid", "ANA", "vasculitis", "myositis"] },
-  { id: "oncology",            role: "oncologist",                                   focus: "malignancy workup, staging, oncologic emergencies, paraneoplastic syndromes",              keywords: ["cancer", "malignancy", "tumor", "lymphoma", "leukemia", "mass", "metastasis", "biopsy", "oncology"] },
-  { id: "hematology",          role: "hematologist",                                 focus: "blood disorders, coagulation, anemia workup, bleeding diathesis, DVT/PE",                 keywords: ["anemia", "bleeding", "coagulation", "platelet", "hemoglobin", "DVT", "PE", "clot", "thrombosis"] },
-  { id: "dermatology",         role: "dermatologist",                                focus: "skin lesion characterization, rash differential, drug reactions, skin manifestations",     keywords: ["rash", "skin", "lesion", "urticaria", "pruritus", "erythema", "blister", "ulcer", "dermatitis"] },
-  { id: "critical_care",       role: "intensivist / critical care specialist",       focus: "ICU management, sepsis bundles, multi-organ failure, ventilator strategies, vasopressors",  keywords: ["sepsis", "ICU", "critical", "intubation", "vasopressor", "shock", "ARDS", "multi-organ", "ventilator"] },
-  { id: "pediatrics",          role: "pediatrician",                                 focus: "age-specific presentations, developmental context, pediatric dosing, febrile illness",     keywords: ["child", "pediatric", "infant", "neonate", "year-old", "adolescent", "febrile child", "growth"] },
-  { id: "obstetrics_gynecology", role: "obstetrician/gynecologist",                 focus: "pregnancy complications, obstetric emergencies, gynecologic pathology, teratogenicity",    keywords: ["pregnant", "pregnancy", "obstetric", "gynecologic", "menstrual", "uterine", "ovarian", "trimester"] },
-  { id: "psychiatry",          role: "consultation-liaison psychiatrist",            focus: "psychiatric comorbidities, delirium, substance use, psychosomatic medicine",               keywords: ["psychiatric", "mental", "anxiety", "depression", "psychosis", "delirium", "substance", "overdose", "somatisation"] },
-  { id: "general_practice",    role: "general practitioner with primary care lens",  focus: "community prevalence, patient history integration, outpatient workup feasibility",         keywords: [] },
-  // ── Surgical ───────────────────────────────────────────────────────────────
-  { id: "general_surgeon",             role: "general surgeon",                            focus: "acute surgical abdomen, operative indications, surgical risk stratification, perioperative wound management",                  keywords: ["appendicitis", "hernia", "bowel obstruction", "acute abdomen", "laparotomy", "abscess", "peritonitis", "gallbladder", "surgical", "cholecystitis"] },
-  { id: "neurosurgeon",                role: "neurosurgeon",                               focus: "surgical decision-making for intracranial and spinal pathology, ICP management, operative vs conservative neurosurgical approach", keywords: ["brain tumor", "hydrocephalus", "spinal cord compression", "intracranial hemorrhage", "subdural", "epidural hematoma", "ICP", "craniotomy", "disc herniation", "ventriculostomy"] },
-  { id: "cardiothoracic_surgeon",      role: "cardiothoracic surgeon",                     focus: "surgical management of cardiac and thoracic pathology, CABG vs PCI decision-making, aortic and pulmonary operative risk",        keywords: ["CABG", "valve repair", "aortic dissection", "lung resection", "pneumonectomy", "thoracotomy", "pericardial effusion", "mediastinum", "coronary artery", "thoracic"] },
-  { id: "vascular_surgeon",            role: "vascular surgeon",                           focus: "arterial and venous disease surgical management, limb salvage, aneurysm repair, carotid and peripheral vascular procedures",     keywords: ["AAA", "peripheral artery disease", "carotid stenosis", "ischemic limb", "claudication", "aneurysm", "venous insufficiency", "bypass graft", "vascular", "aortic"] },
-  { id: "orthopedic_surgeon",          role: "orthopaedic surgeon",                        focus: "fracture management, joint replacement, bone infection, compartment syndrome recognition, and bone and soft-tissue tumors",       keywords: ["fracture", "joint replacement", "osteomyelitis", "compartment syndrome", "bone tumor", "dislocation", "ligament", "osteoarthritis", "septic arthritis", "tendon"] },
-  { id: "urologist",                   role: "urologist",                                  focus: "urological pathology including nephrolithiasis, obstructive uropathy, urological malignancy, and complex UTI management",         keywords: ["kidney stone", "urolithiasis", "prostate", "bladder cancer", "urinary obstruction", "hematuria", "hydronephrosis", "renal mass", "UTI complications", "urology"] },
-  { id: "plastic_surgeon",             role: "plastic and reconstructive surgeon",          focus: "burn management, complex wound care, soft-tissue reconstruction, skin grafting, and scar rehabilitation",                         keywords: ["burn", "wound management", "skin graft", "flap", "scar", "debridement", "necrotizing fasciitis", "pressure ulcer", "keloid", "reconstruction"] },
-  { id: "colorectal_surgeon",          role: "colorectal surgeon",                         focus: "colorectal malignancy, inflammatory bowel disease surgical management, anorectal pathology, and stoma care",                      keywords: ["colorectal cancer", "IBD surgery", "Crohn's disease", "fistula", "hemorrhoid", "stoma", "colostomy", "rectal", "anastomosis", "diverticular disease"] },
-  { id: "trauma_surgeon",              role: "trauma surgeon",                             focus: "polytrauma resuscitation, hemorrhage control, damage-control surgery, and ATLS-guided systematic injury assessment",               keywords: ["polytrauma", "hemorrhagic shock", "damage control surgery", "ATLS", "penetrating trauma", "blunt trauma", "splenic laceration", "massive transfusion", "trauma bay", "resuscitation"] },
-  { id: "oral_maxillofacial_surgeon",  role: "oral and maxillofacial surgeon",             focus: "facial trauma, jaw pathology, deep-space neck infections, and airway-threatening dental and oral infections",                     keywords: ["jaw fracture", "facial trauma", "Ludwig's angina", "dental infection", "mandibular", "oral cancer", "trismus", "neck space infection", "maxillofacial", "parotid"] },
-  // ── Sensory & Head/Neck ────────────────────────────────────────────────────
-  { id: "ophthalmologist",             role: "ophthalmologist",                            focus: "ocular pathology, sight-threatening emergencies, anterior and posterior segment disease, intraocular pressure management",         keywords: ["glaucoma", "retinal detachment", "uveitis", "diabetic retinopathy", "vision loss", "red eye", "optic neuritis", "intraocular pressure", "macular degeneration", "cataract"] },
-  { id: "ent_otolaryngologist",        role: "ENT / otolaryngologist",                     focus: "ear, nose, throat, and head-neck pathology including airway emergencies, sinonasal disease, and head-neck malignancy",            keywords: ["sinusitis", "hearing loss", "vertigo", "airway obstruction", "epistaxis", "tonsillitis", "head neck cancer", "otitis", "dysphagia", "laryngeal"] },
-  // ── Subspecialties ────────────────────────────────────────────────────────
-  { id: "allergist_immunologist",      role: "allergist / clinical immunologist",          focus: "IgE-mediated allergic disease, primary immunodeficiency, mast cell disorders, and drug hypersensitivity reactions",               keywords: ["anaphylaxis", "angioedema", "drug allergy", "urticaria", "immunodeficiency", "mast cell", "eosinophilia", "allergen", "hypersensitivity", "allergy testing"] },
-  { id: "clinical_geneticist",         role: "clinical geneticist",                        focus: "genetic and genomic diagnosis, hereditary cancer syndrome counselling, chromosomal and single-gene disorder characterisation",      keywords: ["genetic disorder", "chromosomal abnormality", "hereditary cancer", "BRCA", "genetic counselling", "dysmorphism", "inborn error", "phenotype", "genotype", "exome"] },
-  { id: "hepatologist",                role: "hepatologist",                               focus: "advanced liver disease, portal hypertension, acute liver failure, viral hepatitis management, and liver transplant assessment",      keywords: ["cirrhosis", "portal hypertension", "liver failure", "hepatitis B", "hepatitis C", "ascites", "varices", "hepatic encephalopathy", "MELD score", "bilirubin"] },
-  { id: "transplant_specialist",       role: "transplant medicine specialist",             focus: "post-transplant complication recognition, rejection surveillance, immunosuppression optimisation, and organ-specific graft monitoring", keywords: ["transplant rejection", "immunosuppression", "calcineurin inhibitor", "tacrolimus", "graft function", "CMV reactivation", "BK virus", "allograft", "post-transplant", "PTLD"] },
-  { id: "sleep_medicine_specialist",   role: "sleep medicine specialist",                  focus: "sleep-disordered breathing, hypersomnia, circadian rhythm disorders, and parasomnia diagnosis and management",                     keywords: ["sleep apnea", "narcolepsy", "insomnia", "parasomnia", "polysomnography", "CPAP", "hypersomnia", "restless legs", "circadian", "daytime somnolence"] },
-  { id: "pain_management_specialist",  role: "pain management specialist",                 focus: "chronic and complex pain assessment, multimodal analgesia, opioid stewardship, and interventional pain procedures",                 keywords: ["chronic pain", "neuropathic pain", "opioid", "analgesia", "complex regional pain", "nerve block", "palliative pain", "pain score", "central sensitisation", "pain management"] },
-  { id: "addiction_medicine_specialist", role: "addiction medicine specialist",            focus: "substance use disorder diagnosis, withdrawal syndrome management, medication-assisted treatment, and relapse prevention",            keywords: ["substance use disorder", "alcohol withdrawal", "opioid dependence", "detoxification", "buprenorphine", "methadone", "CIWA", "COWS", "addiction", "withdrawal syndrome"] },
-  { id: "toxicologist",                role: "clinical toxicologist",                      focus: "poisoning and overdose identification, toxidrome recognition, antidote selection, and envenomation management",                     keywords: ["poisoning", "overdose", "toxidrome", "antidote", "envenomation", "drug toxicity", "acetaminophen toxicity", "salicylate", "organophosphate", "toxicology screen"] },
-  { id: "nuclear_medicine_specialist", role: "nuclear medicine specialist",                focus: "radionuclide imaging interpretation, PET/SPECT correlation, targeted radionuclide therapy, and radiation dosimetry",               keywords: ["PET scan", "SPECT", "bone scan", "radioiodine", "thyroid ablation", "FDG PET", "scintigraphy", "radionuclide", "nuclear imaging", "neuroendocrine"] },
-  // ── Paediatric Subspecialties ─────────────────────────────────────────────
-  { id: "neonatologist",               role: "neonatologist",                              focus: "premature infant physiology, neonatal respiratory distress, newborn sepsis, metabolic emergencies, and NICU management",            keywords: ["premature infant", "respiratory distress syndrome", "neonatal sepsis", "neonatal jaundice", "NICU", "surfactant", "hypoxic ischaemic encephalopathy", "necrotising enterocolitis", "preterm", "newborn"] },
-  { id: "pediatric_cardiologist",      role: "paediatric cardiologist",                    focus: "congenital heart disease diagnosis, Kawasaki disease, paediatric arrhythmia management, and cardiac murmur evaluation",            keywords: ["congenital heart defect", "Kawasaki disease", "paediatric arrhythmia", "murmur", "VSD", "ASD", "tetralogy of Fallot", "cyanosis", "paediatric cardiac", "echocardiography"] },
-  { id: "pediatric_neurologist",       role: "paediatric neurologist",                     focus: "childhood epilepsy, neurodevelopmental disorders, cerebral palsy, and paediatric neurological emergencies",                        keywords: ["childhood epilepsy", "febrile seizure", "cerebral palsy", "developmental delay", "infantile spasm", "status epilepticus", "neonatal seizure", "Dravet syndrome", "paediatric neurology", "tuberous sclerosis"] },
-  { id: "developmental_pediatrician",  role: "developmental paediatrician",                focus: "autism spectrum disorder, ADHD, learning disabilities, developmental milestone assessment, and early intervention planning",         keywords: ["autism spectrum", "ADHD", "learning disability", "developmental delay", "speech delay", "milestones", "neurodevelopmental", "global delay", "developmental screening", "behaviour"] },
-  // ── Age & Rehabilitation ──────────────────────────────────────────────────
-  { id: "geriatrician",                role: "geriatrician",                               focus: "frailty assessment, polypharmacy reconciliation, falls and delirium in elderly, dementia workup, and comprehensive geriatric assessment", keywords: ["frailty", "polypharmacy", "falls", "delirium elderly", "dementia", "Alzheimer's", "functional decline", "comprehensive geriatric assessment", "elderly", "cognitive impairment"] },
-  { id: "physiatrist",                 role: "physiatrist / rehabilitation medicine specialist", focus: "functional recovery after neurological or musculoskeletal injury, rehabilitation goal-setting, and physical medicine interventions", keywords: ["rehabilitation", "post-stroke rehab", "spinal injury", "musculoskeletal pain", "functional recovery", "physiotherapy", "occupational therapy", "disability", "neurological rehabilitation", "motor function"] },
-  { id: "palliative_care_specialist",  role: "palliative care specialist",                 focus: "symptom burden management, goals-of-care communication, end-of-life comfort, and hospice transition planning",                      keywords: ["palliative care", "end of life", "symptom management", "hospice", "prognosis", "terminal illness", "comfort care", "goals of care", "dyspnoea palliation", "pain control"] },
-  // ── Emergency & Procedural ────────────────────────────────────────────────
-  { id: "interventional_radiologist",  role: "interventional radiologist",                 focus: "image-guided minimally invasive procedures, embolisation, percutaneous drainage, and endovascular intervention planning",            keywords: ["embolisation", "angiography", "image-guided procedure", "drainage", "stenting", "TIPS", "percutaneous biopsy", "thrombolysis", "vascular access", "interventional radiology"] },
-  { id: "anesthesiologist",            role: "anaesthesiologist",                          focus: "perioperative risk assessment, airway management, regional and neuraxial anaesthesia, and intraoperative monitoring",                 keywords: ["perioperative risk", "airway management", "rapid sequence intubation", "regional anaesthesia", "sedation", "pain block", "malignant hyperthermia", "anaesthetic", "intubation", "PONV"] },
-  // ── Women's Health Subspecialties ─────────────────────────────────────────
-  { id: "maternal_fetal_medicine",     role: "maternal-fetal medicine specialist",         focus: "high-risk pregnancy surveillance, fetal anomaly evaluation, and obstetric complication management including preeclampsia and HELLP",  keywords: ["preeclampsia", "HELLP syndrome", "fetal anomaly", "high-risk pregnancy", "intrauterine growth restriction", "preterm labour", "placenta praevia", "eclampsia", "antiphospholipid", "amniotic fluid"] },
-  { id: "reproductive_endocrinologist", role: "reproductive endocrinologist",              focus: "infertility investigation, PCOS management, ovulation disorders, IVF workup, and recurrent pregnancy loss",                          keywords: ["infertility", "PCOS", "IVF", "ovulation induction", "recurrent miscarriage", "FSH", "AMH", "endometriosis", "unexplained infertility", "ovarian reserve"] },
-  { id: "gynecologic_oncologist",      role: "gynaecologic oncologist",                    focus: "gynaecological malignancy staging, trophoblastic disease, and surgical and systemic oncological management",                         keywords: ["cervical cancer", "ovarian cancer", "endometrial cancer", "gestational trophoblastic disease", "gynaecologic malignancy", "FIGO staging", "pelvic mass", "HPV", "surgical staging", "gynaecologic chemotherapy"] },
-  // ── Imaging & Diagnostics ─────────────────────────────────────────────────
-  { id: "radiologist",                 role: "diagnostic radiologist",                     focus: "multimodality imaging interpretation, incidental finding characterisation, and imaging-guided diagnosis integration across modalities",  keywords: ["CT scan", "MRI", "X-ray", "ultrasound", "contrast study", "imaging interpretation", "incidental finding", "nodule", "calcification", "radiology report"] },
-  // ── Pre-Clinical & Para-Clinical Foundations (19 PG Subjects coverage) ──────────────────
-  { id: "anatomy",                     role: "anatomist and structural embryology specialist", focus: "anatomic boundaries, structural lesions, developmental anomalies, regional relations, histological margins", keywords: ["anatomy", "artery", "vein", "nerve", "muscle", "tendon", "ligament", "organ", "fossa", "foramen", "embryology", "histology"] },
-  { id: "physiology",                  role: "clinical physiologist and organ-system function specialist", focus: "homeostatic regulation, cellular signaling, fluid-electrolyte dynamics, hemodynamics, pulmonary mechanics", keywords: ["physiology", "homeostasis", "potassium", "sodium", "calcium", "refractory", "cardiac cycle", "preload", "afterload", "ventilation", "osmolarity"] },
-  { id: "biochemistry",                role: "clinical biochemist and metabolic pathway specialist", focus: "metabolic pathways, enzyme kinetics, inborn errors of metabolism, hormone synthesis, biomarker assay interpretation", keywords: ["biochemistry", "metabolic pathway", "enzyme", "acidosis", "alkalosis", "mitochondria", "glycolysis", "creatine", "urea cycle", "lipids", "genetic mutation"] },
-  { id: "pathology",                   role: "diagnostic pathologist and histopathologist", focus: "cellular morphology, necrosis vs apoptosis, inflammatory patterns, neoplastic markers, biopsy slide interpretation", keywords: ["pathology", "biopsy", "histopathology", "necrosis", "apoptosis", "hyperplasia", "metaplasia", "immunohistochemistry", "slide", "cytology"] },
-  { id: "pharmacology",                role: "clinical pharmacologist",                    focus: "pharmacokinetics, pharmacodynamics, drug clearance, therapeutic index, drug-drug interactions, receptor binding", keywords: ["pharmacology", "pharmacokinetics", "clearance", "half-life", "CYP450", "toxicity", "dose-adjust", "agonist", "antagonist", "receptor"] },
-  { id: "microbiology",                role: "clinical microbiologist and virologist",     focus: "microbial classification, gram stain morphology, culture matching, viral replication, resistance mechanics", keywords: ["microbiology", "bacteria", "virus", "fungus", "gram stain", "culture", "resistance", "sensitivity", "plasmid", "parasite"] },
-  { id: "forensic_medicine",           role: "forensic pathologist and medical jurisprudencer", focus: "injury mechanisms, poisoning/toxidromes, post-mortem changes, legal liability, medical negligence assessment", keywords: ["forensic", "autopsy", "jurisprudence", "injury pattern", "asphyxia", "bruise", "contusion", "poisoning", "toxicology", "negligence"] },
-  { id: "community_medicine",          role: "social and preventive medicine (community health) specialist", focus: "epidemiology base rates, immunization guidelines, vector-borne outbreaks, health demographics, screen sensitivity/specificity", keywords: ["epidemiology", "community medicine", "prevention", "immunization", "outbreak", "prevalence", "incidence", "demographics", "vaccine", "screening sensitivity"] },
+  {
+    id: "system_entryway",
+    role: "Triage & Intake Coordinator",
+    focus: "Initial screening, patient history capture, ESI/SATS acuity scoring, task routing.",
+    keywords: ["triage", "intake", "screening", "acuity", "history", "routing", "symptom", "assessment", "complaint"],
+    foundations: ["Emergency Triage", "Clinical Assessment", "Public Health"],
+    rulesets: ["Automated symptom indexing", "routing via Directed Acyclic Graphs", "real-time acuity escalations"]
+  },
+  {
+    id: "cardiac_care",
+    role: "Cardiology Agent",
+    focus: "Hemodynamic tracking, ischemic workups, arrhythmia ECG analyses, predictive cardiovascular risk scoring.",
+    keywords: ["chest pain", "palpitation", "cardiac", "heart", "ECG", "MI", "syncope", "arrhythmia", "hypertension", "edema", "hemodynamic", "ischemic"],
+    foundations: ["Cardiology", "Physiology (Hemodynamics)", "Anatomy"],
+    rulesets: ["Integration with telemetry streams", "automated risk scoring tools (such as ASCVD/TIMI)", "cardiology guideline retrieval"]
+  },
+  {
+    id: "cancer_care",
+    role: "Oncology Agent",
+    focus: "Tumor board staging, RECIST 1.1 progression tracking, paraneoplastic syndrome management, oncologic emergencies.",
+    keywords: ["cancer", "malignancy", "tumor", "lymphoma", "leukemia", "mass", "metastasis", "biopsy", "oncology", "staging", "paraneoplastic"],
+    foundations: ["Oncology", "Pathology (Cytology)", "Radiotherapy"],
+    rulesets: ["FAISS-based oncology guidelines retrieval", "virtual multidisciplinary board debate mechanisms"]
+  },
+  {
+    id: "neurosciences",
+    role: "Neurological Agent",
+    focus: "Neuro exam interpretation, stroke localization, seizure management, rare neuromuscular syndrome identification.",
+    keywords: ["headache", "seizure", "stroke", "weakness", "numbness", "confusion", "altered", "consciousness", "tremor", "paralysis", "neurological", "neuromuscular"],
+    foundations: ["Neurology", "Orthopaedics", "Anatomy (Neuro)"],
+    rulesets: ["Integration with neurological examination checklists", "NIHSS scoring tools", "acute stroke intervention timers"]
+  },
+  {
+    id: "gastrosciences",
+    role: "Gastroenterology Agent",
+    focus: "Malabsorption differentials, acute abdomen evaluations, luminal pathology workups, inflammatory bowel disease tracking.",
+    keywords: ["abdominal", "vomiting", "diarrhea", "nausea", "liver", "jaundice", "hepatic", "bowel", "GI bleed", "dysphagia", "malabsorption", "gastroenterology", "endoscopy"],
+    foundations: ["Gastroenterology", "General Surgery", "Physiology (Absorption)"],
+    rulesets: ["Endoscopy report analyzers", "scoring tools (such as Glasgow-Blatchford and Child-Pugh)", "dietary guideline retrievers"]
+  },
+  {
+    id: "orthopaedics",
+    role: "Rheumatology Agent",
+    focus: "Autoimmune marker interpretation, inflammatory joint patterns, vasculitis scoring, osteoarthritis tracking.",
+    keywords: ["arthritis", "joint", "lupus", "autoimmune", "inflammatory", "rheumatoid", "ANA", "vasculitis", "myositis", "orthopaedic", "osteoarthritis"],
+    foundations: ["Orthopaedics", "Joint Anatomy", "Microbiology"],
+    rulesets: ["Diagnostic criteria parsers (such as ACR/EULAR)", "joint fluid analysis calculators", "mobility tracking tools"]
+  },
+  {
+    id: "renal_care",
+    role: "Nephrology Agent",
+    focus: "Glomerular filtration tracking, acid-base balance, acute kidney injury staging, electrolyte management.",
+    keywords: ["kidney", "renal", "AKI", "creatinine", "electrolyte", "proteinuria", "uremia", "oliguria", "dialysis", "glomerular", "filtration", "acid-base"],
+    foundations: ["Nephrology", "Physiology (Filtration)", "Biochemistry"],
+    rulesets: ["Equations for GFR calculation (such as CKD-EPI and MDRD)", "fluid-electrolyte monitors", "nephrotoxic drug alert tools"]
+  },
+  {
+    id: "liver_transplant",
+    role: "Transplant Immunology Agent",
+    focus: "Allograft rejection monitoring, immunosuppressant dosing, opportunistic infection tracking.",
+    keywords: ["liver transplant", "allograft", "rejection", "immonosuppressant", "immunusuppressive", "tacrolimus", "MELD", "PELD", "hepatology", "graft"],
+    foundations: ["Transplant Surgery", "Hepatology", "Pathology (Rejection)"],
+    rulesets: ["Calculated MELD/PELD scores", "immunosuppressive drug level monitors", "rejection pathology classifiers"]
+  },
+  {
+    id: "bone_marrow_transplant",
+    role: "Hematopoietic Agent",
+    focus: "Leukemia/lymphoma typing, graft-versus-host-disease (GVHD) grading, cytopenia management.",
+    keywords: ["bone marrow", "BMT", "hematopoietic", "leukemia", "lymphoma", "graft-versus-host", "GVHD", "cytopenia", "HLA", "immune reconstitution"],
+    foundations: ["Hematology", "Oncology", "Immunology", "Pathology"],
+    rulesets: ["Immune reconstitution trackers", "HLA matching databases", "bone marrow pathology interpreters"]
+  },
+  {
+    id: "lung_transplant",
+    role: "Pulmonary Transplant Agent",
+    focus: "Bronchiolitis obliterans tracking, ventilator compliance, rejection evaluations, lung injury scores.",
+    keywords: ["lung transplant", "bronchiolitis", "ventilator", "ventilation", "pulmonary function", "ABG", "lung injury", "rejection", "thoracic"],
+    foundations: ["Pulmonology", "Thoracic Surgery", "Physiology (Ventilation)"],
+    rulesets: ["Mechanical ventilation guidelines", "arterial blood gas evaluators", "pulmonary function test calculators"]
+  },
+  {
+    id: "chest_surgery",
+    role: "Thoracic Surgical Agent",
+    focus: "Mediastinal space evaluations, anatomical resections, post-surgical lung dynamics, chest tube monitoring.",
+    keywords: ["chest surgery", "thoracic surgery", "mediastinal", "mediastinum", "resection", "chest tube", "pulmonary complication", "thoracotomy"],
+    foundations: ["Thoracic Surgery", "Anatomy (Mediastinum)", "Anaesthesia"],
+    rulesets: ["Pre-operative risk indices", "anatomical mapping databases", "post-operative pulmonary complication predictors"]
+  },
+  {
+    id: "gynae_oncology",
+    role: "Gynae-Oncology Specialist",
+    focus: "FIGO staging, pelvic lymph node mapping, cervical cytological assays (PAP), chemotherapy tracking.",
+    keywords: ["gynae-oncology", "gynaecology", "FIGO", "PAP smear", "cervical cancer", "ovarian cancer", "uterine cancer", "pelvic lymph node", "chemotherapy"],
+    foundations: ["Gynecology", "Pathology (FIGO, PAP)", "Surgery"],
+    rulesets: ["FIGO oncology staging engines", "cervical pathology database integrators", "chemo regimen calculators"]
+  },
+  {
+    id: "paediatric_care",
+    role: "Pediatric Care Agent",
+    focus: "Pediatric development tracking, age-specific diagnostics, adolescent medicine, pediatric triage.",
+    keywords: ["child", "pediatric", "infant", "neonate", "year-old", "adolescent", "febrile child", "growth", "milestones", "developmental"],
+    foundations: ["Pediatrics", "Developmental Medicine", "Pharmacology"],
+    rulesets: ["Developmental milestone indices", "age-specific vital sign verifiers", "integration with the Pharmacology Agent"]
+  },
+  {
+    id: "obstetrics_gynaecology",
+    role: "Obstetrics Agent",
+    focus: "Gestational tracking, maternal-fetal monitoring, high-risk pregnancy evaluations, teratogenic screening.",
+    keywords: ["pregnant", "pregnancy", "obstetric", "gestational", "maternal-fetal", "teratogenic", "preeclampsia", "HELLP", "ectopic", "trimester"],
+    foundations: ["Obstetrics", "Gynecology", "Teratology", "Embryology"],
+    rulesets: ["Gestational age calculators", "maternal-fetal telemetry monitors", "teratogenic drug screening engines"]
+  },
+  {
+    id: "emergency",
+    role: "Emergency Specialist",
+    focus: "High-acuity trauma care, toxicological syndromic screens, immediate cardiopulmonary stabilization.",
+    keywords: ["acute", "sudden", "severe", "emergency", "trauma", "collapse", "unconscious", "poisoning", "overdose", "toxidrome", "antidote", "stabilization"],
+    foundations: ["Emergency Medicine", "Toxicology", "Trauma Surgery"],
+    rulesets: ["Advanced cardiac life support algorithms", "toxicological databases", "time-critical intervention trackers"]
+  },
+  {
+    id: "ent",
+    role: "Otolaryngology Agent",
+    focus: "Deep neck space infection tracking, airway patency monitoring, local auditory/vestibular assessments.",
+    keywords: ["ENT", "otolaryngology", "neck space", "airway", "auditory", "vestibular", "sinusitis", "hearing loss", "vertigo", "epistaxis", "tonsillitis"],
+    foundations: ["Otolaryngology", "Anatomy (Neck Spaces)", "Microbiology"],
+    rulesets: ["Airway management guidelines", "vestibular diagnostic calculators", "local antibiotic selection tools"]
+  },
+  {
+    id: "plastic_surgery",
+    role: "Reconstructive Surgical Agent",
+    focus: "Tissue perfusion metrics, microvascular flap monitoring, wound healing classifications, graft matching.",
+    keywords: ["plastic surgery", "reconstructive", "perfusion", "microvascular flap", "wound healing", "graft", "burn", "debridement", "necrotizing fasciitis"],
+    foundations: ["Reconstructive Surgery", "Anatomy (Grafts)", "Orthopaedics"],
+    rulesets: ["Perfusion tracking modules", "wound healing classification databases", "graft viability scoring calculators"]
+  },
+  {
+    id: "diagnostic_radiology",
+    role: "Diagnostic Imaging Agent",
+    focus: "2D/3D imaging analyses, anatomical segmentations, urgent findings notifications, radiological reports.",
+    keywords: ["X-ray", "CT scan", "MRI", "ultrasound", "imaging", "radiology", "radiological", "segmentation", "RadGraph", "CheXbert"],
+    foundations: ["Radiographic Imaging", "Tomography", "MRI", "Ultrasonography"],
+    rulesets: ["Vision-language model segmentations", "RadGraph and CheXbert clinical metrics", "imaging metadata processors"]
+  },
+  {
+    id: "clinical_pathology",
+    role: "Pathological Agent",
+    focus: "Tissue biopsy analyses, cytology classifications, cellular pathology reports, molecular diagnostic staging.",
+    keywords: ["pathology", "biopsy", "cytology", "histopathology", "tissue biopsy", "molecular diagnostics", "neoplastic markers", "slide"],
+    foundations: ["Histopathology", "Cytology", "Hematopathology", "Molecular Diagnostics"],
+    rulesets: ["Whole-slide histopathological visual analyzers", "cytological assays", "molecular tumor markers database"]
+  },
+  {
+    id: "pharmacology_safety",
+    role: "Clinical Pharmacist",
+    focus: "Drug-drug interaction checks, pediatric dosing math, Holliday-Segar rates, medication reconciliation.",
+    keywords: ["pharmacology", "pharmacokinetics", "clearance", "half-life", "CYP450", "toxicity", "dose-adjust", "agonist", "antagonist", "receptor", "drug-drug", "Holliday-Segar", "dosing math", "reconciliation"],
+    foundations: ["Pharmacokinetics", "Pharmacodynamics", "Toxicology"],
+    rulesets: ["Holliday-Segar calculators", "Clark's rule verifiers", "DrugBank and RxNorm API tools", "SMILES molecular interaction models"]
+  },
+  {
+    id: "psychiatry",
+    role: "Psychiatric Agent",
+    focus: "Psychiatric evaluations, therapeutic trust-building, pharmacological balance, patient suicide screening.",
+    keywords: ["psychiatric", "mental", "anxiety", "depression", "psychosis", "delirium", "substance", "overdose", "somatisation", "DSM-5", "suicide", "screening"],
+    foundations: ["Clinical Psychiatry", "Psychotherapy", "Psychopharmacology"],
+    rulesets: ["Diagnostic and Statistical Manual (DSM-5) metrics", "psychological screening indicators", "psychiatric safety monitors"]
+  }
 ];
 
 export function getCognitiveStrategyForSpecialty(specialty: SpecialtyMeta, model: string): { strategy: string; mandate: string } {
   const id = specialty.id;
 
   // 1. Critical & Emergency Care
-  if (
-    id === "emergency_medicine" ||
-    id === "critical_care" ||
-    id === "trauma_surgeon" ||
-    id === "anesthesiologist" ||
-    id === "toxicologist"
-  ) {
+  if (id === "emergency") {
     return {
       strategy: "time-critical life-threat triage",
       mandate: "ABCDE first — what can kill or permanently harm this patient in the next 60 minutes? Rule out life-threatening pathologies (e.g. cardiac tamponade, tension pneumothorax, pulmonary embolism, aortic dissection, hemorrhagic shock, airway obstruction) before anything else. Every investigation and treatment recommendation MUST include a time-to-action (STAT <1h / urgent <6h / routine <24h). Do not move to lower-acuity diagnoses until life threats are stabilized."
@@ -128,7 +228,7 @@ export function getCognitiveStrategyForSpecialty(specialty: SpecialtyMeta, model
   }
 
   // 2. Oncology & Malignancy
-  if (id === "oncology" || id === "gynecologic_oncologist") {
+  if (id === "cancer_care" || id === "gynae_oncology") {
     return {
       strategy: "worst-case and red flag hunter",
       mandate: "Screen systematically for serious, life-altering, or malignant pathologies. Primary vs metastatic assessment. Staging indicators (FIGO, AJCC). Oncologic emergencies (hypercalcemia, SVC obstruction, spinal cord compression, febrile neutropenia). Address whether this presentation could represent an atypical paraneoplastic syndrome or autoimmune masquerader."
@@ -136,11 +236,7 @@ export function getCognitiveStrategyForSpecialty(specialty: SpecialtyMeta, model
   }
 
   // 3. Women's Health & Maternal Fetal
-  if (
-    id === "obstetrics_gynecology" ||
-    id === "maternal_fetal_medicine" ||
-    id === "reproductive_endocrinologist"
-  ) {
+  if (id === "obstetrics_gynaecology") {
     return {
       strategy: "maternal-fetal safety shield",
       mandate: "Evaluate maternal risk, fetal status (CTG, biophysical profile, Dopplers), and gestational age milestones. Rule out ectopic pregnancy, preeclampsia with severe features, placental abruption, and uterine rupture first. Every pharmacological recommendation must be explicitly cross-referenced with pregnancy safety/teratogenicity by trimester."
@@ -148,13 +244,7 @@ export function getCognitiveStrategyForSpecialty(specialty: SpecialtyMeta, model
   }
 
   // 4. Pediatrics & Neonatal
-  if (
-    id === "pediatrics" ||
-    id === "neonatologist" ||
-    id === "pediatric_cardiologist" ||
-    id === "pediatric_neurologist" ||
-    id === "developmental_pediatrician"
-  ) {
+  if (id === "paediatric_care") {
     return {
       strategy: "age-adapted developmental triage",
       mandate: "Tailor diagnostic ranges and pharmacology strictly to age and pediatric development. Address weight-based dosing (mg/kg) and fluid requirements. Rule out neonatal sepsis, neonatal respiratory distress, and pediatric emergency conditions (e.g. Kawasaki disease, febrile status epilepticus, intussusception). Safety-netting must be extremely specific for caregivers."
@@ -162,19 +252,7 @@ export function getCognitiveStrategyForSpecialty(specialty: SpecialtyMeta, model
   }
 
   // 5. Surgical & Operative Specialties
-  if (
-    id === "general_surgeon" ||
-    id === "neurosurgeon" ||
-    id === "cardiothoracic_surgeon" ||
-    id === "vascular_surgeon" ||
-    id === "orthopedic_surgeon" ||
-    id === "urologist" ||
-    id === "plastic_surgeon" ||
-    id === "colorectal_surgeon" ||
-    id === "oral_maxillofacial_surgeon" ||
-    id === "ent_otolaryngologist" ||
-    id === "ophthalmologist"
-  ) {
+  if (id === "chest_surgery" || id === "plastic_surgery" || id === "ent") {
     return {
       strategy: "operative viability & surgical safety audit",
       mandate: "Assess surgical vs conservative indications. Map anatomical landmarks and pathophysiology. Define operative risk scores (e.g. ASA classification, Goldman index). Outline clear clinical thresholds or signs that trigger immediate conversion from conservative trial to emergency surgery (laparotomy, craniotomy, decompression)."
@@ -182,7 +260,7 @@ export function getCognitiveStrategyForSpecialty(specialty: SpecialtyMeta, model
   }
 
   // 6. Imaging & Diagnostics
-  if (id === "radiologist" || id === "nuclear_medicine_specialist" || id === "interventional_radiologist") {
+  if (id === "diagnostic_radiology") {
     return {
       strategy: "structured imaging & multimodality staging",
       mandate: "Interpret multi-modal imaging findings systematically. Anchor findings to structured reporting classifications (e.g. BI-RADS, LI-RADS, PI-RADS, LUNG-RADS). Rank differential diagnoses by radiologic probability and define specific contrast or procedure-related safety checks (e.g., eGFR targets for contrast safety)."
@@ -191,16 +269,11 @@ export function getCognitiveStrategyForSpecialty(specialty: SpecialtyMeta, model
 
   // 7. Foundational Pre-Clinical & Para-Clinical
   if (
-    id === "clinical_geneticist" ||
-    id === "infectious_disease" || 
-    id === "pharmacology" ||
-    id === "pathology" ||
-    id === "anatomy" ||
-    id === "physiology" ||
-    id === "microbiology" ||
-    id === "biochemistry" ||
-    id === "forensic_medicine" ||
-    id === "community_medicine"
+    id === "clinical_pathology" ||
+    id === "pharmacology_safety" ||
+    id === "liver_transplant" ||
+    id === "bone_marrow_transplant" ||
+    id === "lung_transplant"
   ) {
     return {
       strategy: "mechanistic pathophysiology & laboratory anchor",
@@ -209,17 +282,7 @@ export function getCognitiveStrategyForSpecialty(specialty: SpecialtyMeta, model
   }
 
   // 8. Outpatient, Chronic & Mental Health
-  if (
-    id === "general_practice" ||
-    id === "psychiatry" ||
-    id === "geriatrician" ||
-    id === "physiatrist" ||
-    id === "palliative_care_specialist" ||
-    id === "dermatology" ||
-    id === "sleep_medicine_specialist" ||
-    id === "pain_management_specialist" ||
-    id === "addiction_medicine_specialist"
-  ) {
+  if (id === "psychiatry" || id === "system_entryway") {
     return {
       strategy: "holistic outpatient parsimony & Occam's razor",
       mandate: "Apply Occam's Razor — prioritize a single, unified diagnosis explaining all symptoms. Build a pragmatic, community-feasible management plan optimized for outpatient resource constraints. Focus on patient concerns, functional rehabilitation goals, polypharmacy reconciliation (Beers criteria), and safety-netting thresholds."
@@ -235,16 +298,16 @@ export function getCognitiveStrategyForSpecialty(specialty: SpecialtyMeta, model
 
 // Each model pinned to the specialty that matches its actual capabilities
 const MODEL_SPECIALTY_MAP: Record<string, string> = {
-  "meta/llama-3.3-70b-instruct":                 "internal_medicine",   // 70B generalist, evidence workup, synthesis anchor
-  "openai/gpt-oss-120b":                          "oncology",            // 120B handles complex staging, paraneoplastic, red flags
-  "meta/llama-4-maverick-17b-128e-instruct":      "emergency_medicine",  // Llama 4 MoE, acute triage, ABCDE, time-critical
-  "qwen/qwen3-next-80b-a3b-instruct":             "neurology",           // 80B MoE, stepwise reasoning, rare/complex presentations
-  "mistralai/ministral-14b-instruct-2512":        "infectious_disease",  // 14B fast, antimicrobial stewardship, epidemiology
-  "nvidia/nemotron-3-super-120b-a12b":            "endocrinology",       // 120B NVIDIA, metabolic/systemic unifier, dosing
-  "nvidia/nemotron-nano-12b-v2-vl":              "general_practice",    // 12B fast, community prevalence, outpatient feasibility
-  "mistralai/mixtral-8x22b-instruct-v0.1":   "rheumatology",        // 8x22B sparse MoE, step-by-step pathophysiology, autoimmune
-  "nvidia/llama-3.3-nemotron-super-49b-v1":      "critical_care",       // 49B fast, physiological stability, haemodynamic assessment
-  "nvidia/llama-3.1-nemotron-70b-instruct":                 "hematology",          // 70B fast, evidence-quality grading, guideline-anchored reasoning
+  "meta/llama-3.3-70b-instruct":                 "renal_care",
+  "openai/gpt-oss-120b":                          "cancer_care",
+  "meta/llama-4-maverick-17b-128e-instruct":      "emergency",
+  "qwen/qwen3-next-80b-a3b-instruct":             "neurosciences",
+  "mistralai/ministral-14b-instruct-2512":        "system_entryway",
+  "nvidia/nemotron-3-super-120b-a12b":            "gastrosciences",
+  "nvidia/nemotron-nano-12b-v2-vl":              "diagnostic_radiology",
+  "mistralai/mixtral-8x22b-instruct-v0.1":        "orthopaedics",
+  "nvidia/llama-3.3-nemotron-super-49b-v1":       "cardiac_care",
+  "nvidia/llama-3.1-nemotron-70b-instruct":       "clinical_pathology",
 };
 
 function getSpecialtyForModel(modelId: string, fallbackIndex: number): SpecialtyMeta {
@@ -255,11 +318,11 @@ function getSpecialtyForModel(modelId: string, fallbackIndex: number): Specialty
 function selectSpecialtiesForQuery(question: string, models: string[]): SpecialtyMeta[] {
   const q = question.toLowerCase();
   const count = models.length;
-  const gp = SPECIALTY_POOL.find((s) => s.id === "general_practice")!;
-  const em = SPECIALTY_POOL.find((s) => s.id === "emergency_medicine")!;
+  const gp = SPECIALTY_POOL.find((s) => s.id === "system_entryway")!;
+  const em = SPECIALTY_POOL.find((s) => s.id === "emergency")!;
 
   const scored = SPECIALTY_POOL
-    .filter((s) => s.id !== "general_practice")
+    .filter((s) => s.id !== "system_entryway")
     .map((s) => ({
       specialty: s,
       score: s.keywords.filter((kw) => q.includes(kw.toLowerCase())).length,
@@ -269,7 +332,7 @@ function selectSpecialtiesForQuery(question: string, models: string[]): Specialt
   const primary = scored[0]?.specialty ?? gp;
   const selected: SpecialtyMeta[] = [primary];
 
-  if (count > 1 && !selected.find((s) => s.id === "emergency_medicine")) {
+  if (count > 1 && !selected.find((s) => s.id === "emergency")) {
     selected.push(em);
   }
 
@@ -278,13 +341,13 @@ function selectSpecialtiesForQuery(question: string, models: string[]): Specialt
     if (!selected.find((s) => s.id === specialty.id)) selected.push(specialty);
   }
 
-  if (count > 1 && !selected.find((s) => s.id === "general_practice")) {
+  if (count > 1 && !selected.find((s) => s.id === "system_entryway")) {
     selected.push(gp);
   }
 
   while (selected.length < count) {
     const modelAtIdx = models[selected.length];
-    const fallbackId = MODEL_SPECIALTY_MAP[modelAtIdx] ?? "general_practice";
+    const fallbackId = MODEL_SPECIALTY_MAP[modelAtIdx] ?? "system_entryway";
     const fallback = SPECIALTY_POOL.find((s) => s.id === fallbackId) ?? gp;
     selected.push(selected.find((s) => s.id === fallback.id) ? gp : fallback);
   }
@@ -299,33 +362,27 @@ function selectSpecialtiesForQuery(question: string, models: string[]): Specialt
 }
 
 const SPECIALTY_MODEL_PREFERENCE: Record<string, string[]> = {
-  emergency_medicine: ["meta/llama-4-maverick-17b-128e-instruct", "nvidia/llama-3.3-nemotron-super-49b-v1", "nvidia/nemotron-nano-12b-v2-vl"],
-  trauma_surgeon: ["meta/llama-4-maverick-17b-128e-instruct", "nvidia/llama-3.3-nemotron-super-49b-v1", "meta/llama-3.3-70b-instruct"],
-  critical_care: ["nvidia/llama-3.3-nemotron-super-49b-v1", "meta/llama-4-maverick-17b-128e-instruct", "meta/llama-3.3-70b-instruct"],
-  anesthesiologist: ["nvidia/llama-3.3-nemotron-super-49b-v1", "meta/llama-4-maverick-17b-128e-instruct", "nvidia/nemotron-nano-12b-v2-vl"],
-  general_surgeon: ["meta/llama-4-maverick-17b-128e-instruct", "nvidia/llama-3.3-nemotron-super-49b-v1", "meta/llama-3.3-70b-instruct"],
-  cardiothoracic_surgeon: ["meta/llama-4-maverick-17b-128e-instruct", "nvidia/llama-3.3-nemotron-super-49b-v1", "meta/llama-3.3-70b-instruct"],
-  vascular_surgeon: ["meta/llama-4-maverick-17b-128e-instruct", "nvidia/llama-3.3-nemotron-super-49b-v1", "meta/llama-3.3-70b-instruct"],
-  neurosurgeon: ["qwen/qwen3-next-80b-a3b-instruct", "meta/llama-4-maverick-17b-128e-instruct", "meta/llama-3.3-70b-instruct"],
-  oncology: ["openai/gpt-oss-120b", "meta/llama-3.3-70b-instruct", "nvidia/llama-3.1-nemotron-70b-instruct"],
-  gynecologic_oncologist: ["openai/gpt-oss-120b", "meta/llama-3.3-70b-instruct", "nvidia/llama-3.1-nemotron-70b-instruct"],
-  palliative_care_specialist: ["openai/gpt-oss-120b", "nvidia/nemotron-nano-12b-v2-vl", "meta/llama-3.3-70b-instruct"],
-  rheumatology: ["mistralai/mixtral-8x22b-instruct-v0.1", "qwen/qwen3-next-80b-a3b-instruct", "meta/llama-3.3-70b-instruct"],
-  neurology: ["qwen/qwen3-next-80b-a3b-instruct", "mistralai/mixtral-8x22b-instruct-v0.1", "meta/llama-3.3-70b-instruct"],
-  nephrology: ["meta/llama-3.3-70b-instruct", "qwen/qwen3-next-80b-a3b-instruct", "nvidia/llama-3.3-nemotron-super-49b-v1"],
-  endocrinology: ["nvidia/nemotron-3-super-120b-a12b", "meta/llama-3.3-70b-instruct", "mistralai/mixtral-8x22b-instruct-v0.1"],
-  hepatologist: ["meta/llama-3.3-70b-instruct", "nvidia/nemotron-3-super-120b-a12b", "qwen/qwen3-next-80b-a3b-instruct"],
-  allergist_immunologist: ["mistralai/mixtral-8x22b-instruct-v0.1", "meta/llama-3.3-70b-instruct", "qwen/qwen3-next-80b-a3b-instruct"],
-  infectious_disease: ["mistralai/ministral-14b-instruct-2512", "meta/llama-3.3-70b-instruct", "qwen/qwen3-next-80b-a3b-instruct"],
-  general_practice: ["nvidia/nemotron-nano-12b-v2-vl", "meta/llama-3.3-70b-instruct", "nvidia/llama-3.1-nemotron-70b-instruct"],
-  pediatrics: ["nvidia/nemotron-nano-12b-v2-vl", "meta/llama-3.3-70b-instruct", "nvidia/nemotron-3-super-120b-a12b"],
-  neonatologist: ["nvidia/llama-3.3-nemotron-super-49b-v1", "nvidia/nemotron-nano-12b-v2-vl", "meta/llama-3.3-70b-instruct"],
-  obstetrics_gynecology: ["meta/llama-3.3-70b-instruct", "nvidia/nemotron-nano-12b-v2-vl", "openai/gpt-oss-120b"],
-  maternal_fetal_medicine: ["meta/llama-3.3-70b-instruct", "openai/gpt-oss-120b", "nvidia/nemotron-nano-12b-v2-vl"],
-  geriatrician: ["nvidia/nemotron-nano-12b-v2-vl", "meta/llama-3.3-70b-instruct", "nvidia/llama-3.1-nemotron-70b-instruct"],
-  dermatology: ["nvidia/nemotron-nano-12b-v2-vl", "meta/llama-3.3-70b-instruct", "qwen/qwen3-next-80b-a3b-instruct"],
+  system_entryway: ["mistralai/ministral-14b-instruct-2512", "nvidia/nemotron-nano-12b-v2-vl", "meta/llama-3.3-70b-instruct"],
+  cardiac_care: ["nvidia/llama-3.3-nemotron-super-49b-v1", "meta/llama-3.3-70b-instruct", "meta/llama-4-maverick-17b-128e-instruct"],
+  cancer_care: ["openai/gpt-oss-120b", "meta/llama-3.3-70b-instruct", "nvidia/llama-3.1-nemotron-70b-instruct"],
+  neurosciences: ["qwen/qwen3-next-80b-a3b-instruct", "mistralai/mixtral-8x22b-instruct-v0.1", "meta/llama-3.3-70b-instruct"],
+  gastrosciences: ["nvidia/nemotron-3-super-120b-a12b", "meta/llama-3.3-70b-instruct", "qwen/qwen3-next-80b-a3b-instruct"],
+  orthopaedics: ["mistralai/mixtral-8x22b-instruct-v0.1", "meta/llama-3.3-70b-instruct", "nvidia/llama-3.1-nemotron-70b-instruct"],
+  renal_care: ["meta/llama-3.3-70b-instruct", "qwen/qwen3-next-80b-a3b-instruct", "nvidia/llama-3.3-nemotron-super-49b-v1"],
+  liver_transplant: ["meta/llama-3.3-70b-instruct", "openai/gpt-oss-120b", "nvidia/nemotron-3-super-120b-a12b"],
+  bone_marrow_transplant: ["nvidia/llama-3.1-nemotron-70b-instruct", "openai/gpt-oss-120b", "meta/llama-3.3-70b-instruct"],
+  lung_transplant: ["meta/llama-3.3-70b-instruct", "nvidia/llama-3.3-nemotron-super-49b-v1", "nvidia/nemotron-3-super-120b-a12b"],
+  chest_surgery: ["meta/llama-3.3-70b-instruct", "nvidia/llama-3.3-nemotron-super-49b-v1", "meta/llama-4-maverick-17b-128e-instruct"],
+  gynae_oncology: ["openai/gpt-oss-120b", "meta/llama-3.3-70b-instruct", "nvidia/llama-3.1-nemotron-70b-instruct"],
+  paediatric_care: ["nvidia/nemotron-nano-12b-v2-vl", "meta/llama-3.3-70b-instruct", "nvidia/nemotron-3-super-120b-a12b"],
+  obstetrics_gynaecology: ["meta/llama-3.3-70b-instruct", "nvidia/nemotron-nano-12b-v2-vl", "openai/gpt-oss-120b"],
+  emergency: ["meta/llama-4-maverick-17b-128e-instruct", "nvidia/llama-3.3-nemotron-super-49b-v1", "nvidia/nemotron-nano-12b-v2-vl"],
+  ent: ["mistralai/ministral-14b-instruct-2512", "meta/llama-3.3-70b-instruct", "nvidia/nemotron-nano-12b-v2-vl"],
+  plastic_surgery: ["meta/llama-3.3-70b-instruct", "nvidia/llama-3.3-nemotron-super-49b-v1", "nvidia/nemotron-nano-12b-v2-vl"],
+  diagnostic_radiology: ["nvidia/nemotron-nano-12b-v2-vl", "meta/llama-3.3-70b-instruct", "nvidia/llama-3.1-nemotron-70b-instruct"],
+  clinical_pathology: ["nvidia/llama-3.1-nemotron-70b-instruct", "meta/llama-3.3-70b-instruct", "openai/gpt-oss-120b"],
+  pharmacology_safety: ["nvidia/nemotron-3-super-120b-a12b", "meta/llama-3.3-70b-instruct", "nvidia/nemotron-nano-12b-v2-vl"],
   psychiatry: ["nvidia/nemotron-nano-12b-v2-vl", "meta/llama-3.3-70b-instruct", "qwen/qwen3-next-80b-a3b-instruct"],
-  toxicologist: ["mistralai/ministral-14b-instruct-2512", "nvidia/nemotron-nano-12b-v2-vl", "meta/llama-4-maverick-17b-128e-instruct"],
 };
 
 export function allocateModelsToSpecialties(selectedSpecialtyIds: string[]): string[] {
@@ -401,22 +458,27 @@ Analyze the user's clinical presentation, map it to relevant Hospital Specialtie
 Your job is to analyze the patient's symptoms/query, map it to our clinical datasets, gauge clinical complexity, and dynamically configure a collaborative specialist swarm of 3 to 10 AI agents.
 
 DATASET 1: HOSPITAL SPECIALTIES / DEPARTMENTS
-1. Cardiac Care
-2. Cancer Care
-3. Neurosciences
-4. Gastrosciences
-5. Orthopaedics
-6. Renal Care
-7. Liver Transplant
-8. Bone Marrow Transplant
-9. Lung Transplant
-10. Chest Surgery
-11. Gynaecology and GynaeOncology
-12. Paediatric Care
-13. Obstetrics & Gynaecology
-14. Emergency
-15. ENT, Head and Neck Surgery
-16. Plastic, Aesthetic and Reconstructive Surgery
+1. System Entryway (Triage & Intake)
+2. Cardiac Care
+3. Cancer Care
+4. Neurosciences
+5. Gastrosciences
+6. Orthopaedics
+7. Renal Care
+8. Liver Transplant
+9. Bone Marrow Transplant
+10. Lung Transplant
+11. Chest Surgery
+12. Gynae-Oncology
+13. Pediatric Care
+14. Obstetrics
+15. Emergency
+16. Otolaryngology (ENT)
+17. Reconstructive Surgery (Plastic Surgery)
+18. Diagnostic Imaging (Radiology)
+19. Pathology
+20. Clinical Pharmacist
+21. Psychiatry
 
 DATASET 2: 19 MBBS PG SUBJECTS
 - Pre-Clinical: Anatomy, Physiology, Biochemistry
@@ -469,7 +531,7 @@ JSON SCHEMA:
   }
   validSpecialties = Array.from(uniqueSpecs.values());
 
-  const gp = SPECIALTY_POOL.find(s => s.id === "general_practice")!;
+  const gp = SPECIALTY_POOL.find(s => s.id === "system_entryway")!;
   while (validSpecialties.length < swarmSize) {
     const nextSpec = SPECIALTY_POOL.find(s => !validSpecialties.some(v => v.id === s.id));
     if (nextSpec) {
@@ -544,66 +606,27 @@ function getFallbackAllocation(question: string, defaultSwarmSize = 10) {
 }
 
 const DIAGNOSTIC_FRAMEWORKS: Record<string, string> = {
-  internal_medicine:     "Systematic organ-system review (HEENT→Cardio→Resp→GI→Renal→Neuro→MSK→Haem). Apply VINDICATE mnemonic per leading diagnosis.",
-  emergency_medicine:    "ABCDE life-threats first. RRSIDEAD differential. Flag each item: immediate intervention / admission / safe discharge.",
-  neurology:             "Localise lesion FIRST (cortex/subcortex/brainstem/cord/PNS/NMJ/muscle), then determine aetiology. Topographic-then-aetiological.",
-  oncology:              "Primary vs metastatic. Staging indicators. Paraneoplastic syndromes. Oncologic emergencies: hypercalcaemia, SVC, cord compression, febrile neutropaenia.",
-  infectious_disease:    "Host–pathogen–environment triad. Empiric coverage → narrow. Travel, vectors, immunocompromise, healthcare exposure, local resistance patterns.",
-  endocrinology:         "Axis-first: hypothalamic–pituitary–end-organ. Biochemical confirmation sequence. Endocrine crises: DKA, thyroid storm, adrenal crisis, hyperosmolar.",
-  general_practice:      "Red flags first. Community prevalence priors. ICE framework (Ideas, Concerns, Expectations). Safety-net and escalation triggers.",
-  pulmonology:           "Anatomical localisation: upper/lower airways, parenchyma, pleura, vasculature. Pattern: consolidation vs interstitial vs obstructive vs vascular.",
-  cardiology:            "ACS rule-out pathway. Stable vs unstable stratification. HEART/TIMI scores. Structural / ischaemic / arrhythmic / pericardial differential.",
-  gastroenterology:      "Upper vs lower GI. Hepatic vs biliary vs pancreatic. Red flags: GI bleed, obstruction, peritonism. Rome / ALERT criteria.",
-  nephrology:            "KDIGO AKI staging. Pre-renal/intra-renal/post-renal framework. Electrolytes in acid-base context.",
-  rheumatology:          "Inflammatory vs non-inflammatory. Mono/oligo/polyarthritis classification. Systemic involvement screen. Autoantibody pattern.",
-  hematology:            "Anaemia classification (micro/normo/macro). Bleeding: platelet vs coagulation axis. Production/destruction/loss algorithm.",
-  critical_care:         "ABCDE resuscitation order. Surviving Sepsis bundles. SOFA organ failure scoring. Vasopressor thresholds. Ventilation need.",
-  pediatrics:            "Age-adjusted differentials. NICE traffic-light febrile illness. Weight-based dosing. Development-stage context.",
-  obstetrics_gynecology: "Exclude ectopic/preeclampsia/abruption first. Drug safety by trimester. CEMACH/MBRRACE red flags.",
-  psychiatry:            "Organic causes first. Biopsychosocial model. CAM for delirium. Risk: self-harm / harm-to-others stratification.",
-  dermatology:           "Morphology-first: primary lesion → secondary change → distribution → configuration. ABCDE for suspicious pigmented lesions.",
-  // ── Surgical ───────────────────────────────────────────────────────────────
-  general_surgeon:             "Acute abdomen: SOCRATES pain history → guarding/rebound → Rovsing/Murphy/McBurney signs. Alvarado score (appendicitis). Bowel obstruction: partial vs complete vs strangulated. Surgical risk: ASA classification + Goldman cardiac index. Decision node: conservative trial vs urgent laparotomy vs emergency laparotomy.",
-  neurosurgeon:                "Localise pathology: cortex/subcortex/posterior fossa/spinal level. Monroe-Kellie doctrine for ICP. Marshall CT grading (TBI). GCS + pupil asymmetry as operative urgency triggers. SAH: WFNS + Fisher grading. Spinal cord: ASIA impairment scale. Decision: monitor vs EVD vs craniotomy vs decompression.",
-  cardiothoracic_surgeon:      "Aortic dissection: Stanford A (surgical) vs B (medical/TEVAR). CABG vs PCI: SYNTAX score + EuroSCORE II. Valve surgery: AHA/ACC criteria (gradient, regurgitation severity, LV function). Lung resection operability: FEV1%, predicted postoperative FEV1, DLCO. VATS vs open approach.",
-  vascular_surgeon:            "AAA: surveillance vs repair by diameter (≥5.5 cm men / ≥5.0 cm women). EVAR vs open. PAD: Rutherford classification; ABI ≤0.9 = peripheral, ≤0.4 = critical ischaemia. Carotid: NASCET stenosis ≥70% symptomatic → CEA. 4-limb ABIs + duplex. Limb salvage scoring: SVS WIfI classification.",
-  orthopedic_surgeon:          "Fracture: displacement, angulation, articular involvement, open vs closed (Gustilo-Anderson grading). Compartment syndrome: 6 P's → emergent fasciotomy if Δ pressure <30 mmHg. Osteomyelitis: Cierny-Mader staging. Bone tumour: Enneking/MSTS staging. Arthroplasty outcomes: Oxford Knee Score, Harris Hip Score.",
-  urologist:                   "Stone: CT KUB → size/location → conservative vs ureteroscopy vs ESWL vs PCNL. Obstructive uropathy: post-void residual + hydronephrosis grade → emergent decompression. Haematuria: cystoscopy + upper tract imaging pathway. PSA kinetics: velocity, density, free/total. Bladder cancer: TURBT + EAU risk stratification.",
-  plastic_surgeon:             "Burns: TBSA by Rule of Nines / Lund-Browder. Depth: superficial / partial-thickness / full-thickness. Parkland formula (4 mL × kg × %TBSA in 24h). Wound bed: TIME framework (Tissue/Infection/Moisture/Edge). Reconstruction ladder: primary → delayed primary → secondary → graft → local flap → free flap.",
-  colorectal_surgeon:          "IBD surgical indications: toxic megacolon, perforation, refractory disease, dysplasia. CRC: TNM staging + CEA + MSI/MMR + KRAS/NRAS before biologics. Fistula: Parks classification. Diverticulitis: Hinchey I–IV → medical vs percutaneous drainage vs emergency colectomy. Stoma siting: ileostomy vs colostomy.",
-  trauma_surgeon:              "ATLS primary survey: Airway/Breathing/Circulation/Disability/Exposure. Shock class I–IV by estimated blood loss. FAST exam. Damage-control sequence: haemorrhage control → contamination control → ICU resuscitation → definitive repair. MTP 1:1:1 (pRBC:FFP:platelets). REBOA for non-compressible torso haemorrhage.",
-  oral_maxillofacial_surgeon:  "Facial trauma: airway first (ATLS). Mandible: Spiessl classification. Midface: Le Fort I/II/III. Ludwig's angina: floor-of-mouth elevation → immediate airway (intubation vs surgical) + IV antibiotics + I&D. Deep neck space infection: CT neck → layers involved. Odontogenic: source tooth ID → extraction vs root canal.",
-  // ── Sensory & Head/Neck ────────────────────────────────────────────────────
-  ophthalmologist:             "Acute red eye: RSVP (Redness, Sensitivity, Vision, Pain). IOP measurement. Retinal detachment: macula-on vs macula-off urgency tier. Sudden vision loss: GCA screen (ESR/CRP) — arteritic vs non-arteritic. Uveitis: SUN Working Group anterior/posterior classification. Diabetic retinopathy: ETDRS severity scale.",
-  ent_otolaryngologist:        "Epistaxis: anterior (Kiesselbach) vs posterior. Vertigo: Dix-Hallpike for BPPV; HINTS (Head-Impulse/Nystagmus/Test-of-Skew) for central vs peripheral. Hearing: Weber/Rinne → conductive vs sensorineural. Stridor: inspiratory = supraglottic, biphasic = glottic, expiratory = subglottic. Head-neck cancer: TNM + PET-CT nodal staging.",
-  // ── Subspecialties ────────────────────────────────────────────────────────
-  allergist_immunologist:      "Anaphylaxis: WAO criteria → epinephrine IM first, no absolute contraindications. Tryptase at 1–2h post-reaction. Angioedema: histaminergic vs bradykinin-mediated (C4 + C1-INH + C1q panel). Drug allergy: ENDA grading → skin test vs DPT. Primary immunodeficiency: ESID criteria. Eosinophilia: AEC >500 → organ involvement screen → EGPA/HES workup.",
-  clinical_geneticist:         "Phenotype-first: dysmorphology survey (head/face/limbs/skin). Mode of inheritance: AD/AR/X-linked/mitochondrial. Chromosomal: karyotype + microarray (aCGH). Sequencing ladder: gene panel → exome → genome. ACMG/AMP 5-tier variant classification (P/LP/VUS/LB/B). Cancer syndromes: MMR (Lynch), BRCA1/2, TP53 (Li-Fraumeni), CDH1.",
-  hepatologist:                "Child-Pugh → MELD score for severity and transplant listing. Ascites: SAAG ≥1.1 = portal hypertension. SBP risk → prophylaxis. HRS: KDIGO AKI criteria in cirrhosis. Variceal bleeding: Baveno VII stratification. ALF: King's College Criteria for transplant listing. Hepatitis B: HBeAg/HBV DNA → treatment threshold. HCC: BCLC staging.",
-  transplant_specialist:       "Rejection spectrum: hyperacute (minutes) vs acute T-cell/antibody-mediated (days–weeks) vs chronic. Biopsy: Banff criteria grading. DSA monitoring. Calcineurin inhibitor toxicity: trough levels + nephrotoxicity pattern. Post-transplant infections: CMV/EBV/BK viral load monitoring algorithm. PTLD: EBV-driven → immunosuppression reduction. Net state of immunosuppression concept.",
-  sleep_medicine_specialist:   "OSA pre-screen: STOP-BANG (≥3 = high risk). PSG: AHI ≥5 = OSA, ≥30 = severe. Daytime hypersomnolence: Epworth ≥10. Narcolepsy: MSLT (mean sleep latency ≤8 min + ≥2 SOREMPs). Insomnia: CBT-I first line (sleep restriction + stimulus control). Parasomnias: NREM vs REM-associated (ICSD-3). Circadian disorders: DLMO + chronotype assessment.",
-  pain_management_specialist:  "Pain phenotype: nociceptive / neuropathic / nociplastic / mixed. NRS/VAS scoring. WHO analgesic ladder: Step 1 (NSAIDs/paracetamol) → Step 2 (weak opioid) → Step 3 (strong opioid + adjuvants). Neuropathic: NeuPSIG guidelines (TCA/SNRI/gabapentinoid first line). Opioid: MME calculation + ORT risk stratification. Interventional: nerve block / epidural / SCS selection.",
-  addiction_medicine_specialist: "DSM-5 SUD severity: mild (2–3 criteria) / moderate (4–5) / severe (≥6). Alcohol withdrawal: CIWA-Ar ≥8 → benzodiazepine protocol; thiamine before glucose (Wernicke prevention). Opioid withdrawal: COWS score → MOUD induction (buprenorphine/naloxone or methadone). Stimulants/cannabis: contingency management. Brief intervention: FRAMES model (Feedback/Responsibility/Advice/Menu/Empathy/Self-efficacy).",
-  toxicologist:                "Toxidrome recognition: cholinergic (SLUDGE/DUMBELS), anticholinergic (dry as a bone, blind as a bat), sympathomimetic, opioid (PPR: Pupils/Pulse/Respiration), serotonin (Hunter criteria), NMS. Acetaminophen: Rumack-Matthew nomogram → N-acetylcysteine threshold. Salicylate: Done nomogram → urinary alkalinisation. TCA: QRS >100 ms → sodium bicarbonate. Digoxin: DigiFab calculation.",
-  nuclear_medicine_specialist: "FDG PET-CT: SUVmax thresholds by organ, Deauville 5-point scale (lymphoma). Bone scan: osteoblastic vs osteolytic pattern. Thyroid scan: hot vs cold nodule (Tc-99m pertechnetate); RAIU Graves vs toxic adenoma vs thyroiditis. DOTATATE PET: neuroendocrine tumour grading. Sentinel lymph node mapping. Dosimetry: MIRD framework for radionuclide therapy planning.",
-  // ── Paediatric Subspecialties ─────────────────────────────────────────────
-  neonatologist:               "Gestational age classification: EPT (<28w), VPT (28–32w), MPT (32–37w). APGAR 1 + 5 min. RDS: surfactant replacement threshold (FiO2 >0.30 in <30w). EOS vs LOS sepsis: Rochester/Kaiser criteria. Hyperbilirubinaemia: Bhutani nomogram → phototherapy/exchange transfusion threshold. HIE: Sarnat grading → therapeutic hypothermia eligibility (≥36w, ≤6h). NEC: Bell staging I–III.",
-  pediatric_cardiologist:      "Murmur: innocent vs pathological (5 S's: Soft/Systolic/Short/Symptom-free/Single-spot). Duct-dependent circulation: PGE1 initiation for cyanotic CHD. Kawasaki: complete (5 of 5 criteria) vs incomplete + echo coronary z-scores → IVIG threshold. SVT: vagal manoeuvres → IV adenosine. CXR patterns: boot-shaped (ToF), egg-on-string (TGA), snowman (TAPVC). Echo: 4-chamber + valve gradients + RVSP.",
-  pediatric_neurologist:       "Seizure: ILAE classification (focal/generalised/combined/unknown onset). Status epilepticus 5-min rule: benzodiazepine → second-line (levetiracetam/fosphenytoin/valproate) → anaesthetic RSI. Febrile seizure: simple vs complex → LP criteria (AAP guidelines). Infantile spasms: hypsarrhythmia on EEG → ACTH/vigabatrin. Cerebral palsy: GMFCS level I–V. Neuroimaging: MRI epilepsy protocol.",
-  developmental_pediatrician:  "Developmental surveillance at every WCC visit. Red flags: hand preference <12 months (hemiplegia), no babbling <12 months, regression at any age. Screening tools: ASQ-3 / M-CHAT-R (autism). ASD gold standard: ADOS-2 + ADI-R. ADHD: DSM-5 criteria + Vanderbilt + teacher report. GDD: metabolic screen + chromosomal microarray + FMR1. IQ: intellectual disability vs specific learning disorder.",
-  // ── Age & Rehabilitation ──────────────────────────────────────────────────
-  geriatrician:                "CGA domains: functional (Barthel/ADL), cognition (MMSE/MoCA), mood (GDS-15), nutrition (MNA), falls (Tinetti/TUG), polypharmacy (Beers criteria / STOPP-START). Frailty: Fried 5-phenotype criteria or Clinical Frailty Scale 1–9. Delirium: CAM tool — hyperactive vs hypoactive vs mixed. Dementia: MMSE/CDR staging. Drug review: anticholinergic burden + renal dose adjustments.",
-  physiatrist:                 "Functional assessment: FIM/WHODAS 2.0 scoring. Post-stroke: Brunnstrom stages + modified Ashworth scale (spasticity). Spinal cord: ASIA impairment scale A–E. Neurogenic bladder: urodynamics. Pain tools: NDI, DASH, Oswestry Disability Index. Prosthetics/orthotics prescription. Community reintegration: COPM. Exercise prescription: FITT principle. MDT coordination: PT/OT/SLP/neuropsychology.",
-  palliative_care_specialist:  "Symptom burden: ESAS-r (Edmonton Symptom Assessment). Prognosis: PPS (Palliative Performance Scale) + PPI (Palliative Prognostic Index). Pain: WHO ladder + opioid rotation (equianalgesic dosing). Dyspnoea: low-dose opioids + fan technique + anxiolytics. Delirium at end of life: reversible cause search → palliative sedation if refractory. DNACPR discussion. Spiritual/cultural: FICA framework.",
-  // ── Emergency & Procedural ────────────────────────────────────────────────
-  interventional_radiologist:  "Procedure risk: SIR 5-category bleeding risk → coagulation correction targets. Embolisation: embolic agent selection (coils/particles/glue/Onyx) by vessel calibre. Drainage: 8-French rule for viscous fluid. TIPS: indications (refractory ascites/variceal bleeding) + MELD delta. Tumour ablation: RFA vs microwave vs cryotherapy by size/location/proximity. Radiation dose monitoring (reference levels).",
-  anesthesiologist:            "ASA physical status I–VI classification. Airway: LEMON assessment (Look externally / Evaluate 3-3-2 / Mallampati / Obstruction / Neck mobility). RSI: propofol/ketamine/etomidate + succinylcholine/rocuronium selection. Malignant hyperthermia: CHCT diagnostic + dantrolene 2.5 mg/kg. Regional: dermatome maps for block level. PONV: Apfel score → multimodal prophylaxis. Intraoperative: MAP targets by organ risk.",
-  // ── Women's Health Subspecialties ─────────────────────────────────────────
-  maternal_fetal_medicine:     "Preeclampsia: ACOG criteria (BP ≥140/90 × 2 + proteinuria or severe features). HELLP: Sibai criteria (haemolysis/ELT/LP). Delivery timing matrix: gestational age vs severity. Fetal surveillance: biophysical profile + umbilical artery Dopplers + CTG (NICE classification). IUGR: customised growth charts + Dopplers. Preterm labour: cervical length <25 mm → corticosteroids/tocolysis/magnesium neuroprotection.",
-  reproductive_endocrinologist: "PCOS: Rotterdam 3-of-3 criteria (oligomenorrhoea/hyperandrogenism/PCO morphology). Ovarian reserve: AMH + AFC + Day 3 FSH. Male factor: ESHRE semen analysis reference values. Recurrent miscarriage: APS screen + uterine anomaly (3D USS) + parental karyotype. IVF protocol: downregulation vs antagonist. Stimulation monitoring: follicle count + E2 + LH surge. Ovarian hyperstimulation: OHSS grading.",
-  gynecologic_oncologist:      "Ovarian cancer: FIGO staging I–IV; CA-125 + HE4 ROMA index; BRCA1/2 germline testing. Cervical: FIGO 2018 + HPV subtype + sentinel node mapping. Endometrial: ESMO/ESGO/ESTRO molecular risk groups (POLE/MMR-d/NSMP/p53-abn). GTD: serial hCG monitoring kinetics. Neoadjuvant vs primary surgery: peritoneal carcinomatosis index + Fagotti laparoscopic score.",
-  // ── Imaging & Diagnostics ─────────────────────────────────────────────────
-  radiologist:                 "Structured reporting: RADS systems — BI-RADS 1–6 (breast), LI-RADS (liver), LUNG-RADS (pulmonary nodule), PI-RADS (prostate). Incidental findings: ACR white paper management guidance. CT: Hounsfield unit characterisation. MRI: T1/T2 signal intensity pattern analysis. CXR systematic review: ABCDE (Airway/Bones/Cardiac/Diaphragm/Everything else). Contrast: CIN risk stratification by eGFR.",
+  system_entryway: "Initial clinical screening. Apply directed acyclic graph routing, automated symptom indexing, and real-time acuity escalations using ESI/SATS protocols.",
+  cardiac_care: "ACS rule-out pathway. Stable vs unstable stratification. ASCVD/TIMI risk scoring tools. Structural/ischemic/arrhythmic ECG analysis, telemetry stream integration, and cardiology guideline retrieval.",
+  cancer_care: "Tumor board staging. RECIST 1.1 progression tracking. Screen for paraneoplastic syndromes and oncologic emergencies (hypercalcemia, SVC obstruction, spinal cord compression, febrile neutropenia) using FAISS-based oncology guidelines.",
+  neurosciences: "Neurological examination checklists. Localize lesion first (cortex/subcortex/brainstem/cord/PNS/NMJ/muscle) then determine etiology. NIHSS scoring tools and acute stroke intervention timers.",
+  gastrosciences: "Upper vs lower GI luminal pathology. Hepatic vs biliary vs pancreatic. Glasgow-Blatchford and Child-Pugh scoring tools, endoscopy report analyzers, and dietary guideline retrievers.",
+  orthopaedics: "Autoimmune marker interpretation and inflammatory joint patterns. ACR/EULAR diagnostic criteria, joint fluid analysis calculators, mobility tracking, and osteoarthritis tracking.",
+  renal_care: "KDIGO AKI staging. Pre-renal/intra-renal/post-renal framework. GFR calculations via CKD-EPI/MDRD equations, fluid-electrolyte monitoring, and nephrotoxic drug alert tools.",
+  liver_transplant: "Immunology and transplant surgery. Calculated MELD/PELD scores for severity, immunosuppressive drug level monitors, and graft-versus-host/rejection pathology classifiers.",
+  bone_marrow_transplant: "Leukemia/lymphoma typing. HLA matching databases, bone marrow pathology interpreters, immune reconstitution trackers, and GVHD grading.",
+  lung_transplant: "Pulmonary transplant matching. Mechanical ventilation guidelines, arterial blood gas (ABG) evaluators, pulmonary function test calculators, and bronchiolitis obliterans tracking.",
+  chest_surgery: "Pre-operative surgical risk indices and anatomical mapping databases. Post-operative pulmonary complication predictors, chest tube output monitoring, and mediastinal space evaluation.",
+  gynae_oncology: "FIGO oncology staging engines, cervical pathology database integrators (PAP), and pelvic lymph node mapping. Chemotherapy regimen trackers.",
+  paediatric_care: "Age-specific vital sign verifiers and developmental milestone indices. Weight-based dosing (mg/kg) and fluid requirements. Safety-netting thresholds for caregivers.",
+  obstetrics_gynaecology: "Gestational age calculators, maternal-fetal telemetry monitors, and teratogenic drug screening engines. Rule out ectopic pregnancy, preeclampsia, and placental abruption.",
+  emergency: "ATLS primary survey (Airway, Breathing, Circulation, Disability, Exposure). Advanced cardiac life support (ACLS) algorithms, toxicological databases, and time-critical intervention trackers.",
+  ent: "Airway management guidelines, vestibular diagnostic calculators (Dix-Hallpike / HINTS), local auditory/vestibular assessments, and local antibiotic selection tools.",
+  plastic_surgery: "Perfusion tracking modules, wound healing classification databases, graft viability scoring calculators, and microvascular flap monitoring.",
+  diagnostic_radiology: "Vision-language model segmentations, RadGraph and CheXbert clinical metrics, imaging metadata processors, and structured reporting (BI-RADS, LI-RADS, PI-RADS, LUNG-RADS).",
+  clinical_pathology: "Whole-slide histopathological visual analyzers, cytological assays, and molecular tumor markers database.",
+  pharmacology_safety: "Holliday-Segar calculators, Clark's rule verifiers, DrugBank/RxNorm API tools, and SMILES molecular interaction models. Screen for drug-drug interactions and Beers criteria.",
+  psychiatry: "Diagnostic and Statistical Manual (DSM-5) metrics, psychiatric safety monitors, psychological screening indicators, and organic etiology rule-out.",
 };
 
 function buildSystemPrompt(specialty: SpecialtyMeta, cognitiveStrategy?: { strategy: string; mandate: string }): string {
@@ -1151,7 +1174,7 @@ async function callRufloApi(payload: Record<string, unknown>): Promise<string | 
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 12000);
+  const timeoutId = setTimeout(() => controller.abort(), 60000);
 
   try {
     const res = await fetch(`${baseUrl.replace(/\/$/, "")}/api/chat`, {
