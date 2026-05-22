@@ -1,5 +1,5 @@
 import { assembleContext } from "./rag";
-import { hasNvidiaKey, nvidiaChat, nvidiaChatStream, NVIDIA_SWARM_MODELS } from "./nvidia";
+import { hasNvidiaKey, nvidiaChat, nvidiaChatStream, NVIDIA_SWARM_MODELS, mapUnstableModel } from "./nvidia";
 
 // Fast small models for simple/moderate queries — lower latency, adequate quality
 const NVIDIA_SWARM_MODELS_FAST = [
@@ -1144,16 +1144,29 @@ async function callRufloApi(payload: Record<string, unknown>): Promise<string | 
   const baseUrl = process.env.RUFLO_API_URL;
   const apiKey = process.env.RUFLO_API_KEY;
   if (!baseUrl || !apiKey) return null;
+
+  const mappedPayload = { ...payload };
+  if (typeof mappedPayload.model === "string") {
+    mappedPayload.model = mapUnstableModel(mappedPayload.model);
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 12000);
+
   try {
     const res = await fetch(`${baseUrl.replace(/\/$/, "")}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(mappedPayload),
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
     if (!res.ok) return null;
     const data = (await res.json()) as Record<string, unknown>;
     return (data?.message ?? data?.answer ?? JSON.stringify(data)) as string;
-  } catch {
+  } catch (err) {
+    clearTimeout(timeoutId);
+    console.error("Ruflo API call failed or timed out:", err);
     return null;
   }
 }
