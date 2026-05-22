@@ -42,9 +42,24 @@ export default function CollapsibleSection({
         }}
       >
         {/* Header row */}
-        <div className="relative flex flex-col items-center gap-1 text-center">
+        <div className="flex w-full flex-col items-center gap-3 text-center sm:flex-row sm:items-start sm:justify-between sm:text-left">
+          <div className="flex flex-1 flex-col items-center gap-1 text-center sm:items-start sm:text-left min-w-0">
+            {eyebrow && (
+              <p className="text-xs uppercase tracking-[0.28em] font-semibold break-words" style={{ color: "var(--accent)" }}>
+                {eyebrow}
+              </p>
+            )}
+            <h3 className="text-xl font-semibold" style={{ color: "var(--text)" }}>
+              {title}
+            </h3>
+            {subtitle && (
+              <p className="text-xs leading-relaxed max-w-lg" style={{ color: "var(--muted)" }}>
+                {subtitle}
+              </p>
+            )}
+          </div>
           <span
-            className="absolute right-0 top-0 shrink-0 rounded-full border px-3 py-1 text-xs font-semibold"
+            className="shrink-0 rounded-full border px-3 py-1 text-xs font-semibold select-none sm:self-start"
             style={{
               borderColor: "var(--accent)",
               color: "var(--accent)",
@@ -53,19 +68,6 @@ export default function CollapsibleSection({
           >
             {open ? "Collapse ▲" : "Expand ▼"}
           </span>
-          {eyebrow && (
-            <p className="text-xs uppercase tracking-[0.28em]" style={{ color: "var(--accent)" }}>
-              {eyebrow}
-            </p>
-          )}
-          <h3 className="text-xl font-semibold" style={{ color: "var(--text)" }}>
-            {title}
-          </h3>
-          {subtitle && (
-            <p className="text-xs leading-relaxed max-w-lg" style={{ color: "var(--muted)" }}>
-              {subtitle}
-            </p>
-          )}
         </div>
 
         {/* Feature pills — always visible, 4-col symmetric grid */}
