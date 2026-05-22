@@ -99,51 +99,139 @@ const SPECIALTY_POOL: SpecialtyMeta[] = [
   { id: "gynecologic_oncologist",      role: "gynaecologic oncologist",                    focus: "gynaecological malignancy staging, trophoblastic disease, and surgical and systemic oncological management",                         keywords: ["cervical cancer", "ovarian cancer", "endometrial cancer", "gestational trophoblastic disease", "gynaecologic malignancy", "FIGO staging", "pelvic mass", "HPV", "surgical staging", "gynaecologic chemotherapy"] },
   // ── Imaging & Diagnostics ─────────────────────────────────────────────────
   { id: "radiologist",                 role: "diagnostic radiologist",                     focus: "multimodality imaging interpretation, incidental finding characterisation, and imaging-guided diagnosis integration across modalities",  keywords: ["CT scan", "MRI", "X-ray", "ultrasound", "contrast study", "imaging interpretation", "incidental finding", "nodule", "calcification", "radiology report"] },
+  // ── Pre-Clinical & Para-Clinical Foundations (19 PG Subjects coverage) ──────────────────
+  { id: "anatomy",                     role: "anatomist and structural embryology specialist", focus: "anatomic boundaries, structural lesions, developmental anomalies, regional relations, histological margins", keywords: ["anatomy", "artery", "vein", "nerve", "muscle", "tendon", "ligament", "organ", "fossa", "foramen", "embryology", "histology"] },
+  { id: "physiology",                  role: "clinical physiologist and organ-system function specialist", focus: "homeostatic regulation, cellular signaling, fluid-electrolyte dynamics, hemodynamics, pulmonary mechanics", keywords: ["physiology", "homeostasis", "potassium", "sodium", "calcium", "refractory", "cardiac cycle", "preload", "afterload", "ventilation", "osmolarity"] },
+  { id: "biochemistry",                role: "clinical biochemist and metabolic pathway specialist", focus: "metabolic pathways, enzyme kinetics, inborn errors of metabolism, hormone synthesis, biomarker assay interpretation", keywords: ["biochemistry", "metabolic pathway", "enzyme", "acidosis", "alkalosis", "mitochondria", "glycolysis", "creatine", "urea cycle", "lipids", "genetic mutation"] },
+  { id: "pathology",                   role: "diagnostic pathologist and histopathologist", focus: "cellular morphology, necrosis vs apoptosis, inflammatory patterns, neoplastic markers, biopsy slide interpretation", keywords: ["pathology", "biopsy", "histopathology", "necrosis", "apoptosis", "hyperplasia", "metaplasia", "immunohistochemistry", "slide", "cytology"] },
+  { id: "pharmacology",                role: "clinical pharmacologist",                    focus: "pharmacokinetics, pharmacodynamics, drug clearance, therapeutic index, drug-drug interactions, receptor binding", keywords: ["pharmacology", "pharmacokinetics", "clearance", "half-life", "CYP450", "toxicity", "dose-adjust", "agonist", "antagonist", "receptor"] },
+  { id: "microbiology",                role: "clinical microbiologist and virologist",     focus: "microbial classification, gram stain morphology, culture matching, viral replication, resistance mechanics", keywords: ["microbiology", "bacteria", "virus", "fungus", "gram stain", "culture", "resistance", "sensitivity", "plasmid", "parasite"] },
+  { id: "forensic_medicine",           role: "forensic pathologist and medical jurisprudencer", focus: "injury mechanisms, poisoning/toxidromes, post-mortem changes, legal liability, medical negligence assessment", keywords: ["forensic", "autopsy", "jurisprudence", "injury pattern", "asphyxia", "bruise", "contusion", "poisoning", "toxicology", "negligence"] },
+  { id: "community_medicine",          role: "social and preventive medicine (community health) specialist", focus: "epidemiology base rates, immunization guidelines, vector-borne outbreaks, health demographics, screen sensitivity/specificity", keywords: ["epidemiology", "community medicine", "prevention", "immunization", "outbreak", "prevalence", "incidence", "demographics", "vaccine", "screening sensitivity"] },
 ];
 
-// Each model's distinct cognitive approach — forces genuine divergence in debate
-const MODEL_COGNITIVE_STRATEGIES: Record<string, { strategy: string; mandate: string }> = {
-  "meta/llama-3.3-70b-instruct": {
-    strategy: "Bayesian differential",
-    mandate: "Start from population base rates for this patient's demographic. For each diagnosis, state pre-test probability as a percentage, then explicitly update it for every key finding. Show your probability chain: 'CAP: 40% base → 65% given productive cough [S#] → 80% given unilateral consolidation'. Your differential must be probabilistic, not just a list.",
-  },
-  "openai/gpt-oss-120b": {
-    strategy: "Worst-case and red flag hunter",
-    mandate: "Lead with: what serious, life-altering, or malignant pathology could be masquerading as this presentation? Your first question is always: 'Could this be cancer, vasculitis, autoimmune, or a paraneoplastic syndrome?' Systematically screen every red flag. If serious pathology is present, it must not be missed — weight your assessment toward ruling it out before settling on a benign diagnosis.",
-  },
-  "meta/llama-4-maverick-17b-128e-instruct": {
-    strategy: "Time-critical life-threat triage",
-    mandate: "ABCDE first — what can kill or permanently harm this patient in the next 60 minutes? Rule out PE, tension pneumothorax, aortic dissection, cardiac tamponade before anything else. Every investigation and treatment recommendation MUST include a time-to-action (STAT <1h / urgent <6h / routine <24h). Do not move to lower-acuity diagnoses until life threats are addressed.",
-  },
-  "qwen/qwen3-next-80b-a3b-instruct": {
-    strategy: "Devil's advocate and rare diagnosis hunter",
-    mandate: "Challenge the obvious diagnosis. Your job is to find what others will miss. Reason step by step: (1) State the most common diagnosis — then argue AGAINST it. (2) Propose at least one rare or atypical diagnosis that fits all the findings. (3) Identify one finding that does NOT fit the leading diagnosis and explain what it should make you consider instead.",
-  },
-  "mistralai/ministral-14b-instruct-2512": {
-    strategy: "Pathogen-first infectious reasoning",
-    mandate: "Build your analysis organism-first, not symptom-first. Ask: which pathogen class fits (bacterial / viral / fungal / atypical / parasitic)? What is the most likely source? What empiric regimen covers it while awaiting cultures? Apply antimicrobial stewardship: broad → narrow as soon as possible. Cite local resistance patterns where relevant. Your pharmacological plan must name specific agents with doses and duration.",
-  },
-  "nvidia/nemotron-3-super-120b-a12b": {
-    strategy: "Metabolic and systemic unifier",
-    mandate: "Ask: what single metabolic, hormonal, or systemic process explains ALL symptoms simultaneously? Could this be DKA, adrenal crisis, thyroid storm, or another endocrine emergency? Resist treating symptoms in isolation. Your job is to find the unifying metabolic thread. Check: does this presentation change management if the patient is diabetic, has thyroid disease, or is on steroids?",
-  },
-  "nvidia/nemotron-nano-12b-v2-vl": {
-    strategy: "Occam's razor — parsimony first",
-    mandate: "Find ONE diagnosis that explains every symptom. Reject any differential that requires two concurrent diagnoses unless the evidence demands it. Then build the most pragmatic, community-feasible management plan: what can a GP do right now with the resources available? Prioritise: what is the single most important thing to do in the next hour?",
-  },
-  "mistralai/mixtral-8x22b-instruct-v0.1": {
-    strategy: "Step-by-step pathophysiology chain",
-    mandate: "Reason explicitly step by step — never jump to conclusions. For each candidate diagnosis: (1) trace the pathophysiological mechanism from root cause to every symptom, (2) identify which steps in the chain are confirmed vs assumed, (3) state what single investigation would break or confirm the chain. Your differential must follow mechanistic logic, not pattern-matching. Show your reasoning, not just your conclusions.",
-  },
-  "nvidia/llama-3.3-nemotron-super-49b-v1": {
-    strategy: "Haemodynamic and physiological stability assessor",
-    mandate: "Assess physiological stability first: MAP, HR, RR, SpO2, GCS, lactate — are any deteriorating? Apply shock index (HR/SBP) and quick SOFA. Then ask: which organ system is the index failure? Map every symptom to an organ-system failure pattern. Your management plan must be tiered: immediate stabilisation (next 30 min) → escalation criteria → disposition decision. Never recommend an investigation before the patient is stabilised.",
-  },
-  "nvidia/llama-3.1-nemotron-70b-instruct": {
-    strategy: "Evidence-quality grader and guideline anchor",
-    mandate: "Grade every clinical claim by evidence level: RCT/meta-analysis (Level 1) → cohort/case-control (Level 2) → expert consensus (Level 3) → case report (Level 4). For each recommendation, state its evidence grade explicitly. Anchor your management plan to the highest-grade guideline available (NICE, AHA/ACC, WHO, ESMO, etc.). Flag any recommendation that is Level 3 or lower and explain why stronger evidence is lacking.",
-  },
-};
+export function getCognitiveStrategyForSpecialty(specialty: SpecialtyMeta, model: string): { strategy: string; mandate: string } {
+  const id = specialty.id;
+
+  // 1. Critical & Emergency Care
+  if (
+    id === "emergency_medicine" ||
+    id === "critical_care" ||
+    id === "trauma_surgeon" ||
+    id === "anesthesiologist" ||
+    id === "toxicologist"
+  ) {
+    return {
+      strategy: "time-critical life-threat triage",
+      mandate: "ABCDE first — what can kill or permanently harm this patient in the next 60 minutes? Rule out life-threatening pathologies (e.g. cardiac tamponade, tension pneumothorax, pulmonary embolism, aortic dissection, hemorrhagic shock, airway obstruction) before anything else. Every investigation and treatment recommendation MUST include a time-to-action (STAT <1h / urgent <6h / routine <24h). Do not move to lower-acuity diagnoses until life threats are stabilized."
+    };
+  }
+
+  // 2. Oncology & Malignancy
+  if (id === "oncology" || id === "gynecologic_oncologist") {
+    return {
+      strategy: "worst-case and red flag hunter",
+      mandate: "Screen systematically for serious, life-altering, or malignant pathologies. Primary vs metastatic assessment. Staging indicators (FIGO, AJCC). Oncologic emergencies (hypercalcemia, SVC obstruction, spinal cord compression, febrile neutropenia). Address whether this presentation could represent an atypical paraneoplastic syndrome or autoimmune masquerader."
+    };
+  }
+
+  // 3. Women's Health & Maternal Fetal
+  if (
+    id === "obstetrics_gynecology" ||
+    id === "maternal_fetal_medicine" ||
+    id === "reproductive_endocrinologist"
+  ) {
+    return {
+      strategy: "maternal-fetal safety shield",
+      mandate: "Evaluate maternal risk, fetal status (CTG, biophysical profile, Dopplers), and gestational age milestones. Rule out ectopic pregnancy, preeclampsia with severe features, placental abruption, and uterine rupture first. Every pharmacological recommendation must be explicitly cross-referenced with pregnancy safety/teratogenicity by trimester."
+    };
+  }
+
+  // 4. Pediatrics & Neonatal
+  if (
+    id === "pediatrics" ||
+    id === "neonatologist" ||
+    id === "pediatric_cardiologist" ||
+    id === "pediatric_neurologist" ||
+    id === "developmental_pediatrician"
+  ) {
+    return {
+      strategy: "age-adapted developmental triage",
+      mandate: "Tailor diagnostic ranges and pharmacology strictly to age and pediatric development. Address weight-based dosing (mg/kg) and fluid requirements. Rule out neonatal sepsis, neonatal respiratory distress, and pediatric emergency conditions (e.g. Kawasaki disease, febrile status epilepticus, intussusception). Safety-netting must be extremely specific for caregivers."
+    };
+  }
+
+  // 5. Surgical & Operative Specialties
+  if (
+    id === "general_surgeon" ||
+    id === "neurosurgeon" ||
+    id === "cardiothoracic_surgeon" ||
+    id === "vascular_surgeon" ||
+    id === "orthopedic_surgeon" ||
+    id === "urologist" ||
+    id === "plastic_surgeon" ||
+    id === "colorectal_surgeon" ||
+    id === "oral_maxillofacial_surgeon" ||
+    id === "ent_otolaryngologist" ||
+    id === "ophthalmologist"
+  ) {
+    return {
+      strategy: "operative viability & surgical safety audit",
+      mandate: "Assess surgical vs conservative indications. Map anatomical landmarks and pathophysiology. Define operative risk scores (e.g. ASA classification, Goldman index). Outline clear clinical thresholds or signs that trigger immediate conversion from conservative trial to emergency surgery (laparotomy, craniotomy, decompression)."
+    };
+  }
+
+  // 6. Imaging & Diagnostics
+  if (id === "radiologist" || id === "nuclear_medicine_specialist" || id === "interventional_radiologist") {
+    return {
+      strategy: "structured imaging & multimodality staging",
+      mandate: "Interpret multi-modal imaging findings systematically. Anchor findings to structured reporting classifications (e.g. BI-RADS, LI-RADS, PI-RADS, LUNG-RADS). Rank differential diagnoses by radiologic probability and define specific contrast or procedure-related safety checks (e.g., eGFR targets for contrast safety)."
+    };
+  }
+
+  // 7. Foundational Pre-Clinical & Para-Clinical
+  if (
+    id === "clinical_geneticist" ||
+    id === "infectious_disease" || 
+    id === "pharmacology" ||
+    id === "pathology" ||
+    id === "anatomy" ||
+    id === "physiology" ||
+    id === "microbiology" ||
+    id === "biochemistry" ||
+    id === "forensic_medicine" ||
+    id === "community_medicine"
+  ) {
+    return {
+      strategy: "mechanistic pathophysiology & laboratory anchor",
+      mandate: "Anchor your reasoning in the foundational pre-clinical and para-clinical science. Mechanistically trace the disease process from cellular pathology, micro-organisms, anatomical boundaries, or biochemical pathway disruption to the clinical symptoms. Clarify where evidence is assumption vs laboratory-proven, and suggest targeted lab tests to isolate the pathobiology."
+    };
+  }
+
+  // 8. Outpatient, Chronic & Mental Health
+  if (
+    id === "general_practice" ||
+    id === "psychiatry" ||
+    id === "geriatrician" ||
+    id === "physiatrist" ||
+    id === "palliative_care_specialist" ||
+    id === "dermatology" ||
+    id === "sleep_medicine_specialist" ||
+    id === "pain_management_specialist" ||
+    id === "addiction_medicine_specialist"
+  ) {
+    return {
+      strategy: "holistic outpatient parsimony & Occam's razor",
+      mandate: "Apply Occam's Razor — prioritize a single, unified diagnosis explaining all symptoms. Build a pragmatic, community-feasible management plan optimized for outpatient resource constraints. Focus on patient concerns, functional rehabilitation goals, polypharmacy reconciliation (Beers criteria), and safety-netting thresholds."
+    };
+  }
+
+  // 9. Clinical Medicine Specialties (Default)
+  return {
+    strategy: "Bayesian differential & organ-system review",
+    mandate: "Start from population base rates for this patient's demographic. Review symptoms systematically across organ systems using a diagnostic mnemonic (like VINDICATE). For each diagnosis, state the pre-test probability, update it based on specific clinical findings, and show your probabilistic probability chain."
+  };
+}
 
 // Each model pinned to the specialty that matches its actual capabilities
 const MODEL_SPECIALTY_MAP: Record<string, string> = {
@@ -1080,7 +1168,7 @@ async function runAgent(
   patientContext?: string,
   labText?: string,
 ): Promise<AgentReply> {
-  const cognitiveStrategy = MODEL_COGNITIVE_STRATEGIES[model];
+  const cognitiveStrategy = getCognitiveStrategyForSpecialty(specialty, model);
   const system = buildSystemPrompt(specialty, cognitiveStrategy);
   const user = buildUserPrompt(question, context, patientContext, labText);
   const tag = cognitiveStrategy ? `${specialty.role} · ${cognitiveStrategy.strategy}` : specialty.role;
@@ -1111,7 +1199,7 @@ async function runDebateAgent(
   swarmSize: number,
   specialty: SpecialtyMeta,
 ): Promise<AgentReply & { round: 2 }> {
-  const cognitiveStrategy = MODEL_COGNITIVE_STRATEGIES[model];
+  const cognitiveStrategy = getCognitiveStrategyForSpecialty(specialty, model);
   const system = buildDebateSystemPrompt(specialty, cognitiveStrategy);
   const user = buildDebateUserPrompt(
     question,
