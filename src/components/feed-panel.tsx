@@ -633,7 +633,7 @@ export default function FeedPanel() {
   const [masterProgress, setMasterProgress] = useState(0);
   const [masterIngested, setMasterIngested] = useState(0);
   const [masterMsg, setMasterMsg] = useState<string | null>(null);
-  const crawlStartedRef = useRef(false);
+  const masterStopRef = useRef(false);
 
   const loadFeeds = useCallback(async () => {
     try {
@@ -706,55 +706,63 @@ export default function FeedPanel() {
   }
 
   async function startMasterCrawl() {
+    masterStopRef.current = false;
     setMasterCrawling(true);
     setMasterProgress(0);
     setMasterIngested(0);
     setMasterMsg("Initialising master crawl...");
     let totalIngested = 0;
 
-    // 1. Crawl StatPearls (1 batch of 15 articles to kickstart it)
+    // 1. Crawl StatPearls (loop until done or stopped)
     setMasterMsg("Crawling StatPearls (Clinical Reference) (1 / 23)…");
     setMasterProgress(1);
     try {
-      const res = await fetch("/api/admin/crawl-statpearls", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ batchSize: 15 }),
-      });
-      const data = (await res.json()) as { ingested?: number };
-      totalIngested += data.ingested ?? 0;
-      setMasterIngested(totalIngested);
+      while (!masterStopRef.current) {
+        const res = await fetch("/api/admin/crawl-statpearls", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ batchSize: 15 }),
+        });
+        const data = (await res.json()) as { ingested?: number; done?: boolean; error?: string };
+        if (data.error) break;
+        totalIngested += data.ingested ?? 0;
+        setMasterIngested(totalIngested);
+        if (data.done) break;
+      }
     } catch {
       // skip failed crawler, continue
     }
 
     // 2. Crawl all other 22 sources
     for (let i = 0; i < CRAWLER_LIST.length; i++) {
+      if (masterStopRef.current) break;
       const crawler = CRAWLER_LIST[i];
       setMasterMsg(`Crawling ${crawler.name} (${i + 2} / 23)…`);
       setMasterProgress(i + 2);
       try {
-        const res = await fetch(`/api/admin/crawl/${crawler.id}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ batchSize: crawler.batchSize }),
-        });
-        const data = (await res.json()) as { ingested?: number };
-        totalIngested += data.ingested ?? 0;
-        setMasterIngested(totalIngested);
+        while (!masterStopRef.current) {
+          const res = await fetch(`/api/admin/crawl/${crawler.id}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ batchSize: crawler.batchSize }),
+          });
+          const data = (await res.json()) as { ingested?: number; done?: boolean; error?: string };
+          if (data.error) break;
+          totalIngested += data.ingested ?? 0;
+          setMasterIngested(totalIngested);
+          if (data.done) break;
+        }
       } catch {
         // skip failed crawler, continue
       }
     }
-    setMasterMsg(`Done — ${totalIngested} article(s) ingested from 23 sources.`);
+    setMasterMsg(
+      masterStopRef.current
+        ? `Stopped — ${totalIngested} article(s) ingested from 23 sources.`
+        : `Done — ${totalIngested} article(s) ingested from 23 sources.`
+    );
     setMasterCrawling(false);
   }
-
-  useEffect(() => {
-    if (crawlStartedRef.current) return;
-    crawlStartedRef.current = true;
-    void startMasterCrawl();
-  }, []);
 
   async function toggleFeed(id: number, enabled: boolean) {
     await fetch("/api/admin/feeds", {
@@ -829,18 +837,31 @@ export default function FeedPanel() {
         )}
 
         <div className="flex justify-center">
-          <button
-            onClick={startMasterCrawl}
-            disabled={masterCrawling}
-            className="rounded-full px-8 py-2.5 text-sm font-bold uppercase tracking-wide transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{
-              backgroundColor: "var(--accent)",
-              color: "var(--bg)",
-              boxShadow: masterCrawling ? "none" : "0 0 16px color-mix(in srgb, var(--accent) 40%, transparent)",
-            }}
-          >
-            {masterCrawling ? `Crawling ${masterProgress}/23…` : "▶ Start Master Crawl"}
-          </button>
+          {!masterCrawling ? (
+            <button
+              onClick={startMasterCrawl}
+              className="rounded-full px-8 py-2.5 text-sm font-bold uppercase tracking-wide transition hover:opacity-90 shadow"
+              style={{
+                backgroundColor: "var(--accent)",
+                color: "var(--bg)",
+                boxShadow: "0 0 16px color-mix(in srgb, var(--accent) 40%, transparent)",
+              }}
+            >
+              ▶ Start Master Crawl
+            </button>
+          ) : (
+            <button
+              onClick={() => { masterStopRef.current = true; }}
+              className="rounded-full px-8 py-2.5 text-sm font-bold uppercase tracking-wide transition hover:opacity-90"
+              style={{
+                background: "rgba(239,68,68,0.15)",
+                color: "#f87171",
+                border: "1px solid rgba(239,68,68,0.3)",
+              }}
+            >
+              ⏸ Pause Master Crawl
+            </button>
+          )}
         </div>
       </div>
 
