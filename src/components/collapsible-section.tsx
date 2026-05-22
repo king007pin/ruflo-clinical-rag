@@ -42,8 +42,11 @@ export default function CollapsibleSection({
         }}
       >
         {/* Header row */}
-        <div className="flex w-full flex-col items-center gap-3 text-center sm:flex-row sm:items-start sm:justify-between sm:text-left">
-          <div className="flex flex-1 flex-col items-center gap-1 text-center sm:items-start sm:text-left min-w-0">
+        <div className="flex w-full flex-col items-center gap-3 text-center sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+          {/* Left spacer to balance the collapse button on desktop */}
+          <div className="hidden w-24 shrink-0 sm:block" />
+
+          <div className="flex flex-1 flex-col items-center gap-1 text-center min-w-0 w-full">
             {eyebrow && (
               <span className="text-xs uppercase tracking-[0.28em] font-semibold break-words block w-full" style={{ color: "var(--accent)" }}>
                 {eyebrow}
@@ -58,8 +61,9 @@ export default function CollapsibleSection({
               </p>
             )}
           </div>
+
           <span
-            className="shrink-0 rounded-full border px-3 py-1 text-xs font-semibold select-none sm:self-start"
+            className="w-24 shrink-0 text-center rounded-full border py-1 text-xs font-semibold select-none sm:self-start"
             style={{
               borderColor: "var(--accent)",
               color: "var(--accent)",

@@ -262,7 +262,7 @@ export default async function HomePage() {
  
         <CollapsibleSection
           eyebrow={
-            <span className="flex flex-col gap-0.5 items-center sm:items-start w-full">
+            <span className="flex flex-col gap-0.5 items-center w-full">
               <span>India-primary · auto-updates hourly ·</span>
               <span className="text-[10px] tracking-[0.18em] opacity-80 mt-0.5 block">
                 Last update: {latest[0]
