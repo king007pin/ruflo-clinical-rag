@@ -150,6 +150,17 @@ export async function runManagedSwarm(params: {
     onManagerStatus?.(`Manager: ${complexity} query — routing to ${agentCountSelected} agent${agentCountSelected !== 1 ? "s" : ""}.`);
   }
 
+  let actualAgentCount = agentCountSelected;
+  const wrappedOnSwarmConfig = (config: { swarmSize: number; hospitalDepartments: string[]; pgSubjects: string[] }) => {
+    actualAgentCount = config.swarmSize;
+    if (isEmergency) {
+      onManagerStatus?.(`Manager: EMERGENCY detected — ${emergencyTriggers.join(", ")}. Routing all ${config.swarmSize} agents dynamically.`);
+    } else {
+      onManagerStatus?.(`Manager: ${complexity} query — dynamically routed to ${config.swarmSize} agent${config.swarmSize !== 1 ? "s" : ""}.`);
+    }
+    onSwarmConfig?.(config);
+  };
+
   // ── Run swarm ────────────────────────────────────────────────────────────
   const swarm = await runSwarm({
     question,
@@ -160,7 +171,7 @@ export async function runManagedSwarm(params: {
     patientContext,
     labText,
     onAgentDone,
-    onSwarmConfig,
+    onSwarmConfig: wrappedOnSwarmConfig,
     onDebateStart,
     onSynthesisStart,
     onSynthesisToken,
@@ -197,7 +208,7 @@ export async function runManagedSwarm(params: {
       isMedical,
       isEmergency,
       emergencyTriggers,
-      agentCountSelected,
+      agentCountSelected: actualAgentCount,
       totalLatencyMs,
       escalationTriggered,
       preCheckPassed,
@@ -220,7 +231,7 @@ export async function runManagedSwarm(params: {
       isMedical,
       isEmergency,
       emergencyTriggers,
-      agentCountSelected,
+      agentCountSelected: actualAgentCount,
       escalationTriggered,
       totalLatencyMs,
       preCheckPassed,
