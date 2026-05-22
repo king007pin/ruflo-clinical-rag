@@ -53,6 +53,13 @@ Open **[http://localhost:3000](http://localhost:3000)** to launch the clinical d
 
 ---
 
+## 👥 Contributors & Core Engineering
+
+*   **Lead Architect & Core Developer**: [king007pin](https://github.com/king007pin)
+*   **SOTA AI Co-Pilot**: **Antigravity CLI** (Google DeepMind) — Orchestrated the clinical swarm routing algorithms, dynamic mapped fallbacks, Master Ingestion database migrations, and Vercel pipeline builds.
+
+---
+
 ## ⚖️ Open Source & Clinical Disclaimer
 
 Mediq is open-source under standard license agreements.
