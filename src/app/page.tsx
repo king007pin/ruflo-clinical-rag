@@ -110,9 +110,9 @@ export default async function HomePage() {
               className="mt-5 max-w-xl text-base leading-relaxed"
               style={{ color: "var(--muted)" }}
             >
-              Mediq synthesises multi-model clinical assessments grounded in your institutional corpus —
-              textbooks, guidelines, and lecture transcripts. Present a case; receive ranked differentials,
-              cited evidence, and explicit uncertainty ratings from a ten-specialist AI panel.
+              Mediq synthesizes SOTA clinical assessments grounded in your institutional corpus —
+              textbooks, guidelines, and reference transcripts. Present a case to instantly receive ranked differentials,
+              cited evidence, and explicit uncertainty ratings from a dynamically routed peer specialist AI swarm.
             </p>
 
             {/* Stat pills */}
@@ -169,7 +169,7 @@ export default async function HomePage() {
               </span>
             </div>
             <p className="mt-2 text-sm" style={{ color: "var(--muted)" }}>
-              Describe symptoms or differentials. Agents debate in two rounds, then synthesise a structured plain-text clinical report.
+              Describe symptoms or differentials. Agents debate in two rounds, then synthesize a structured plain-text clinical report.
             </p>
             <QueryBox />
           </div>

@@ -47,19 +47,19 @@ function LoginForm() {
             className="text-xs uppercase tracking-[0.28em] mb-2"
             style={{ color: "var(--accent)" }}
           >
-            Medical swarm notebook
+            Clinical Swarm Notebook
           </p>
           <h1 className="text-2xl font-semibold" style={{ color: "var(--text)" }}>
             Mediq
           </h1>
           <p className="mt-2 text-sm" style={{ color: "var(--muted)" }}>
-            For licensed clinicians only
+            For Licensed Clinicians Only
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <label className="block text-sm" style={{ color: "var(--text)" }}>
-            Access password
+            Access Password
             <input
               type="password"
               value={password}
@@ -96,7 +96,7 @@ function LoginForm() {
         </form>
 
         <p className="mt-6 text-center text-xs" style={{ color: "var(--muted)" }}>
-          Not a substitute for clinical judgment
+          Not a substitute for independent clinical judgment
         </p>
       </div>
     </main>

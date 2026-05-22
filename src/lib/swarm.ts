@@ -1327,7 +1327,7 @@ export async function runSwarm({
 
   // ── Round 3: Synthesis ───────────────────────────────────────────────────
   onSynthesisStart?.();
-  const synthesisModel = selected[0]; // primary / most capable model synthesises
+  const synthesisModel = selected[0]; // primary / most capable model synthesizes
   const answer = await runSynthesisAgent(
     synthesisModel,
     question,

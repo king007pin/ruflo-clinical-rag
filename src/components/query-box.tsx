@@ -911,7 +911,7 @@ export default function QueryBox() {
             } else if (payload.type === "synthesis_start") {
               setSynthesisPhase(true);
               setDebatePhase(false);
-              setLiveStatus(payload.message as string ?? "Synthesising final report…");
+              setLiveStatus(payload.message as string ?? "Synthesizing final report…");
             } else if (payload.type === "synthesis_token") {
               setSynthesisStream((prev) => prev + (payload.token as string));
             } else if (payload.type === "done") {
@@ -989,7 +989,7 @@ export default function QueryBox() {
 
   // Phase label
   const phaseLabel = synthesisPhase
-    ? "Synthesising report"
+    ? "Synthesizing report"
     : debatePhase
     ? "Peer debate"
     : routingPhase
@@ -1363,7 +1363,7 @@ export default function QueryBox() {
               style={{ borderColor: "rgba(74,222,128,0.35)", background: "linear-gradient(135deg,rgba(74,222,128,0.06),rgba(6,182,212,0.06))" }}>
               <div className="flex items-center gap-3">
                 <div className="flex-1 h-px" style={{ backgroundColor: "rgba(74,222,128,0.3)" }} />
-                <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#4ade80" }}>Synthesising Report</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#4ade80" }}>Synthesizing Report</span>
                 <div className="flex-1 h-px" style={{ backgroundColor: "rgba(6,182,212,0.3)" }} />
               </div>
               {synthesisStream ? (
@@ -1524,7 +1524,7 @@ export default function QueryBox() {
           <div className="flex items-center gap-3">
             <div className="flex-1 h-px" style={{ backgroundColor: "var(--card-border)" }} />
             <span className="text-[10px] uppercase tracking-widest font-bold" style={{ color: "#4ade80" }}>
-              Synthesised Report
+              Synthesized Report
             </span>
             <div className="flex-1 h-px" style={{ backgroundColor: "var(--card-border)" }} />
           </div>

@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
           onDebateStart: () =>
             send({ type: "debate_start", message: "Agents reviewing each other's reasoning…" }),
           onSynthesisStart: () =>
-            send({ type: "synthesis_start", message: "Synthesising final report from debate…" }),
+            send({ type: "synthesis_start", message: "Synthesizing final report from debate…" }),
           // Item 2: stream synthesis tokens to client
           onSynthesisToken: (token) => send({ type: "synthesis_token", token }),
           onManagerStatus: (msg) => send({ type: "status", message: msg }),
