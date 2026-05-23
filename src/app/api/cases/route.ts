@@ -1,5 +1,6 @@
 import { db } from "@/db";
 import { caseProfiles } from "@/db/schema";
+import { requireAuth } from "@/lib/auth-guard";
 import { desc } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -14,28 +15,36 @@ const createSchema = z.object({
   patientAge: z.number().int().min(0).max(140).optional(),
   patientDetails: z.string().max(4000).optional(),
   clinicianNotes: z.string().max(4000).optional(),
-  // W15: free-form provenance until W3's users table lands; e.g. "drsmith".
-  createdBy: z.string().min(1).max(120).optional(),
 });
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
+
   const rows = await db.select().from(caseProfiles).orderBy(desc(caseProfiles.createdAt)).limit(12);
   return NextResponse.json({ cases: rows });
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
+
   const json = await req.json().catch(() => null);
   const parsed = createSchema.safeParse(json);
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid payload", issues: parsed.error.issues }, { status: 400 });
   }
 
-  // Default `createdBy` to "admin" when the caller didn't supply one. The
-  // middleware-enforced session cookie is currently a shared admin
-  // credential (see W3 — pending), so we cannot derive a real user identity
-  // yet. The column at least lets us distinguish service writes from
-  // user-supplied identifiers when a real user model lands.
-  const createdBy = parsed.data.createdBy ?? "admin";
-  const [created] = await db.insert(caseProfiles).values({ ...parsed.data, createdBy }).returning();
+  // W15: Record the exact authenticated user's ID as the creator provenance
+  const createdBy = auth.userId;
+  const patientAge = parsed.data.patientAge !== undefined ? String(parsed.data.patientAge) : undefined;
+  const [created] = await db
+    .insert(caseProfiles)
+    .values({
+      ...parsed.data,
+      patientAge,
+      createdBy,
+    })
+    .returning();
   return NextResponse.json({ ok: true, case: created });
 }

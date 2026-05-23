@@ -1,17 +1,10 @@
 import type { CrawlerDef, CrawlerArticle } from "./types";
+import { textFromPdfBuffer } from "@/lib/pdf";
 
 const DELAY_MS = 1200;
 
 async function parsePdfBuffer(arrayBuffer: ArrayBuffer): Promise<string> {
-  try {
-    const pdfModule = await import("pdf-parse");
-    const parse = (pdfModule as unknown as { default?: (b: Buffer) => Promise<{ text: string }> }).default
-      ?? (pdfModule as unknown as (b: Buffer) => Promise<{ text: string }>);
-    const result = await parse(Buffer.from(arrayBuffer));
-    return (result.text ?? "").replace(/\s{2,}/g, " ").trim();
-  } catch {
-    return "";
-  }
+  return textFromPdfBuffer(arrayBuffer).catch(() => "");
 }
 
 const KNOWN_PDFS = [

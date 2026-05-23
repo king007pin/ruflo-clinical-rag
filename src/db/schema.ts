@@ -1,6 +1,7 @@
 // Keep the schema entrypoint present so models can define tables and run
 // `npx drizzle-kit push` without bootstrapping Drizzle config first.
-import { boolean, customType, integer, jsonb, pgEnum, pgTable, real, serial, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, customType, integer, jsonb, pgEnum, pgTable, real, serial, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { encryptPhi, decryptPhi, isEncrypted } from "../lib/phi-vault";
 
 // pgvector custom type — stores as binary vector(N) instead of jsonb, ~3x space savings
 function vector(dimensions: number) {
@@ -16,6 +17,19 @@ function vector(dimensions: number) {
     },
   });
 }
+
+// AES-256-GCM Envelope encrypted text custom type
+const encryptedText = customType<{ data: string; driverData: string }>({
+  dataType() {
+    return "text";
+  },
+  toDriver(v: string): string {
+    return encryptPhi(v);
+  },
+  fromDriver(v: string): string {
+    return isEncrypted(v) ? decryptPhi(v) : v;
+  },
+});
 
 export const sourceTypeEnum = pgEnum("source_type", ["pdf", "youtube", "website", "text"]);
 
@@ -46,15 +60,12 @@ export const caseProfiles = pgTable("case_profiles", {
   title: text("title").notNull(),
   question: text("question").notNull(),
   answer: text("answer").notNull(),
-  patientName: text("patient_name"),
-  patientAge: integer("patient_age"),
-  patientDetails: text("patient_details"),
-  clinicianNotes: text("clinician_notes"),
-  // W15: provenance for PHI rows. Nullable text today (free-form admin
-  // identifier); becomes a proper FK to users(id) once W3 (HMAC JWT +
-  // users table + argon2id) lands. Existing rows stay NULL — backfill
-  // happens in the W3 migration.
-  createdBy: text("created_by"),
+  patientName: encryptedText("patient_name"),
+  patientAge: encryptedText("patient_age"),
+  patientDetails: encryptedText("patient_details"),
+  clinicianNotes: encryptedText("clinician_notes"),
+  // W15: provenance for PHI rows linked directly to authenticating users
+  createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: false }).defaultNow().notNull(),
 });
 
@@ -87,12 +98,12 @@ export type SourceFeedInsert = typeof sourceFeeds.$inferInsert;
 // Query session log
 export const querySessions = pgTable("query_sessions", {
   id: serial("id").primaryKey(),
-  query: text("query").notNull(),
+  query: encryptedText("query").notNull(),
   queryEmbedding: vector(1024)("query_embedding"),
   matchCount: integer("match_count").default(0).notNull(),
   maxScore: real("max_score").default(0).notNull(),
   agentCount: integer("agent_count").default(0).notNull(),
-  consensusSnippet: text("consensus_snippet"),
+  consensusSnippet: encryptedText("consensus_snippet"),
   hadGap: boolean("had_gap").default(false).notNull(),
   gapTopic: text("gap_topic"),
   createdAt: timestamp("created_at", { withTimezone: false }).defaultNow().notNull(),
@@ -184,4 +195,37 @@ export type SessionFeedback = typeof sessionFeedback.$inferSelect;
 export type SessionFeedbackInsert = typeof sessionFeedback.$inferInsert;
 export type KnowledgeGap = typeof knowledgeGaps.$inferSelect;
 export type KnowledgeGapInsert = typeof knowledgeGaps.$inferInsert;
+
+// ── Per-User Auth (W3) ──────────────────────────────────────────────────────
+
+const citext = customType<{ data: string }>({
+  dataType() {
+    return "citext";
+  },
+});
+
+export const users = pgTable("users", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: citext("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  active: boolean("active").default(true).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: false }).defaultNow().notNull(),
+  lastLoginAt: timestamp("last_login_at", { withTimezone: false }),
+});
+
+export const sessions = pgTable("sessions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  expiresAt: timestamp("expires_at", { withTimezone: false }).notNull(),
+  revokedAt: timestamp("revoked_at", { withTimezone: false }),
+  ipHash: text("ip_hash"),
+  uaHash: text("ua_hash"),
+  createdAt: timestamp("created_at", { withTimezone: false }).defaultNow().notNull(),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: false }).defaultNow().notNull(),
+});
+
+export type User = typeof users.$inferSelect;
+export type UserInsert = typeof users.$inferInsert;
+export type Session = typeof sessions.$inferSelect;
+export type SessionInsert = typeof sessions.$inferInsert;
 

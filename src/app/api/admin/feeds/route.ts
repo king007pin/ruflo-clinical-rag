@@ -8,8 +8,8 @@ import { z } from "zod";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
-  const authError = requireAuth(req);
-  if (authError) return authError;
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
   const feeds = await db.select().from(sourceFeeds).orderBy(asc(sourceFeeds.name));
   return NextResponse.json({ feeds });
 }
@@ -23,8 +23,8 @@ const patchSchema = z.object({
 });
 
 export async function PATCH(req: NextRequest) {
-  const authError = requireAuth(req);
-  if (authError) return authError;
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
   const body = await req.json().catch(() => null);
   const parsed = patchSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
@@ -41,8 +41,8 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const authError = requireAuth(req);
-  if (authError) return authError;
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
   await db.delete(sourceFeeds);
   return NextResponse.json({ ok: true });
 }

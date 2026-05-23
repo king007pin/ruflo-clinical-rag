@@ -9,8 +9,8 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 export async function GET(req: Request) {
-  const authError = requireCron(req);
-  if (authError) return authError;
+  const auth = await requireCron(req);
+  if (auth instanceof NextResponse) return auth;
 
   try {
     // Auto-seed any MEDICAL_SEED_FEEDS missing from the DB.

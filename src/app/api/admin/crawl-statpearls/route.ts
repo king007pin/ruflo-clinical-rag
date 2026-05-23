@@ -31,8 +31,8 @@ async function getOrCreateCrawlFeed() {
 }
 
 export async function GET(req: NextRequest) {
-  const authError = requireAuth(req);
-  if (authError) return authError;
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
   const feed = await db.select().from(sourceFeeds).where(eq(sourceFeeds.name, FEED_NAME));
   const offset = Number(feed[0]?.query ?? "0");
   return NextResponse.json({
@@ -46,8 +46,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const authError = requireAuth(req);
-  if (authError) return authError;
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
   const { batchSize = 20, reset = false } = await req.json().catch(() => ({})) as {
     batchSize?: number;
     reset?: boolean;
@@ -127,8 +127,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const authError = requireAuth(req);
-  if (authError) return authError;
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
   await db.update(sourceFeeds).set({ query: "0", lastFetchCount: 0 }).where(eq(sourceFeeds.name, FEED_NAME));
   return NextResponse.json({ ok: true, message: "Crawl progress reset" });
 }

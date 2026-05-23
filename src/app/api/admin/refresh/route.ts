@@ -6,8 +6,8 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 export async function POST(req: NextRequest) {
-  const authError = requireAuth(req);
-  if (authError) return authError;
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
   try {
     const result = await runFeedRefresh();
     return NextResponse.json(result);

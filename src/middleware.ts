@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE } from "./lib/auth-constants";
+import { verifySessionToken } from "./lib/auth/tokens";
 
 // Paths reachable without a session cookie.
-//   - /login            login form
-//   - /api/auth         login/logout endpoint
-//   - /api/health       k8s/cloud-run liveness probe
-//   - /api/cron/*       Vercel Cron / external scheduler (guarded by CRON_SECRET in the route handler)
 const PUBLIC_EXACT = new Set<string>(["/login", "/api/auth", "/api/health"]);
 const PUBLIC_PREFIX = ["/api/cron"];
 
@@ -14,7 +11,7 @@ function isPublic(pathname: string): boolean {
   return PUBLIC_PREFIX.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
-export function middleware(req: NextRequest): NextResponse {
+export async function middleware(req: NextRequest): Promise<NextResponse> {
   const { pathname } = req.nextUrl;
 
   if (isPublic(pathname)) return NextResponse.next();
@@ -27,10 +24,22 @@ export function middleware(req: NextRequest): NextResponse {
   const secret = process.env.AUTH_SECRET;
   const cookie = req.cookies.get(SESSION_COOKIE)?.value;
 
-  // Plain `===` is fine here. Edge runtime lacks Node's crypto.timingSafeEqual,
-  // and a timing oracle on a TLS-protected high-entropy secret offers no
-  // practical leverage. The per-route `requireAuth` still uses timingSafeEqual.
-  const ok = !!(secret && cookie && cookie === secret);
+  let ok = false;
+  if (cookie) {
+    // 1. Dual-stack check: Legacy Cookie support
+    if (secret && cookie === secret) {
+      ok = true;
+    } else {
+      // 2. Stateful JWT validation (signature + expiry check in Edge layer)
+      try {
+        await verifySessionToken(cookie);
+        ok = true;
+      } catch {
+        ok = false;
+      }
+    }
+  }
+
   if (ok) return NextResponse.next();
 
   if (pathname.startsWith("/api/")) {

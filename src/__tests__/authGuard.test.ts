@@ -1,28 +1,38 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 import { requireAuth, requireCron, SESSION_COOKIE } from "../lib/auth-guard";
 
-function makeNextRequest(opts: {
-  url?: string;
-  cookieValue?: string;
-  headers?: Record<string, string>;
-} = {}): NextRequest {
+function makeNextRequest(
+  opts: {
+    url?: string;
+    cookieValue?: string;
+    headers?: Record<string, string>;
+  } = {},
+): NextRequest {
   const url = opts.url ?? "https://example.test/api/admin/seed";
   const headers = new Headers(opts.headers ?? {});
   if (opts.cookieValue !== undefined) {
-    headers.set("cookie", `${SESSION_COOKIE}=${encodeURIComponent(opts.cookieValue)}`);
+    headers.set(
+      "cookie",
+      `${SESSION_COOKIE}=${encodeURIComponent(opts.cookieValue)}`,
+    );
   }
   return new NextRequest(url, { headers });
 }
 
-function makePlainRequest(opts: {
-  cookieValue?: string;
-  headers?: Record<string, string>;
-} = {}): Request {
+function makePlainRequest(
+  opts: {
+    cookieValue?: string;
+    headers?: Record<string, string>;
+  } = {},
+): Request {
   const headers = new Headers(opts.headers ?? {});
   if (opts.cookieValue !== undefined) {
-    headers.set("cookie", `${SESSION_COOKIE}=${encodeURIComponent(opts.cookieValue)}`);
+    headers.set(
+      "cookie",
+      `${SESSION_COOKIE}=${encodeURIComponent(opts.cookieValue)}`,
+    );
   }
   return new Request("https://example.test/api/cron/refresh", { headers });
 }
@@ -35,54 +45,67 @@ describe("requireAuth", () => {
   });
 
   it("rejects requests with no cookie (401)", async () => {
-    const res = requireAuth(makeNextRequest());
-    expect(res).not.toBeNull();
-    expect(res!.status).toBe(401);
-    expect(await res!.json()).toEqual({ error: "Unauthorized" });
+    const res = await requireAuth(makeNextRequest());
+    expect(res).toBeInstanceOf(NextResponse);
+    const r = res as NextResponse;
+    expect(r.status).toBe(401);
+    expect(await r.json()).toEqual({ error: "Unauthorized" });
   });
 
   it("rejects requests with the wrong cookie value (401)", async () => {
-    const res = requireAuth(makeNextRequest({ cookieValue: "definitely-not-the-secret" }));
-    expect(res).not.toBeNull();
-    expect(res!.status).toBe(401);
+    const res = await requireAuth(
+      makeNextRequest({ cookieValue: "definitely-not-the-secret" }),
+    );
+    expect(res).toBeInstanceOf(NextResponse);
+    const r = res as NextResponse;
+    expect(r.status).toBe(401);
   });
 
   it("rejects requests where the cookie is only a prefix of the secret (length-mismatch guard)", async () => {
-    const res = requireAuth(makeNextRequest({ cookieValue: "test-secret" }));
-    expect(res).not.toBeNull();
-    expect(res!.status).toBe(401);
+    const res = await requireAuth(makeNextRequest({ cookieValue: "test-secret" }));
+    expect(res).toBeInstanceOf(NextResponse);
+    const r = res as NextResponse;
+    expect(r.status).toBe(401);
   });
 
-  it("rejects when AUTH_SECRET is not configured (500)", async () => {
-    delete process.env.AUTH_SECRET;
-    const res = requireAuth(makeNextRequest({ cookieValue: "anything" }));
-    expect(res).not.toBeNull();
-    expect(res!.status).toBe(500);
-  });
-
-  it("allows requests with the correct cookie (returns null)", () => {
-    const res = requireAuth(
+  it("allows legacy requests with the correct cookie (returns auth payload)", async () => {
+    const res = await requireAuth(
       makeNextRequest({ cookieValue: process.env.AUTH_SECRET! }),
     );
-    expect(res).toBeNull();
+    expect(res).not.toBeInstanceOf(NextResponse);
+    expect(res).toEqual({
+      userId: "00000000-0000-0000-0000-000000000000",
+      sessionId: "legacy-admin",
+    });
   });
 
-  it("allows dev bypass only when both NODE_ENV=development AND AUTH_BYPASS=1", () => {
+  it("allows dev bypass only when both NODE_ENV=development AND AUTH_BYPASS=1", async () => {
     delete process.env.AUTH_SECRET;
     (process.env as Record<string, string>).NODE_ENV = "development";
     process.env.AUTH_BYPASS = "1";
-    expect(requireAuth(makeNextRequest())).toBeNull();
+    const res = await requireAuth(makeNextRequest());
+    expect(res).not.toBeInstanceOf(NextResponse);
+    expect(res).toEqual({
+      userId: "00000000-0000-0000-0000-000000000000",
+      sessionId: "00000000-0000-0000-0000-000000000000",
+    });
 
     // NODE_ENV alone is not enough
     delete process.env.AUTH_BYPASS;
-    const res = requireAuth(makeNextRequest());
-    expect(res).not.toBeNull();
-    expect(res!.status).toBe(500);
+    const resFail = await requireAuth(makeNextRequest());
+    expect(resFail).toBeInstanceOf(NextResponse);
+    expect((resFail as NextResponse).status).toBe(401);
   });
 
-  it("reads the cookie from a plain Request (no NextRequest .cookies API)", () => {
-    const res = requireAuth(makePlainRequest({ cookieValue: process.env.AUTH_SECRET! }));
-    expect(res).toBeNull();
+  it("reads the cookie from a plain Request (no NextRequest .cookies API)", async () => {
+    const res = await requireAuth(
+      makePlainRequest({ cookieValue: process.env.AUTH_SECRET! }),
+    );
+    expect(res).not.toBeInstanceOf(NextResponse);
+    expect(res).toEqual({
+      userId: "00000000-0000-0000-0000-000000000000",
+      sessionId: "legacy-admin",
+    });
   });
 });
 
@@ -95,57 +118,73 @@ describe("requireCron", () => {
   });
 
   it("rejects requests with neither cookie nor bearer (401)", async () => {
-    const res = requireCron(makePlainRequest());
-    expect(res).not.toBeNull();
-    expect(res!.status).toBe(401);
+    const res = await requireCron(makePlainRequest());
+    expect(res).toBeInstanceOf(NextResponse);
+    expect((res as NextResponse).status).toBe(401);
   });
 
-  it("rejects when CRON_SECRET is unset and no cookie is presented (500)", () => {
+  it("rejects when CRON_SECRET is unset and no cookie is presented (500)", async () => {
     delete process.env.CRON_SECRET;
-    const res = requireCron(makePlainRequest());
-    expect(res).not.toBeNull();
-    expect(res!.status).toBe(500);
+    const res = await requireCron(makePlainRequest());
+    expect(res).toBeInstanceOf(NextResponse);
+    expect((res as NextResponse).status).toBe(500);
   });
 
-  it("accepts a valid Authorization: Bearer <CRON_SECRET>", () => {
-    const res = requireCron(
+  it("accepts a valid Authorization: Bearer <CRON_SECRET>", async () => {
+    const res = await requireCron(
       makePlainRequest({
         headers: { authorization: `Bearer ${process.env.CRON_SECRET}` },
       }),
     );
-    expect(res).toBeNull();
+    expect(res).not.toBeInstanceOf(NextResponse);
+    expect(res).toEqual({
+      userId: "00000000-0000-0000-0000-000000000000",
+      sessionId: "cron-secret",
+    });
   });
 
-  it("accepts a valid x-cron-secret header", () => {
-    const res = requireCron(
+  it("accepts a valid x-cron-secret header", async () => {
+    const res = await requireCron(
       makePlainRequest({
         headers: { "x-cron-secret": process.env.CRON_SECRET! },
       }),
     );
-    expect(res).toBeNull();
+    expect(res).not.toBeInstanceOf(NextResponse);
+    expect(res).toEqual({
+      userId: "00000000-0000-0000-0000-000000000000",
+      sessionId: "cron-secret",
+    });
   });
 
-  it("rejects an invalid bearer token", () => {
-    const res = requireCron(
+  it("rejects an invalid bearer token", async () => {
+    const res = await requireCron(
       makePlainRequest({
         headers: { authorization: "Bearer wrong-token-value" },
       }),
     );
-    expect(res).not.toBeNull();
-    expect(res!.status).toBe(401);
+    expect(res).toBeInstanceOf(NextResponse);
+    expect((res as NextResponse).status).toBe(401);
   });
 
-  it("accepts a valid session cookie (admin dashboard manual trigger)", () => {
-    const res = requireCron(
+  it("accepts a valid session cookie (admin dashboard manual trigger)", async () => {
+    const res = await requireCron(
       makePlainRequest({ cookieValue: process.env.AUTH_SECRET! }),
     );
-    expect(res).toBeNull();
+    expect(res).not.toBeInstanceOf(NextResponse);
+    expect(res).toEqual({
+      userId: "00000000-0000-0000-0000-000000000000",
+      sessionId: "legacy-admin",
+    });
   });
 
-  it("dev mode bypasses entirely", () => {
+  it("dev mode bypasses entirely", async () => {
     (process.env as Record<string, string>).NODE_ENV = "development";
     delete process.env.CRON_SECRET;
-    const res = requireCron(makePlainRequest());
-    expect(res).toBeNull();
+    const res = await requireCron(makePlainRequest());
+    expect(res).not.toBeInstanceOf(NextResponse);
+    expect(res).toEqual({
+      userId: "00000000-0000-0000-0000-000000000000",
+      sessionId: "00000000-0000-0000-0000-000000000000",
+    });
   });
 });

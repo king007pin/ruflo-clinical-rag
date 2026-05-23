@@ -38,8 +38,8 @@ async function probeUrl(url: string, timeoutMs = 8000): Promise<{ ok: boolean; s
 }
 
 export async function POST(req: NextRequest) {
-  const authError = requireAuth(req);
-  if (authError) return authError;
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
   const all = await db.select().from(sourceFeeds);
   const results: ProbeResult[] = [];
 

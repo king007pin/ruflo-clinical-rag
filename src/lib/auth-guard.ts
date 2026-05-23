@@ -1,13 +1,11 @@
 import { timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE } from "./auth-constants";
+import { verifySessionToken } from "./auth/tokens";
+import { loadSession, updateSessionLastSeen } from "./auth/sessions";
 
 /**
  * Constant-time string compare that survives length mismatches without throwing.
- * `crypto.timingSafeEqual` requires equal-length buffers — we pad both to the
- * same length so the underlying compare always runs, then assert equal length
- * after. An attacker cannot distinguish a length mismatch from a value
- * mismatch by timing.
  */
 function safeEqual(a: string, b: string): boolean {
   const ab = Buffer.from(a, "utf8");
@@ -22,8 +20,6 @@ function safeEqual(a: string, b: string): boolean {
 }
 
 function readCookie(req: Request, name: string): string | null {
-  // NextRequest exposes .cookies; plain Request (used by /api/cron) does not.
-  // Branch on capability so this helper works for both call sites.
   const maybeNext = req as Partial<NextRequest>;
   if (maybeNext.cookies && typeof maybeNext.cookies.get === "function") {
     return maybeNext.cookies.get(name)?.value ?? null;
@@ -33,53 +29,81 @@ function readCookie(req: Request, name: string): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
-/**
- * Verify the caller has a valid session cookie.
- * Returns `null` when authorized, or a 401/500 NextResponse when not.
- *
- * Development bypass: set NODE_ENV=development AND AUTH_BYPASS=1 to skip the
- * check. NODE_ENV alone is not enough — we don't want test scripts in CI to
- * accidentally turn auth off.
- */
-export function requireAuth(req: NextRequest | Request): NextResponse | null {
-  if (process.env.NODE_ENV === "development" && process.env.AUTH_BYPASS === "1") {
-    return null;
-  }
+const DEV_USER_ID = "00000000-0000-0000-0000-000000000000";
+const DEV_SESSION_ID = "00000000-0000-0000-0000-000000000000";
 
-  const secret = process.env.AUTH_SECRET;
-  if (!secret) {
-    return NextResponse.json({ error: "AUTH_SECRET not configured" }, { status: 500 });
+/**
+ * Verify the caller has a valid stateful JWT session cookie or legacy cookie.
+ * Returns { userId, sessionId } when authorized, or a NextResponse when not.
+ */
+export async function requireAuth(
+  req: NextRequest | Request,
+): Promise<{ userId: string; sessionId: string } | NextResponse> {
+  if (process.env.NODE_ENV === "development" && process.env.AUTH_BYPASS === "1") {
+    return { userId: DEV_USER_ID, sessionId: DEV_SESSION_ID };
   }
 
   const cookie = readCookie(req, SESSION_COOKIE);
-  if (!cookie || !safeEqual(cookie, secret)) {
+  if (!cookie) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  return null;
+
+  // 1. Dual-stack check: Legacy Cookie support
+  const legacySecret = process.env.AUTH_SECRET;
+  if (legacySecret && safeEqual(cookie, legacySecret)) {
+    return { userId: DEV_USER_ID, sessionId: "legacy-admin" };
+  }
+
+  // 2. Stateful JWT session verification
+  try {
+    const verified = await verifySessionToken(cookie);
+    const session = await loadSession(verified.sessionId);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Fire-and-forget lastSeenAt update
+    void updateSessionLastSeen(session.id);
+
+    return { userId: verified.userId, sessionId: verified.sessionId };
+  } catch (err) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 }
 
 /**
  * Cron-route guard. Accepts either:
- *   (a) a valid session cookie (manual trigger from the admin UI), or
- *   (b) a valid CRON_SECRET via `Authorization: Bearer <secret>` or
- *       `x-cron-secret: <secret>` (Vercel Cron / external scheduler).
- *
- * Returns `null` when authorized, or a 401/500 NextResponse when not.
+ *   (a) a valid session JWT cookie or legacy cookie, or
+ *   (b) a valid CRON_SECRET via headers.
  */
-export function requireCron(req: Request): NextResponse | null {
-  if (process.env.NODE_ENV === "development") return null;
-
-  // (a) Session-cookie path — short-circuit if a logged-in admin is triggering.
-  //     We inline the check rather than calling requireAuth() so a cookie miss
-  //     doesn't return a 401 prematurely; the cron bearer path below is also
-  //     a legitimate way in.
-  const authSecret = process.env.AUTH_SECRET;
-  if (authSecret) {
-    const cookie = readCookie(req, SESSION_COOKIE);
-    if (cookie && safeEqual(cookie, authSecret)) return null;
+export async function requireCron(
+  req: Request,
+): Promise<{ userId: string; sessionId: string } | NextResponse> {
+  if (process.env.NODE_ENV === "development") {
+    return { userId: DEV_USER_ID, sessionId: DEV_SESSION_ID };
   }
 
-  // (b) Cron-secret path.
+  // (a) Session-cookie path (dual-stack verify)
+  const cookie = readCookie(req, SESSION_COOKIE);
+  if (cookie) {
+    const legacySecret = process.env.AUTH_SECRET;
+    if (legacySecret && safeEqual(cookie, legacySecret)) {
+      return { userId: DEV_USER_ID, sessionId: "legacy-admin" };
+    }
+
+    try {
+      const verified = await verifySessionToken(cookie);
+      const session = await loadSession(verified.sessionId);
+      if (session) {
+        void updateSessionLastSeen(session.id);
+        return { userId: verified.userId, sessionId: verified.sessionId };
+      }
+    } catch {
+      // Ignore JWT validation error and fallback to cron secret validation
+    }
+  }
+
+  // (b) Cron-secret path
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret) {
     return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 500 });
@@ -89,9 +113,7 @@ export function requireCron(req: Request): NextResponse | null {
   if (!token || !safeEqual(token, cronSecret)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  return null;
+  return { userId: DEV_USER_ID, sessionId: "cron-secret" };
 }
 
-// Re-export the cookie name so callers don't have to import it from a second
-// module just to set/clear the cookie.
 export { SESSION_COOKIE };

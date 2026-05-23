@@ -1,20 +1,12 @@
 import type { CrawlerDef, CrawlerArticle } from "./types";
 import { stripHtml } from "../utils/html";
+import { textFromPdfBuffer } from "@/lib/pdf";
 
 const AIIMS_BASE = "https://www.aiims.edu";
 const UA = "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)";
 
 async function parsePdfBuffer(arrayBuffer: ArrayBuffer | Buffer): Promise<string> {
-  try {
-    const pdfModule = await import("pdf-parse");
-    const parse = (pdfModule as unknown as { default?: (b: Buffer) => Promise<{ text: string }> }).default
-      ?? (pdfModule as unknown as (b: Buffer) => Promise<{ text: string }>);
-    const buffer = Buffer.isBuffer(arrayBuffer) ? arrayBuffer : Buffer.from(arrayBuffer);
-    const result = await parse(buffer);
-    return (result.text ?? "").replace(/\s{2,}/g, " ").trim();
-  } catch {
-    return "";
-  }
+  return textFromPdfBuffer(arrayBuffer).catch(() => "");
 }
 
 function sanitizeTextForPostgres(text: string): string {

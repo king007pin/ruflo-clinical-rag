@@ -35,8 +35,8 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ source: string }> },
 ) {
-  const authError = requireAuth(req);
-  if (authError) return authError;
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
   const { source } = await params;
   const crawler = CRAWLERS[source];
   if (!crawler) {
@@ -63,8 +63,8 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ source: string }> },
 ) {
-  const authError = requireAuth(req);
-  if (authError) return authError;
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
   const { source } = await params;
   const crawler = CRAWLERS[source];
   if (!crawler) {
@@ -200,8 +200,8 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ source: string }> },
 ) {
-  const authError = requireAuth(req);
-  if (authError) return authError;
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
   const { source } = await params;
   const crawler = CRAWLERS[source];
   if (!crawler) {

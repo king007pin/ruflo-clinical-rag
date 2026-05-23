@@ -7,8 +7,8 @@ import { NextRequest, NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
-  const authError = requireAuth(req);
-  if (authError) return authError;
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
 
   // Dedupe by name in code: the live source_feeds table has no unique
   // constraint on name, so onConflictDoNothing cannot dedupe reliably.

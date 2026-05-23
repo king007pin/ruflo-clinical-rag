@@ -10,40 +10,101 @@ function normalizeWhitespace(input: string) {
   return input.replace(/\s+/g, " ").trim();
 }
 
-async function getPdfParser() {
-  const pdfModule = await import("pdf-parse");
-  return (
-    (pdfModule as unknown as { default?: (input: Buffer) => Promise<{ text: string }> }).default ??
-    (pdfModule as unknown as (input: Buffer) => Promise<{ text: string }>)
-  ) as (input: Buffer) => Promise<{ text: string }>;
-}
+export { textFromPdfBuffer, textFromPdfUrl } from "./pdf";
 
-export async function textFromPdfBuffer(input: ArrayBuffer | Buffer) {
-  const buffer = Buffer.isBuffer(input) ? input : Buffer.from(input);
-  const parser = await getPdfParser();
-  const parsed = await parser(buffer);
-  const text = normalizeWhitespace(parsed.text ?? "");
-  if (!text) throw new Error("No text found in PDF");
-  return text;
-}
+async function fetchYoutubeAudioUrl(url: string): Promise<string> {
+  const cobaltUrls = [
+    "https://api.cobalt.tools/api/json",
+    "https://co.wuk.sh/api/json",
+  ];
 
-export async function textFromPdfUrl(url: string) {
-  const res = await safeFetch(url, { maxBytes: MAX_PDF_BYTES });
-  if (!res.ok) throw new Error(`Failed to fetch PDF (${res.status})`);
-  const ab = await res.arrayBuffer();
-  if (ab.byteLength > MAX_PDF_BYTES) {
-    throw new Error(`PDF too large (${ab.byteLength} > ${MAX_PDF_BYTES})`);
+  let lastErr = null;
+  for (const cobaltUrl of cobaltUrls) {
+    try {
+      const res = await fetch(cobaltUrl, {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          url,
+          isAudioOnly: true,
+          audioFormat: "mp3",
+        }),
+      });
+
+      if (!res.ok) continue;
+      const json = await res.json() as { url?: string };
+      if (json.url) return json.url;
+    } catch (err) {
+      lastErr = err;
+    }
   }
-  return textFromPdfBuffer(Buffer.from(ab));
+  throw new Error(`Failed to extract YouTube audio URL: ${lastErr || "API failure"}`);
 }
 
-export async function textFromYoutubeUrl(url: string) {
+async function transcribeAudioWithWhisper(audioBuffer: ArrayBuffer, filename: string): Promise<string> {
+  const apiKey = process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error("Neither GROQ_API_KEY nor OPENAI_API_KEY configured for Whisper fallback");
+  }
+
+  const isGroq = !!process.env.GROQ_API_KEY;
+  const url = isGroq 
+    ? "https://api.groq.com/openai/v1/audio/transcriptions"
+    : "https://api.openai.com/v1/audio/transcriptions";
+  const model = isGroq ? "whisper-large-v3" : "whisper-1";
+
+  const formData = new FormData();
+  const blob = new Blob([audioBuffer], { type: "audio/mp3" });
+  formData.append("file", blob, filename);
+  formData.append("model", model);
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+    },
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Whisper transcription failed (${res.status}): ${errText}`);
+  }
+
+  const json = await res.json() as { text: string };
+  return json.text;
+}
+
+export async function textFromYoutubeUrl(url: string): Promise<string> {
   const videoId = extractYoutubeId(url);
   if (!videoId) throw new Error("Unable to parse YouTube video id");
-  const transcript = await YoutubeTranscript.fetchTranscript(videoId);
-  const text = normalizeWhitespace(transcript.map((t) => t.text).join(" "));
-  if (!text) throw new Error("Transcript is empty");
-  return text;
+
+  try {
+    // 1. Try standard scrape first
+    const transcript = await YoutubeTranscript.fetchTranscript(videoId);
+    const text = normalizeWhitespace(transcript.map((t) => t.text).join(" "));
+    if (text) return text;
+  } catch (err) {
+    console.warn(`[youtube] standard transcript extraction failed for ${videoId}, falling back to Whisper:`, err);
+  }
+
+  // 2. Whisper fallback
+  try {
+    const audioUrl = await fetchYoutubeAudioUrl(url);
+    const audioRes = await safeFetch(audioUrl, { maxBytes: 25 * 1024 * 1024 }); // 25MB cap
+    if (!audioRes.ok) throw new Error(`Failed to download audio (${audioRes.status})`);
+    
+    const ab = await audioRes.arrayBuffer();
+    const text = await transcribeAudioWithWhisper(ab, `${videoId}.mp3`);
+    const cleaned = normalizeWhitespace(text);
+    if (!cleaned) throw new Error("Whisper transcript is empty");
+    return cleaned;
+  } catch (err) {
+    throw new Error(`YouTube ingestion failed: standard extraction failed, and Whisper fallback failed with: ${(err as Error).message}`);
+  }
 }
 
 function extractYoutubeId(url: string) {
