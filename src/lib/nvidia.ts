@@ -80,16 +80,17 @@ const MODEL_CONFIGS: Record<string, { maxTokens: number; temperature: number }> 
 };
 
 export function mapUnstableModel(model: string): string {
-  if (model === "nvidia/nemotron-3-super-120b-a12b") {
-    return "nvidia/llama-3.1-nemotron-70b-instruct";
-  }
-  if (model === "nvidia/llama-3.3-nemotron-super-49b-v1") {
-    return "nvidia/llama-3.1-nemotron-70b-instruct";
-  }
-  if (model === "mistralai/ministral-14b-instruct-2512") {
-    return "meta/llama-3.3-70b-instruct";
-  }
-  return model;
+  // Map obsolete, experimental, or custom models to active, high-performance SOTA models on build.nvidia.com
+  const mappings: Record<string, string> = {
+    "nvidia/nemotron-3-super-120b-a12b":       "meta/llama-3.3-70b-instruct",
+    "nvidia/llama-3.3-nemotron-super-49b-v1":  "nvidia/llama-3.1-nemotron-70b-instruct",
+    "openai/gpt-oss-120b":                     "meta/llama-3.3-70b-instruct",
+    "meta/llama-4-maverick-17b-128e-instruct": "meta/llama-3.3-70b-instruct",
+    "qwen/qwen3-next-80b-a3b-instruct":        "meta/llama-3.3-70b-instruct",
+    "mistralai/ministral-14b-instruct-2512":   "meta/llama-3.3-70b-instruct",
+    "mistralai/mixtral-8x22b-instruct-v0.1":   "meta/llama-3.3-70b-instruct",
+  };
+  return mappings[model] ?? model;
 }
 
 export async function nvidiaChat(model: string, system: string, user: string, temperatureOverride?: number, maxTokensOverride?: number): Promise<string> {
