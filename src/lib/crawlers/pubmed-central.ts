@@ -8,7 +8,7 @@ const SEARCH_QUERIES = [
   "systematic review[Publication Type] AND treatment[Title]",
   "meta-analysis[Publication Type] AND disease[Title]",
   "randomized controlled trial[Publication Type] AND efficacy[Title]",
-  "review[Publication Type] AND diagnosis[Title] AND 2022:2025[pdat]",
+  "review[Publication Type] AND diagnosis[Title] AND 2022:2026[pdat]",
 ];
 
 export const pubmedCentralCrawler: CrawlerDef = {

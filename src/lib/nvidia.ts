@@ -77,6 +77,7 @@ const MODEL_CONFIGS: Record<string, { maxTokens: number; temperature: number }> 
   "nvidia/nemotron-3-super-120b-a12b":            { maxTokens: 4096, temperature: 0.3 },
   "nvidia/nemotron-nano-12b-v2-vl":              { maxTokens: 2048, temperature: 0.3 },
   "nvidia/llama-3.1-nemotron-70b-instruct":      { maxTokens: 4096, temperature: 0.3 },
+  "microsoft/phi-3-mini-128k-instruct":          { maxTokens: 2048, temperature: 0.2 },
 };
 
 export function mapUnstableModel(model: string): string {
@@ -91,6 +92,7 @@ export function mapUnstableModel(model: string): string {
     "qwen/qwen3-next-80b-a3b-instruct":        "meta/llama-3.3-70b-instruct",
     "mistralai/ministral-14b-instruct-2512":   "meta/llama-3.3-70b-instruct",
     "mistralai/mixtral-8x22b-instruct-v0.1":   "meta/llama-3.3-70b-instruct",
+    "microsoft/phi-3-mini-128k-instruct":      "meta/llama-3.3-70b-instruct",
   };
   return mappings[model] ?? model;
 }

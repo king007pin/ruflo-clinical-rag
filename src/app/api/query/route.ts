@@ -1,4 +1,4 @@
-import { assembleContext, embedText, searchByVector, rewriteQueryForRetrieval, type Match } from "@/lib/rag";
+import { assembleContext, embedText, searchByVector, rewriteQueryForRetrieval, searchPubMedLive, type Match } from "@/lib/rag";
 import { getSimilarPastCases, logSession } from "@/lib/session-learning";
 import { runManagedSwarm, classifyMedical } from "@/lib/manager";
 import { checkDrugInteractions, extractDrugNamesFromReport } from "@/lib/drug-safety";
@@ -50,10 +50,25 @@ export async function POST(req: NextRequest) {
   );
 
   const allEmbeddings = [qEmbedding, ...queryEmbeddings];
-  const allResults = await Promise.all(allEmbeddings.map((emb) => searchByVector(emb, topK)));
+  
+  // Parallelize local vector search with real-time PubMed E-utilities search for absolute 2026 currency
+  const [allResults, liveMatches] = await Promise.all([
+    Promise.all(allEmbeddings.map((emb) => searchByVector(emb, topK))),
+    searchPubMedLive(question, 4).catch(() => []),
+  ]);
 
   const seen = new Set<string>();
   const matches: Match[] = [];
+
+  // Add live 2026 PubMed guidelines first to prioritize them
+  for (const m of liveMatches) {
+    if (!seen.has(m.chunk)) {
+      seen.add(m.chunk);
+      matches.push(m);
+    }
+  }
+
+  // Add local vector DB results
   for (const batch of allResults) {
     for (const m of batch) {
       if (!seen.has(m.chunk)) {

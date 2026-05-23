@@ -331,3 +331,80 @@ export function assembleContext(top: Match[]) {
     })
     .join("\n\n---\n\n");
 }
+
+export async function searchPubMedLive(question: string, limit = 4): Promise<Match[]> {
+  const UA = "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)";
+  const EUTILS = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils";
+  const cleanQ = question.replace(/[?.,!]/g, "").replace(/\s+/g, " ").trim();
+  const term = `(${cleanQ}) AND 2024:2026[pdat] AND open access[filter]`;
+
+  try {
+    const p = new URLSearchParams({
+      db: "pmc",
+      term: term,
+      retmode: "json",
+      retmax: String(limit),
+    });
+
+    const res = await fetch(`${EUTILS}/esearch.fcgi?${p}`, {
+      headers: { "User-Agent": UA },
+      signal: AbortSignal.timeout(6000),
+    });
+
+    if (!res.ok) return [];
+    const data = (await res.json()) as { esearchresult?: { idlist?: string[] } };
+    const ids = data.esearchresult?.idlist ?? [];
+    if (!ids.length) return [];
+
+    const fetchPromises = ids.map(async (pmcId) => {
+      try {
+        const fp = new URLSearchParams({
+          db: "pmc",
+          id: pmcId,
+          rettype: "abstract",
+          retmode: "text",
+        });
+        const fetchRes = await fetch(`${EUTILS}/efetch.fcgi?${fp}`, {
+          headers: { "User-Agent": UA },
+          signal: AbortSignal.timeout(8000),
+        });
+        if (!fetchRes.ok) return null;
+        const text = await fetchRes.text();
+        if (text.length < 100) return null;
+
+        let title = `PMC${pmcId} — PubMed Central Article`;
+        let content = text;
+
+        if (text.trimStart().startsWith("<?xml") || text.trimStart().startsWith("<!DOCTYPE")) {
+          const titleMatch = text.match(/<article-title[^>]*>([\s\S]*?)<\/article-title>/i);
+          const abstractMatch = text.match(/<abstract[^>]*>([\s\S]*?)<\/abstract>/i);
+          const rawTitle = titleMatch?.[1]?.replace(/<[^>]+>/g, " ").replace(/\s{2,}/g, " ").trim();
+          const rawAbstract = abstractMatch?.[1]?.replace(/<[^>]+>/g, " ").replace(/\s{2,}/g, " ").trim();
+          if (!rawAbstract || rawAbstract.length < 100) return null;
+          title = rawTitle?.slice(0, 200) || title;
+          content = rawAbstract;
+        } else {
+          const lines = text.split("\n").filter((l) => l.trim().length > 0);
+          title = lines[0]?.slice(0, 200) ?? title;
+        }
+
+        return {
+          chunk: content.slice(0, 8000),
+          sourceTitle: `[PubMed 2026] ${title}`,
+          sourceType: "Live Research",
+          sourceUrl: `https://www.ncbi.nlm.nih.gov/pmc/articles/PMC${pmcId}/`,
+          score: 0.99,
+          position: 1,
+        };
+      } catch {
+        return null;
+      }
+    });
+
+    const results = await Promise.all(fetchPromises);
+    return results.filter((r): r is Match => r !== null);
+  } catch (err) {
+    console.error("[pubmed-live] error:", err);
+    return [];
+  }
+}
