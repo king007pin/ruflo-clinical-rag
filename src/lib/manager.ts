@@ -29,22 +29,11 @@ function detectEmergency(text: string): { isEmergency: boolean; triggers: string
 }
 
 // ── Off-topic detection ──────────────────────────────────────────────────────
+// W18: Classifier extracted to classify-medical.ts (zero DB deps → testable).
+// Re-exported here so existing imports from manager.ts keep working.
+import { classifyMedical } from "./classify-medical";
+export { classifyMedical };
 
-const OFF_TOPIC_PATTERNS = [
-  /\b(recipe|cooking|sport|football|cricket|music|movie|film|weather|stock|crypto|bitcoin)\b/i,
-  /\b(write\s+code|debug|javascript|python|sql)\b/i,
-  /\b(legal\s+advice|lawyer|attorney|court|lawsuit)\b/i,
-];
-
-const MEDICAL_SIGNALS = [
-  /\b(patient|symptom|diagnos|treatment|medication|drug|disease|fever|pain|mg|dose|clinical|physician|doctor|nurse|hospital|surgery|lab|test|blood|heart|lung|liver|kidney|brain|infection|cancer|diabetes|hypertension|asthma|COPD|ECG|MRI|CT\s+scan)\b/i,
-];
-
-function classifyMedical(query: string): boolean {
-  if (OFF_TOPIC_PATTERNS.some((p) => p.test(query))) return false;
-  if (MEDICAL_SIGNALS.some((p) => p.test(query))) return true;
-  return true; // default allow — be permissive for clinicians
-}
 
 // ── Complexity scoring → swarm size ─────────────────────────────────────────
 

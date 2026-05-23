@@ -1,6 +1,6 @@
 import { assembleContext, embedText, searchByVector, rewriteQueryForRetrieval, type Match } from "@/lib/rag";
 import { getSimilarPastCases, logSession } from "@/lib/session-learning";
-import { runManagedSwarm } from "@/lib/manager";
+import { runManagedSwarm, classifyMedical } from "@/lib/manager";
 import { checkDrugInteractions, extractDrugNamesFromReport } from "@/lib/drug-safety";
 import { rateLimit, RL_QUERY } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
@@ -29,6 +29,15 @@ export async function POST(req: NextRequest) {
   }
 
   const { question, model, swarmSize, topK = 10, patientContext, labText } = parsed.data;
+
+  // W18: Early off-topic gate — reject non-medical queries before embedding
+  // to avoid burning NVIDIA quota on irrelevant content.
+  if (!classifyMedical(question)) {
+    return NextResponse.json(
+      { error: "This query does not appear to be medical or clinical in nature. Mediq is a clinical decision support tool — please rephrase your question with relevant medical context." },
+      { status: 422 },
+    );
+  }
 
   // Item 5: multi-query retrieval with deduplication
   const [qEmbedding, rewrittenQueries] = await Promise.all([
