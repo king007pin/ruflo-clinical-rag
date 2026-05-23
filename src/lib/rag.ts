@@ -336,7 +336,9 @@ export async function searchPubMedLive(question: string, limit = 4): Promise<Mat
   const UA = "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)";
   const EUTILS = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils";
   const cleanQ = question.replace(/[?.,!]/g, "").replace(/\s+/g, " ").trim();
-  const term = `(${cleanQ}) AND 2024:2026[pdat] AND open access[filter]`;
+  const currentYear = new Date().getFullYear();
+  const startYear = currentYear - 2;
+  const term = `(${cleanQ}) AND ${startYear}:${currentYear}[pdat] AND open access[filter]`;
 
   try {
     const p = new URLSearchParams({

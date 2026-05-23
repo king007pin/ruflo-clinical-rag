@@ -8,7 +8,7 @@ const SEARCH_QUERIES = [
   "systematic review[Publication Type] AND treatment[Title]",
   "meta-analysis[Publication Type] AND disease[Title]",
   "randomized controlled trial[Publication Type] AND efficacy[Title]",
-  "review[Publication Type] AND diagnosis[Title] AND 2022:2026[pdat]",
+  "review[Publication Type] AND diagnosis[Title] AND 2022:CURRENT_YEAR[pdat]",
 ];
 
 export const pubmedCentralCrawler: CrawlerDef = {
@@ -22,8 +22,10 @@ export const pubmedCentralCrawler: CrawlerDef = {
 
   async fetchUrls(): Promise<string[]> {
     const idSet = new Set<string>();
+    const currentYear = new Date().getFullYear();
+    const queries = SEARCH_QUERIES.map((q) => q.replace("CURRENT_YEAR", String(currentYear)));
 
-    for (const query of SEARCH_QUERIES) {
+    for (const query of queries) {
       try {
         await new Promise((r) => setTimeout(r, 400));
         const p = new URLSearchParams({
