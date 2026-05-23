@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE } from "@/lib/auth-constants";
+import { rateLimit, RL_AUTH } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,8 @@ function safeEqual(a: string, b: string): boolean {
 }
 
 export async function POST(req: NextRequest) {
+  const rl = rateLimit(req, RL_AUTH);
+  if (rl) return rl;
   const { password } = (await req.json().catch(() => ({}))) as { password?: string };
   const appPassword = process.env.APP_PASSWORD;
   const secret = process.env.AUTH_SECRET;

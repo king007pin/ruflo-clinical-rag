@@ -1,6 +1,7 @@
 import { db } from "@/db";
 import { sourceFeeds } from "@/db/schema";
 import { requireAuth } from "@/lib/auth-guard";
+import { safeFetch } from "@/lib/safe-fetch";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -17,16 +18,16 @@ type ProbeResult = {
 
 async function probeUrl(url: string, timeoutMs = 8000): Promise<{ ok: boolean; status?: number; error?: string }> {
   try {
-    const res = await fetch(url, {
+    const res = await safeFetch(url, {
       headers: { "User-Agent": "MediqRAG/1.0 (clinical research copilot)" },
-      signal: AbortSignal.timeout(timeoutMs),
       method: "HEAD",
+      timeoutMs,
     });
     if (!res.ok) {
       // HEAD might not be supported — try GET with small range
-      const res2 = await fetch(url, {
-        headers: { "User-Agent": "MediqRAG/1.0", "Range": "bytes=0-99" },
-        signal: AbortSignal.timeout(timeoutMs),
+      const res2 = await safeFetch(url, {
+        headers: { "User-Agent": "MediqRAG/1.0", Range: "bytes=0-99" },
+        timeoutMs,
       });
       return { ok: res2.ok || res2.status === 206, status: res2.status };
     }

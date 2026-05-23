@@ -1,5 +1,6 @@
 import { persistSource } from "@/lib/ingest-pipeline";
 import { textFromPdfBuffer, textFromPdfUrl, textFromWebsite, textFromYoutubeUrl } from "@/lib/rag";
+import { rateLimit, RL_INGEST } from "@/lib/rate-limit";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -16,6 +17,8 @@ const bodySchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  const rl = rateLimit(req, RL_INGEST);
+  if (rl) return rl;
   const contentType = req.headers.get("content-type") ?? "";
   if (contentType.includes("multipart/form-data")) return handleMultipart(req);
 

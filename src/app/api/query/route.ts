@@ -2,6 +2,7 @@ import { assembleContext, embedText, searchByVector, rewriteQueryForRetrieval, t
 import { getSimilarPastCases, logSession } from "@/lib/session-learning";
 import { runManagedSwarm } from "@/lib/manager";
 import { checkDrugInteractions, extractDrugNamesFromReport } from "@/lib/drug-safety";
+import { rateLimit, RL_QUERY } from "@/lib/rate-limit";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -18,6 +19,8 @@ const bodySchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  const rl = rateLimit(req, RL_QUERY);
+  if (rl) return rl;
   const json = await req.json().catch(() => null);
   const parsed = bodySchema.safeParse(json);
   if (!parsed.success) {

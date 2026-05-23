@@ -2,6 +2,9 @@ import { extract } from "@extractus/article-extractor";
 import { YoutubeTranscript } from "youtube-transcript";
 import { hasNvidiaKey, nvidiaEmbed, nvidiaEmbedBatch, nvidiaChat } from "./nvidia";
 import { poolCorpus, corpusRetry } from "@/db";
+import { safeFetch, assertUrlIsPublic } from "./safe-fetch";
+
+const MAX_PDF_BYTES = 15 * 1024 * 1024;
 
 function normalizeWhitespace(input: string) {
   return input.replace(/\s+/g, " ").trim();
@@ -25,10 +28,13 @@ export async function textFromPdfBuffer(input: ArrayBuffer | Buffer) {
 }
 
 export async function textFromPdfUrl(url: string) {
-  const res = await fetch(url);
+  const res = await safeFetch(url, { maxBytes: MAX_PDF_BYTES });
   if (!res.ok) throw new Error(`Failed to fetch PDF (${res.status})`);
-  const buffer = Buffer.from(await res.arrayBuffer());
-  return textFromPdfBuffer(buffer);
+  const ab = await res.arrayBuffer();
+  if (ab.byteLength > MAX_PDF_BYTES) {
+    throw new Error(`PDF too large (${ab.byteLength} > ${MAX_PDF_BYTES})`);
+  }
+  return textFromPdfBuffer(Buffer.from(ab));
 }
 
 export async function textFromYoutubeUrl(url: string) {
@@ -46,6 +52,13 @@ function extractYoutubeId(url: string) {
 }
 
 export async function textFromWebsite(url: string): Promise<string> {
+  // Pre-flight SSRF check. `extract()` and Tinyfish both make their own
+  // outbound fetches that we cannot wrap; the pre-flight at least blocks
+  // obvious targets (link-local, private RFC1918, loopback) before either
+  // library is called. DNS-rebinding between this check and the actual
+  // fetch is a known residual risk.
+  await assertUrlIsPublic(url);
+
   // Try Tinyfish API first (handles anti-bot, JS-rendered pages)
   if (process.env.TINYFISH_API_KEY) {
     try {
