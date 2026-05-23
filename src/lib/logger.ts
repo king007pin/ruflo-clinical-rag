@@ -27,19 +27,15 @@ function format(level: Level, message: string, meta?: unknown): [string, ...unkn
 
 export const logger = {
   debug(message: string, meta?: unknown): void {
-    // eslint-disable-next-line no-console
     console.debug(...format("debug", message, meta));
   },
   info(message: string, meta?: unknown): void {
-    // eslint-disable-next-line no-console
     console.info(...format("info", message, meta));
   },
   warn(message: string, meta?: unknown): void {
-    // eslint-disable-next-line no-console
     console.warn(...format("warn", message, meta));
   },
   error(message: string, meta?: unknown): void {
-    // eslint-disable-next-line no-console
     console.error(...format("error", message, meta));
   },
 };
