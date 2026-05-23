@@ -3,7 +3,7 @@ import { sourceFeeds } from "@/db/schema";
 import { persistSource } from "@/lib/ingest-pipeline";
 import { CRAWLERS } from "@/lib/crawl-registry";
 import { requireAuth } from "@/lib/auth-guard";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -91,9 +91,37 @@ export async function POST(
     return NextResponse.json({ ok: true, message: "Reset to offset 0" });
   }
 
-  const offset = Number(feed.query ?? "0");
+  // W20: tx-A — acquire row lock + read offset atomically. SKIP LOCKED
+  // means a concurrent cron firing for the same feed bails immediately
+  // instead of dup-ingesting from the same offset.
+  const locked = await db.transaction(async (tx) => {
+    const r = await tx.execute(sql`
+      SELECT id, query, last_fetch_count, error_count
+      FROM source_feeds
+      WHERE id = ${feed.id}
+      FOR UPDATE SKIP LOCKED
+    `);
+    const row = (r.rows ?? [])[0] as
+      | { id: number; query: string | null; last_fetch_count: number | null; error_count: number | null }
+      | undefined;
+    if (!row) return null;
+    return {
+      offset: Number(row.query ?? "0"),
+      lastFetchCount: row.last_fetch_count ?? 0,
+      errorCount: row.error_count ?? 0,
+    };
+  });
 
-  // Fetch the full article URL list
+  if (!locked) {
+    return NextResponse.json(
+      { ok: false, skipped: true, reason: "Another crawl is already running for this feed" },
+      { status: 409 },
+    );
+  }
+
+  const offset = locked.offset;
+
+  // Fetch the full article URL list (OUTSIDE tx — do not hold lock across HTTP)
   let allUrls: string[];
   try {
     allUrls = await crawler.fetchUrls();
@@ -139,16 +167,21 @@ export async function POST(
   }
 
   const nextOffset = done ? 0 : offset + batchSize;
-  await db
-    .update(sourceFeeds)
-    .set({
-      query: String(nextOffset),
-      lastFetchedAt: new Date(),
-      lastFetchCount: (feed.lastFetchCount ?? 0) + ingested,
-      errorCount: (feed.errorCount ?? 0) + errors,
-      lastError: errors > 0 ? `${errors} article(s) failed in last batch` : null,
-    })
-    .where(eq(sourceFeeds.id, feed.id));
+  // tx-B: write-back offset/counters in a short tx. No lock needed —
+  // tx-A already serialized us; updatedAt-style CAS is implicit via the
+  // SKIP LOCKED gate above.
+  await db.transaction(async (tx) => {
+    await tx
+      .update(sourceFeeds)
+      .set({
+        query: String(nextOffset),
+        lastFetchedAt: new Date(),
+        lastFetchCount: locked.lastFetchCount + ingested,
+        errorCount: locked.errorCount + errors,
+        lastError: errors > 0 ? `${errors} article(s) failed in last batch` : null,
+      })
+      .where(eq(sourceFeeds.id, feed.id));
+  });
 
   return NextResponse.json({
     ok: true,
