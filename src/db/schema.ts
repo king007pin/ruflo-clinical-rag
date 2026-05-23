@@ -50,6 +50,11 @@ export const caseProfiles = pgTable("case_profiles", {
   patientAge: integer("patient_age"),
   patientDetails: text("patient_details"),
   clinicianNotes: text("clinician_notes"),
+  // W15: provenance for PHI rows. Nullable text today (free-form admin
+  // identifier); becomes a proper FK to users(id) once W3 (HMAC JWT +
+  // users table + argon2id) lands. Existing rows stay NULL — backfill
+  // happens in the W3 migration.
+  createdBy: text("created_by"),
   createdAt: timestamp("created_at", { withTimezone: false }).defaultNow().notNull(),
 });
 

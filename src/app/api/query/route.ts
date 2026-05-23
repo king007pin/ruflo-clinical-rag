@@ -3,6 +3,7 @@ import { getSimilarPastCases, logSession } from "@/lib/session-learning";
 import { runManagedSwarm } from "@/lib/manager";
 import { checkDrugInteractions, extractDrugNamesFromReport } from "@/lib/drug-safety";
 import { rateLimit, RL_QUERY } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -134,7 +135,12 @@ export async function POST(req: NextRequest) {
           })),
         });
       } catch (err) {
-        send({ type: "error", message: (err as Error).message });
+        // W17: never leak internal error messages over the SSE stream.
+        // Internal errors include DB connection strings, PG error codes,
+        // file paths, and stack-trace fragments. Log the real error
+        // server-side; emit a generic message to the browser.
+        logger.error("[query] swarm run failed", err);
+        send({ type: "error", message: "Query failed. Please try again." });
       } finally {
         if (ping) clearInterval(ping);
         controller.close();

@@ -14,6 +14,8 @@ const createSchema = z.object({
   patientAge: z.number().int().min(0).max(140).optional(),
   patientDetails: z.string().max(4000).optional(),
   clinicianNotes: z.string().max(4000).optional(),
+  // W15: free-form provenance until W3's users table lands; e.g. "drsmith".
+  createdBy: z.string().min(1).max(120).optional(),
 });
 
 export async function GET() {
@@ -28,6 +30,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid payload", issues: parsed.error.issues }, { status: 400 });
   }
 
-  const [created] = await db.insert(caseProfiles).values(parsed.data).returning();
+  // Default `createdBy` to "admin" when the caller didn't supply one. The
+  // middleware-enforced session cookie is currently a shared admin
+  // credential (see W3 — pending), so we cannot derive a real user identity
+  // yet. The column at least lets us distinguish service writes from
+  // user-supplied identifiers when a real user model lands.
+  const createdBy = parsed.data.createdBy ?? "admin";
+  const [created] = await db.insert(caseProfiles).values({ ...parsed.data, createdBy }).returning();
   return NextResponse.json({ ok: true, case: created });
 }

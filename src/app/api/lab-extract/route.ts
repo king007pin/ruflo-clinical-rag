@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 const MAX_CHARS = 10_000;
+const MAX_LAB_BYTES = 10 * 1024 * 1024;
 
 export async function POST(req: NextRequest) {
   let formData: FormData;
@@ -16,6 +17,11 @@ export async function POST(req: NextRequest) {
 
   const file = formData.get("file") as File | null;
   if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 });
+  // W14: cap upload size before buffering. Cloud Run instance is 2 GiB;
+  // an unchecked PDF upload could OOM the process.
+  if (file.size > MAX_LAB_BYTES) {
+    return NextResponse.json({ error: "Lab file too large (limit 10 MB)" }, { status: 413 });
+  }
 
   const buffer = Buffer.from(await file.arrayBuffer());
 
