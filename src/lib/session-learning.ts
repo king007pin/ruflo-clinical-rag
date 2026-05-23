@@ -1,5 +1,6 @@
 import { db } from "@/db";
 import { knowledgeGaps, querySessions, sessionFeedback } from "@/db/schema";
+import { scrubPhi } from "./phi-scrubber";
 import { and, desc, eq, sql } from "drizzle-orm";
 
 // Called gap when: few sources OR low max score OR agent text contains "not supported"
@@ -127,9 +128,14 @@ export async function getSimilarPastCases(
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
 
+  // Strip obvious PHI from cross-session memory before it gets re-injected
+  // into another patient's LLM context. (W33 — cross-patient leak vector.)
+  // This is best-effort: free-text identifiers may still slip through. Real
+  // safety requires either per-row PHI tagging at ingest time or storing
+  // structured-only past-case summaries.
   return scored.map((r) => ({
-    query: r.query,
-    consensusSnippet: r.consensusSnippet,
+    query: scrubPhi(r.query),
+    consensusSnippet: r.consensusSnippet ? scrubPhi(r.consensusSnippet) : null,
     sessionId: r.id,
   }));
 }

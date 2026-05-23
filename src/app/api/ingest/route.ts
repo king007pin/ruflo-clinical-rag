@@ -1,6 +1,7 @@
 import { persistSource } from "@/lib/ingest-pipeline";
 import { textFromPdfBuffer, textFromPdfUrl, textFromWebsite, textFromYoutubeUrl } from "@/lib/rag";
 import { rateLimit, RL_INGEST } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest) {
     const result = await persistSource({ kind, rawText, url, title, description });
     return NextResponse.json({ ok: true, chunkCount: result.chunkCount, sourceId: result.sourceId });
   } catch (err) {
-    console.error("ingest error", err);
+    logger.error("ingest error", err);
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });
   }
 }
@@ -65,7 +66,7 @@ async function handleMultipart(req: NextRequest) {
     });
     return NextResponse.json({ ok: true, chunkCount: result.chunkCount, sourceId: result.sourceId });
   } catch (err) {
-    console.error("ingest multipart error", err);
+    logger.error("ingest multipart error", err);
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });
   }
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { dbCorpus } from "@/db";
 import { embeddings, sources } from "@/db/schema";
+import { logger } from "@/lib/logger";
 import { sql } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +18,7 @@ export async function GET() {
       chunkCount: Number(chunkResult[0]?.count ?? 0),
     });
   } catch (err) {
-    console.error("STATS_API_ERROR:", err);
+    logger.error("STATS_API_ERROR", err);
     return NextResponse.json({ sourceCount: 0, chunkCount: 0 });
   }
 }

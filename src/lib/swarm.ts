@@ -1,5 +1,6 @@
 import { assembleContext } from "./rag";
 import { hasNvidiaKey, nvidiaChat, nvidiaChatStream, NVIDIA_SWARM_MODELS, mapUnstableModel } from "./nvidia";
+import { logger } from "./logger";
 
 // Fast small models for simple/moderate queries — lower latency, adequate quality
 const NVIDIA_SWARM_MODELS_FAST = [
@@ -1189,7 +1190,7 @@ async function callRufloApi(payload: Record<string, unknown>): Promise<string | 
     return (data?.message ?? data?.answer ?? JSON.stringify(data)) as string;
   } catch (err) {
     clearTimeout(timeoutId);
-    console.error("Ruflo API call failed or timed out:", err);
+    logger.error("Ruflo API call failed or timed out", err);
     return null;
   }
 }
@@ -1392,10 +1393,10 @@ export async function runSwarm({
       selected = [model, ...selected.filter((m) => m !== model)].slice(0, selected.length);
     }
 
-    console.log(`[AI Swarm Router] Routed query to ${selected.length} agents. Departments: ${hospitalDepts.join(", ")}, PG Subjects: ${pgSubjs.join(", ")}`);
+    logger.info(`[AI Swarm Router] Routed query to ${selected.length} agents. Departments: ${hospitalDepts.join(", ")}, PG Subjects: ${pgSubjs.join(", ")}`);
     onSwarmConfig?.({ swarmSize: selected.length, hospitalDepartments: hospitalDepts, pgSubjects: pgSubjs });
   } catch (err) {
-    console.error("[AI Swarm Router] Router failed, falling back to static keyword allocation:", err);
+    logger.error("[AI Swarm Router] Router failed, falling back to static keyword allocation", err);
     const fb = getFallbackAllocation(question, swarmSize);
     selected = fb.models;
     specialties = fb.specialties;

@@ -19,14 +19,16 @@ npm-debug.log*
 
 # vercel
 .vercel
+
+# Images — blanket-ignored, then explicitly re-allowed under public/ at any depth.
 *.png
 *.jpg
 *.jpeg
-# Allow public/ assets
-!public/*.png
-!public/*.jpg
-!public/*.jpeg
-!public/*.svg
-.env*.local
+!public/**/*.png
+!public/**/*.jpg
+!public/**/*.jpeg
+!public/**/*.svg
+
+# tsbuild incremental output
 *.tsbuildinfo
 
