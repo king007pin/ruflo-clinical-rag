@@ -83,7 +83,9 @@ export function mapUnstableModel(model: string): string {
   // Map obsolete, experimental, or custom models to active, high-performance SOTA models on build.nvidia.com
   const mappings: Record<string, string> = {
     "nvidia/nemotron-3-super-120b-a12b":       "meta/llama-3.3-70b-instruct",
-    "nvidia/llama-3.3-nemotron-super-49b-v1":  "nvidia/llama-3.1-nemotron-70b-instruct",
+    "nvidia/llama-3.3-nemotron-super-49b-v1":  "meta/llama-3.3-70b-instruct",
+    "nvidia/llama-3.1-nemotron-70b-instruct":  "meta/llama-3.3-70b-instruct",
+    "nvidia/nemotron-nano-12b-v2-vl":          "meta/llama-3.3-70b-instruct",
     "openai/gpt-oss-120b":                     "meta/llama-3.3-70b-instruct",
     "meta/llama-4-maverick-17b-128e-instruct": "meta/llama-3.3-70b-instruct",
     "qwen/qwen3-next-80b-a3b-instruct":        "meta/llama-3.3-70b-instruct",
