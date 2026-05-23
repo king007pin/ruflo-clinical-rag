@@ -136,6 +136,25 @@ export const PROVIDERS: Record<string, Provider> = {
   },
 };
 
+/**
+ * Defense-in-depth helper: only honor a stored `customBaseUrl` when the
+ * provider explicitly requires one (currently only `custom`). For every
+ * known provider — openai, anthropic, gemini, nvidia, etc. — the baseUrl
+ * is hard-coded in PROVIDERS and must NOT be overridable by DB state.
+ *
+ * Without this guard, an authed user could overwrite a known provider's
+ * customBaseUrl to a host they control and trigger a "test" or swarm call
+ * that forwards the legitimate decrypted API key to their host
+ * (credential exfiltration). The save route already blocks new writes,
+ * but read sites also strip stray legacy data so already-corrupted DB
+ * rows can't be weaponized.
+ */
+export function resolveProvider(provider: Provider, customBaseUrl: string | null | undefined): Provider {
+  if (!customBaseUrl) return provider;
+  if (!provider.requiresBaseUrl) return provider; // ignore stray override
+  return { ...provider, baseUrl: customBaseUrl };
+}
+
 export type ChatMessage = { role: "user" | "assistant" | "system"; content: string };
 
 export async function callProvider(

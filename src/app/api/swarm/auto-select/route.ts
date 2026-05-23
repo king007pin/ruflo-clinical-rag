@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { providerCredentials, swarmConfigs } from "@/db/schema";
 import { decrypt } from "@/lib/secretVault";
-import { PROVIDERS, callProvider, listProviderModels } from "@/lib/providerRegistry";
+import { PROVIDERS, callProvider, listProviderModels, resolveProvider } from "@/lib/providerRegistry";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
@@ -33,9 +33,7 @@ export async function POST() {
       const provider = PROVIDERS[cred.providerId];
       if (!provider) return;
 
-      const effectiveProvider = cred.customBaseUrl
-        ? { ...provider, baseUrl: cred.customBaseUrl }
-        : provider;
+      const effectiveProvider = resolveProvider(provider, cred.customBaseUrl);
 
       let apiKey: string;
       try { apiKey = decrypt(cred.encryptedData); } catch { return; }

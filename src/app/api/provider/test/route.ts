@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { providerCredentials } from "@/db/schema";
 import { decrypt } from "@/lib/secretVault";
-import { PROVIDERS, callProvider } from "@/lib/providerRegistry";
+import { PROVIDERS, callProvider, resolveProvider } from "@/lib/providerRegistry";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -27,9 +27,7 @@ export async function POST(req: NextRequest) {
   const provider = PROVIDERS[providerId];
   if (!provider) return NextResponse.json({ error: "Unknown provider" }, { status: 400 });
 
-  const effectiveProvider = cred.customBaseUrl
-    ? { ...provider, baseUrl: cred.customBaseUrl }
-    : provider;
+  const effectiveProvider = resolveProvider(provider, cred.customBaseUrl);
 
   let apiKey: string;
   try {

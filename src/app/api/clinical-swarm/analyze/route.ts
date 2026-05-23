@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { providerCredentials, swarmConfigs } from "@/db/schema";
 import { decrypt } from "@/lib/secretVault";
-import { PROVIDERS, callProvider } from "@/lib/providerRegistry";
+import { PROVIDERS, callProvider, resolveProvider } from "@/lib/providerRegistry";
 import { eq, desc } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -75,10 +75,8 @@ export async function POST(req: NextRequest) {
       const apiKey = credMap.get(slot.providerId);
       if (!provider || !apiKey) throw new Error(`Provider ${slot.providerId} not available`);
 
-      const effectiveProvider = (() => {
-        const cred = creds.find((c) => c.providerId === slot.providerId);
-        return cred?.customBaseUrl ? { ...provider, baseUrl: cred.customBaseUrl } : provider;
-      })();
+      const cred = creds.find((c) => c.providerId === slot.providerId);
+      const effectiveProvider = resolveProvider(provider, cred?.customBaseUrl);
 
       const rolePrompt = ROLE_PROMPTS[slot.role] ?? "You are a clinical specialist. Analyze this case.";
 
@@ -116,9 +114,7 @@ export async function POST(req: NextRequest) {
       .join("\n\n---\n\n");
 
     const synthCred = creds.find((c) => c.providerId === synthSlot.providerId);
-    const effectiveSynth = synthCred?.customBaseUrl
-      ? { ...synthProvider, baseUrl: synthCred.customBaseUrl }
-      : synthProvider;
+    const effectiveSynth = resolveProvider(synthProvider, synthCred?.customBaseUrl);
 
     try {
       synthesis = await callProvider(

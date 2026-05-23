@@ -115,13 +115,33 @@ export function cheapEmbedding(text: string, dims = 1024): number[] {
   return vector.map((v) => v / norm);
 }
 
+let warnedCheapFallback = false;
+function ensureProperEmbeddings(): boolean {
+  if (hasNvidiaKey()) return true;
+  // Production guard: a meaningless byte-bag fallback silently destroys RAG
+  // quality. Refuse to run.
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "NVIDIA_API_KEY is required in production. The cheapEmbedding fallback " +
+        "produces non-semantic vectors and would collapse retrieval quality.",
+    );
+  }
+  if (!warnedCheapFallback) {
+    warnedCheapFallback = true;
+    console.warn(
+      "[rag] NVIDIA_API_KEY not set — using cheapEmbedding (DEV ONLY, non-semantic).",
+    );
+  }
+  return false;
+}
+
 export async function embedText(text: string, inputType: "query" | "passage" = "passage"): Promise<number[]> {
-  if (hasNvidiaKey()) return nvidiaEmbed(text, inputType);
+  if (ensureProperEmbeddings()) return nvidiaEmbed(text, inputType);
   return cheapEmbedding(text);
 }
 
 export async function embedBatch(texts: string[], inputType: "query" | "passage" = "passage"): Promise<number[][]> {
-  if (hasNvidiaKey()) return nvidiaEmbedBatch(texts, inputType);
+  if (ensureProperEmbeddings()) return nvidiaEmbedBatch(texts, inputType);
   return texts.map((t) => cheapEmbedding(t));
 }
 

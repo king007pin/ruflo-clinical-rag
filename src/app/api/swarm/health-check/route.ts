@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { providerCredentials, swarmHealthReports } from "@/db/schema";
 import { decrypt } from "@/lib/secretVault";
-import { PROVIDERS, callProvider } from "@/lib/providerRegistry";
+import { PROVIDERS, callProvider, resolveProvider } from "@/lib/providerRegistry";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -14,9 +14,7 @@ export async function POST() {
       const provider = PROVIDERS[cred.providerId];
       if (!provider) return { providerId: cred.providerId, status: "unknown", model: "" };
 
-      const effectiveProvider = cred.customBaseUrl
-        ? { ...provider, baseUrl: cred.customBaseUrl }
-        : provider;
+      const effectiveProvider = resolveProvider(provider, cred.customBaseUrl);
 
       let apiKey: string;
       try {

@@ -1,8 +1,9 @@
 # 🩺 Mediq — SOTA Clinical Intelligence Platform
 
 [![Status](https://img.shields.io/badge/Status-Stealth%20%7C%20Active-emerald?style=for-the-badge)](https://mediq-plum.vercel.app)
-[![Compliance](https://img.shields.io/badge/Compliance-HIPAA%20Compliant-blue?style=for-the-badge)](https://github.com/king007pin/Mediq)
 [![Access](https://img.shields.io/badge/Access-Private%20Beta-violet?style=for-the-badge)](https://github.com/king007pin/Mediq)
+
+> ⚠️ **Not HIPAA-certified.** This is a research / private-beta CDSS without a signed Business Associate Agreement, formal access controls, or PHI encryption at rest. Do not enter protected health information.
 
 **Mediq** is a highly secure, next-generation Clinical Decision Support System (CDSS) designed for medical reference validation, advanced clinical triage support, and real-time medical decision assistance. 
 

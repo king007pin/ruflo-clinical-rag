@@ -1,8 +1,17 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "crypto";
 
 function getKey(): Buffer {
-  const raw = process.env.APP_SECRET_KEY ?? process.env.AUTH_SECRET ?? "";
+  // APP_SECRET_KEY must be a dedicated key material — never reuse AUTH_SECRET,
+  // which doubles as the session cookie value. If they share a value, a stolen
+  // cookie also unlocks every encrypted provider credential.
+  const raw = process.env.APP_SECRET_KEY ?? "";
   if (!raw) throw new Error("APP_SECRET_KEY env var not set");
+  if (process.env.AUTH_SECRET && raw === process.env.AUTH_SECRET) {
+    throw new Error(
+      "APP_SECRET_KEY must not equal AUTH_SECRET. Use a separate 64-hex-char " +
+        "value so a stolen session cookie cannot also decrypt the credential vault.",
+    );
+  }
   const hex = raw.replace(/[^a-fA-F0-9]/g, "");
   if (hex.length >= 64) return Buffer.from(hex.slice(0, 64), "hex");
   return createHash("sha256").update(raw).digest();
