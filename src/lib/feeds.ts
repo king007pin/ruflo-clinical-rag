@@ -1,5 +1,16 @@
 import { safeFetch } from "./safe-fetch";
 
+/**
+ * Returns true when `url` is a synthetic placeholder URL used by the crawl
+ * registration flow (`https://placeholder/<crawler-id>`). Such URLs must not
+ * be probed or treated as live feed endpoints. Extracted so the seed route
+ * and the feed-probe route share one source of truth (W80).
+ */
+export function isPlaceholderUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  return url.startsWith("https://placeholder");
+}
+
 export type FeedItem = {
   title: string;
   url: string;

@@ -1,6 +1,7 @@
 import { db } from "@/db";
 import { sourceFeeds } from "@/db/schema";
 import { requireAuth } from "@/lib/auth-guard";
+import { isPlaceholderUrl } from "@/lib/feeds";
 import { safeFetch } from "@/lib/safe-fetch";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
@@ -82,7 +83,7 @@ export async function POST(req: NextRequest) {
     }
 
     const url = feed.url;
-    if (!url || url.startsWith("https://placeholder")) {
+    if (!url || isPlaceholderUrl(url)) {
       plans.push({
         feed,
         action: "disabled",
