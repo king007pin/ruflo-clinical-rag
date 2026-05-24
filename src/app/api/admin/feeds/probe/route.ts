@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
         feed,
         action: "disabled",
         reason: "placeholder URL",
-        set: { enabled: false, errorCount: (feed.errorCount ?? 0) + 1, lastError: "Invalid placeholder URL" },
+        set: { enabled: false, errorCount: 0, lastError: null },
       });
       continue;
     }

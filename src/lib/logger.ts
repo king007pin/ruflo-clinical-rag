@@ -27,10 +27,10 @@ import { scrubPhi, scrubPhiDeep } from "./phi-scrubber";
 
 type Level = "debug" | "info" | "warn" | "error";
 
-const DEFAULT_RING_SIZE = 1000;
-const MAX_RING_SIZE = 10_000;
+const DEFAULT_RING_SIZE = 500;
+const MAX_RING_SIZE = 500;
 const DEFAULT_TTL_MS = 5 * 60 * 1000;
-const MAX_TTL_MS = 60 * 60 * 1000;
+const MAX_TTL_MS = 24 * 60 * 60 * 1000;
 
 function parseBoundedInt(raw: string | undefined, fallback: number, max: number): number {
   if (raw === undefined || raw === null || raw === "") return fallback;
@@ -61,6 +61,11 @@ function pushEntry(entry: LogEntry): void {
     buffer.push(entry);
     const cap = ringSize();
     while (buffer.length > cap) {
+      buffer.shift();
+    }
+    // Evict entries older than 24 hours to prevent unbounded memory growth in long-running processes
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    while (buffer.length > 0 && buffer[0].ts < cutoff) {
       buffer.shift();
     }
   } catch {

@@ -12,15 +12,29 @@ export async function POST(req: NextRequest) {
   const auth = await requireRole(req, ["admin"]);
   if (auth instanceof NextResponse) return auth;
 
-  // W79 — Composite (name, url) dedupe. The seed catalogue is authoritative;
-  // two seed rows can share a name but evolve to different URLs over time
-  // (e.g. publisher migrates the feed path). Pre-W79 dedupe collapsed those
-  // collisions onto the first-inserted URL. We now treat the seed pair as
-  // the key: skip when (name, url) match exactly, repoint when the name
-  // matches but the URL has drifted, and insert otherwise.
+  // W79 — Content hash and URL deduplication. The seed catalogue is authoritative;
+  // we deduplicate based on content hashes (constructed from name, url, and query)
+  // as well as source URLs to avoid inserting duplicate feeds.
   const existing = await db
-    .select({ id: sourceFeeds.id, name: sourceFeeds.name, url: sourceFeeds.url })
+    .select({
+      id: sourceFeeds.id,
+      name: sourceFeeds.name,
+      url: sourceFeeds.url,
+      query: sourceFeeds.query,
+    })
     .from(sourceFeeds);
+
+  // Content hash helper for a feed
+  const getFeedHash = (name: string, url: string | null, query: string | null) => {
+    const crypto = require("crypto");
+    return crypto
+      .createHash("sha256")
+      .update(`${name}|${url || ""}|${query || ""}`)
+      .digest("hex");
+  };
+
+  const byHash = new Map(existing.map((r) => [getFeedHash(r.name, r.url, r.query), r] as const));
+  const byUrl = new Map(existing.filter((r) => r.url).map((r) => [r.url!, r] as const));
   const byName = new Map(existing.map((r) => [r.name, r] as const));
 
   const inserts: typeof sourceFeeds.$inferInsert[] = [];
@@ -29,32 +43,46 @@ export async function POST(req: NextRequest) {
 
   for (const f of MEDICAL_SEED_FEEDS) {
     const seedUrl = f.url ?? null;
+    const seedQuery = f.query ?? null;
+
     // Never seed placeholder URLs — they are crawl-registration sentinels,
     // not live endpoints. Shares isPlaceholderUrl with the probe route (W80).
     if (seedUrl && isPlaceholderUrl(seedUrl)) {
       skipped++;
       continue;
     }
-    const row = byName.get(f.name);
-    if (!row) {
-      inserts.push({
-        name: f.name,
-        type: f.type,
-        url: seedUrl,
-        query: f.query ?? null,
-        maxItems: f.maxItems,
-        intervalHours: f.intervalHours,
-        enabled: true,
-      });
-      continue;
-    }
-    if (row.url === seedUrl) {
+
+    const currentHash = getFeedHash(f.name, seedUrl, seedQuery);
+
+    // 1. Exact content hash match -> skip
+    if (byHash.has(currentHash)) {
       skipped++;
       continue;
     }
-    // Name matches, URL drifted → repoint to current seed URL and
-    // re-enable so the corrected feed starts probing on the next run.
-    updates.push({ id: row.id, name: f.name, url: seedUrl });
+
+    // 2. URL matches another feed exactly -> skip (avoid duplicate probe targets)
+    if (seedUrl && byUrl.has(seedUrl)) {
+      skipped++;
+      continue;
+    }
+
+    // 3. Name matches, URL/query drifted -> update URL and re-enable
+    const row = byName.get(f.name);
+    if (row) {
+      updates.push({ id: row.id, name: f.name, url: seedUrl });
+      continue;
+    }
+
+    // 4. Otherwise -> insert new feed
+    inserts.push({
+      name: f.name,
+      type: f.type,
+      url: seedUrl,
+      query: seedQuery,
+      maxItems: f.maxItems,
+      intervalHours: f.intervalHours,
+      enabled: true,
+    });
   }
 
   for (const u of updates) {

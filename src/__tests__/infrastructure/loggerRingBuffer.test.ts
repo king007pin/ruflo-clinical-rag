@@ -65,7 +65,7 @@ describe("logger ring buffer (W85)", () => {
 
   it("falls back to defaults on invalid LOG_RING_BUFFER_SIZE values", () => {
     process.env.LOG_RING_BUFFER_SIZE = "not-a-number";
-    // Should not throw and should accept many entries (default 1000).
+    // Should not throw and should accept many entries (default 500).
     for (let i = 0; i < 25; i++) logger.info(`line-${i}`);
     expect(getRecentLogs()).toHaveLength(25);
 
@@ -75,13 +75,13 @@ describe("logger ring buffer (W85)", () => {
     expect(getRecentLogs()).toHaveLength(10);
   });
 
-  it("caps LOG_RING_BUFFER_SIZE at the 10_000 ceiling", () => {
+  it("caps LOG_RING_BUFFER_SIZE at the 500 ceiling", () => {
     process.env.LOG_RING_BUFFER_SIZE = "999999999";
-    // Push 10_001 entries; buffer must not exceed 10_000.
-    for (let i = 0; i < 10_001; i++) logger.info(`x-${i}`);
+    // Push 501 entries; buffer must not exceed 500.
+    for (let i = 0; i < 501; i++) logger.info(`x-${i}`);
     const entries = getRecentLogs();
-    expect(entries.length).toBeLessThanOrEqual(10_000);
-    expect(entries.length).toBe(10_000);
+    expect(entries.length).toBeLessThanOrEqual(500);
+    expect(entries.length).toBe(500);
     // FIFO eviction: oldest (`x-0`) must be gone.
     expect(entries[0].message).toBe("x-1");
   });
