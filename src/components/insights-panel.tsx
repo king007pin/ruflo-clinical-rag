@@ -45,8 +45,8 @@ export default function InsightsPanel() {
   // setStats/setLoading, but the state transition is driven by the network
   // response, not by a synchronous derivation that can be replaced with
   // useMemo. Disable per-line until React 19's `use` hook is adopted here.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
   }, [load]);
 

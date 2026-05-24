@@ -29,4 +29,15 @@ getOrGenerate("APP_SECRET_KEY");
 getOrGenerate("APP_PHI_KEK", "base64");
 
 fs.writeFileSync(file, content, "utf8");
+
+// W74 — .env.local holds the KEK, JWT secret, DB URL, and provider keys.
+// The default process umask leaves the file group/world readable on most dev
+// shells, so any other local user (or a misconfigured backup tool) can scrape
+// live credentials. Tighten to owner-only after the write. fs.chmod is a
+// no-op on Windows but still safe to call there.
+try {
+  fs.chmodSync(file, 0o600);
+} catch (err) {
+  console.warn(`Warning: could not chmod 0600 ${file}: ${err.message}`);
+}
 console.log("Secrets initialized successfully in .env.local!");

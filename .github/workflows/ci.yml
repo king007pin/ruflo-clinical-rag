@@ -38,9 +38,8 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Lint (non-blocking pending W50 cleanup of pre-existing React 19 set-state-in-effect violations)
+      - name: Lint
         run: npm run lint
-        continue-on-error: true
 
       - name: Test
         run: npm test
