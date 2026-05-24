@@ -1,5 +1,6 @@
 import { extract } from "@extractus/article-extractor";
 import { YoutubeTranscript } from "youtube-transcript";
+import { LRUCache } from "lru-cache";
 import { hasNvidiaKey, nvidiaEmbed, nvidiaEmbedBatch, nvidiaChat } from "./nvidia";
 import { poolCorpus, corpusRetry } from "@/db";
 import { safeFetch, assertUrlIsPublic } from "./safe-fetch";
@@ -337,18 +338,34 @@ export function assembleContext(top: Match[]) {
 // throttling and no failure tracking — silent .catch(() => []) made degraded
 // mode invisible. Cache hits short-circuit the round trip; breaker opens
 // after consecutive failures so a long NCBI outage stops blocking queries.
-const PUBMED_CACHE_TTL_MS = 5 * 60 * 1000;
+//
+// T1.5 (latency-v2):
+//  - Map replaced with bounded LRU (200 entries) so the cache cannot grow
+//    unbounded under high-cardinality query traffic.
+//  - TTL extended from 5min → 6h. Clinical guideline retrieval is highly
+//    stable on this timescale, and warm cache hits avoid the entire NCBI
+//    round-trip (~1-14s) for repeated questions.
+//  - Total searchPubMedLive budget capped at 4s via Promise.race so a slow
+//    NCBI day cannot dominate request latency. esearch + efetch timeouts
+//    tightened in the body below.
+const PUBMED_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const PUBMED_CACHE_MAX_ENTRIES = 200;
+const PUBMED_TOTAL_BUDGET_MS = 4_000;
 const PUBMED_BREAKER_FAILURE_THRESHOLD = 5;
 const PUBMED_BREAKER_OPEN_MS = 60 * 1000;
 
-type PubMedCacheEntry = { value: Match[]; expiresAt: number };
 const pubmedGlobal = globalThis as typeof globalThis & {
-  __mediqPubMedCache?: Map<string, PubMedCacheEntry>;
+  __mediqPubMedCache?: LRUCache<string, Match[]>;
   __mediqPubMedBreaker?: { failures: number; openedAt: number | null };
 };
 
-function pubmedCache(): Map<string, PubMedCacheEntry> {
-  if (!pubmedGlobal.__mediqPubMedCache) pubmedGlobal.__mediqPubMedCache = new Map();
+function pubmedCache(): LRUCache<string, Match[]> {
+  if (!pubmedGlobal.__mediqPubMedCache) {
+    pubmedGlobal.__mediqPubMedCache = new LRUCache<string, Match[]>({
+      max: PUBMED_CACHE_MAX_ENTRIES,
+      ttl: PUBMED_CACHE_TTL_MS,
+    });
+  }
   return pubmedGlobal.__mediqPubMedCache;
 }
 function pubmedBreaker(): { failures: number; openedAt: number | null } {
@@ -387,96 +404,113 @@ export function _resetPubMedState() {
   b.openedAt = null;
 }
 
-export async function searchPubMedLive(question: string, limit = 4): Promise<Match[]> {
-  const cleanQ = question.replace(/[?.,!]/g, "").replace(/\s+/g, " ").trim();
-  const cacheKey = `${cleanQ}::${limit}`;
-  const cache = pubmedCache();
-  const hit = cache.get(cacheKey);
-  if (hit && hit.expiresAt > Date.now()) {
-    return hit.value;
-  }
-  if (breakerOpen()) {
-    console.warn("[pubmed-live] breaker open — skipping outbound call");
-    return [];
-  }
-
+async function searchPubMedLiveInner(cleanQ: string, limit: number): Promise<Match[]> {
   const UA = "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)";
   const EUTILS = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils";
   const currentYear = new Date().getFullYear();
   const startYear = currentYear - 2;
   const term = `(${cleanQ}) AND ${startYear}:${currentYear}[pdat] AND open access[filter]`;
 
-  try {
-    const p = new URLSearchParams({
-      db: "pmc",
-      term: term,
-      retmode: "json",
-      retmax: String(limit),
-    });
+  const p = new URLSearchParams({
+    db: "pmc",
+    term: term,
+    retmode: "json",
+    retmax: String(limit),
+  });
 
-    const res = await safeFetch(`${EUTILS}/esearch.fcgi?${p}`, {
-      headers: { "User-Agent": UA },
-      timeoutMs: 6000,
-    });
+  const res = await safeFetch(`${EUTILS}/esearch.fcgi?${p}`, {
+    headers: { "User-Agent": UA },
+    timeoutMs: 2000,
+  });
+  if (!res.ok) return [];
+  const data = (await res.json()) as { esearchresult?: { idlist?: string[] } };
+  const ids = data.esearchresult?.idlist ?? [];
+  if (!ids.length) return [];
 
-    if (!res.ok) return [];
-    const data = (await res.json()) as { esearchresult?: { idlist?: string[] } };
-    const ids = data.esearchresult?.idlist ?? [];
-    if (!ids.length) return [];
+  const fetchPromises = ids.map(async (pmcId) => {
+    try {
+      const fp = new URLSearchParams({
+        db: "pmc",
+        id: pmcId,
+        rettype: "abstract",
+        retmode: "text",
+      });
+      const fetchRes = await safeFetch(`${EUTILS}/efetch.fcgi?${fp}`, {
+        headers: { "User-Agent": UA },
+        timeoutMs: 3000,
+      });
+      if (!fetchRes.ok) return null;
+      const text = await fetchRes.text();
+      if (text.length < 100) return null;
 
-    const fetchPromises = ids.map(async (pmcId) => {
-      try {
-        const fp = new URLSearchParams({
-          db: "pmc",
-          id: pmcId,
-          rettype: "abstract",
-          retmode: "text",
-        });
-        const fetchRes = await safeFetch(`${EUTILS}/efetch.fcgi?${fp}`, {
-          headers: { "User-Agent": UA },
-          timeoutMs: 8000,
-        });
-        if (!fetchRes.ok) return null;
-        const text = await fetchRes.text();
-        if (text.length < 100) return null;
+      let title = `PMC${pmcId} — PubMed Central Article`;
+      let content = text;
 
-        let title = `PMC${pmcId} — PubMed Central Article`;
-        let content = text;
-
-        if (text.trimStart().startsWith("<?xml") || text.trimStart().startsWith("<!DOCTYPE")) {
-          const titleMatch = text.match(/<article-title[^>]*>([\s\S]*?)<\/article-title>/i);
-          const abstractMatch = text.match(/<abstract[^>]*>([\s\S]*?)<\/abstract>/i);
-          const rawTitle = titleMatch?.[1]?.replace(/<[^>]+>/g, " ").replace(/\s{2,}/g, " ").trim();
-          const rawAbstract = abstractMatch?.[1]?.replace(/<[^>]+>/g, " ").replace(/\s{2,}/g, " ").trim();
-          if (!rawAbstract || rawAbstract.length < 100) return null;
-          title = rawTitle?.slice(0, 200) || title;
-          content = rawAbstract;
-        } else {
-          const lines = text.split("\n").filter((l) => l.trim().length > 0);
-          title = lines[0]?.slice(0, 200) ?? title;
-        }
-
-        return {
-          chunk: content.slice(0, 8000),
-          sourceTitle: `[PubMed 2026] ${title}`,
-          sourceType: "Live Research",
-          sourceUrl: `https://www.ncbi.nlm.nih.gov/pmc/articles/PMC${pmcId}/`,
-          score: 0.99,
-          position: 1,
-        };
-      } catch {
-        return null;
+      if (text.trimStart().startsWith("<?xml") || text.trimStart().startsWith("<!DOCTYPE")) {
+        const titleMatch = text.match(/<article-title[^>]*>([\s\S]*?)<\/article-title>/i);
+        const abstractMatch = text.match(/<abstract[^>]*>([\s\S]*?)<\/abstract>/i);
+        const rawTitle = titleMatch?.[1]?.replace(/<[^>]+>/g, " ").replace(/\s{2,}/g, " ").trim();
+        const rawAbstract = abstractMatch?.[1]?.replace(/<[^>]+>/g, " ").replace(/\s{2,}/g, " ").trim();
+        if (!rawAbstract || rawAbstract.length < 100) return null;
+        title = rawTitle?.slice(0, 200) || title;
+        content = rawAbstract;
+      } else {
+        const lines = text.split("\n").filter((l) => l.trim().length > 0);
+        title = lines[0]?.slice(0, 200) ?? title;
       }
-    });
 
-    const results = await Promise.all(fetchPromises);
-    const matches = results.filter((r): r is NonNullable<typeof r> => r !== null);
-    cache.set(cacheKey, { value: matches, expiresAt: Date.now() + PUBMED_CACHE_TTL_MS });
-    recordPubMedSuccess();
-    return matches;
-  } catch (err) {
-    recordPubMedFailure();
-    console.error("[pubmed-live] error:", err);
+      return {
+        chunk: content.slice(0, 8000),
+        sourceTitle: `[PubMed 2026] ${title}`,
+        sourceType: "Live Research",
+        sourceUrl: `https://www.ncbi.nlm.nih.gov/pmc/articles/PMC${pmcId}/`,
+        score: 0.99,
+        position: 1,
+      };
+    } catch {
+      return null;
+    }
+  });
+
+  const results = await Promise.all(fetchPromises);
+  return results.filter((r): r is NonNullable<typeof r> => r !== null);
+}
+
+export async function searchPubMedLive(question: string, limit = 4): Promise<Match[]> {
+  const cleanQ = question.replace(/[?.,!]/g, "").replace(/\s+/g, " ").trim();
+  const cacheKey = `${cleanQ}::${limit}`;
+  const cache = pubmedCache();
+  const hit = cache.get(cacheKey);
+  if (hit !== undefined) return hit;
+
+  if (breakerOpen()) {
+    console.warn("[pubmed-live] breaker open — skipping outbound call");
     return [];
+  }
+
+  // T1.5: bound total NCBI wall-clock at 4s. Anything not back by then is treated
+  // as a soft miss — local vector hits remain the primary evidence source and the
+  // entry is left uncached so the next request can retry.
+  let budgetTimer: ReturnType<typeof setTimeout> | undefined;
+  const budgetPromise = new Promise<Match[]>((resolve) => {
+    budgetTimer = setTimeout(() => resolve([]), PUBMED_TOTAL_BUDGET_MS);
+  });
+
+  try {
+    const matches = await Promise.race([
+      searchPubMedLiveInner(cleanQ, limit).catch((err) => {
+        recordPubMedFailure();
+        console.error("[pubmed-live] error:", err);
+        return [] as Match[];
+      }),
+      budgetPromise,
+    ]);
+    if (matches.length > 0) {
+      cache.set(cacheKey, matches);
+      recordPubMedSuccess();
+    }
+    return matches;
+  } finally {
+    if (budgetTimer) clearTimeout(budgetTimer);
   }
 }
