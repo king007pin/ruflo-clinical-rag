@@ -1238,6 +1238,69 @@ async function callRufloApi(payload: Record<string, unknown>): Promise<string | 
   }
 }
 
+// T1.1: Latency-v2 flag enables wallclock-bounded quorum gating for Round 1
+// and Round 2. When set, the swarm proceeds to the next stage as soon as
+// ceil(QUORUM_RATIO × N) agents return OR ROUND_WALLCLOCK_MS elapses, whichever
+// comes first. Slow agents keep running in background (no NIM-call cancellation
+// to preserve the existing fallback semantics) but synthesis no longer waits
+// on the slowest one.
+//
+// Quality safeguard: synthesis still receives every agent that returned;
+// dropped agents are simply absent from the consensus block. The existing
+// agent-count line in the synthesis output reflects the actual number of
+// reasoning chains used so clinicians see when the swarm ran short.
+const LATENCY_V2 = process.env.LATENCY_V2 === "1";
+const QUORUM_RATIO = 0.7;
+const ROUND1_WALLCLOCK_MS = 30_000;
+const ROUND2_WALLCLOCK_MS = 35_000;
+
+async function awaitWithQuorum<T>(
+  promises: Array<Promise<T>>,
+  quorumCount: number,
+  wallclockMs: number,
+): Promise<Array<T | undefined>> {
+  const results: Array<T | undefined> = new Array(promises.length).fill(undefined);
+  if (promises.length === 0) return results;
+
+  let completed = 0;
+  const indexed = promises.map((p, i) =>
+    p.then(
+      (v) => {
+        results[i] = v;
+        completed += 1;
+      },
+      () => {
+        completed += 1;
+      },
+    ),
+  );
+
+  await new Promise<void>((resolve) => {
+    let resolved = false;
+    const done = () => {
+      if (!resolved) {
+        resolved = true;
+        resolve();
+      }
+    };
+    const timer = setTimeout(done, wallclockMs);
+    Promise.all(indexed).then(() => {
+      clearTimeout(timer);
+      done();
+    });
+    indexed.forEach((p) =>
+      p.then(() => {
+        if (completed >= quorumCount) {
+          clearTimeout(timer);
+          done();
+        }
+      }),
+    );
+  });
+
+  return results;
+}
+
 // T1.7: Round-1 max_tokens cap for non-primary agents.
 // The buildUserPrompt requires "Minimum 450 words", and the per-model NIM cap
 // is 2048-4096. Non-primary agents are compressed to ~280 words before being
@@ -1478,28 +1541,35 @@ export async function runSwarm({
 
   // ── Round 1: Independent analysis ───────────────────────────────────────
   const round1Map = new Map<string, AgentReply & { round: 1 }>();
-  await Promise.all(
-    selected.map((m, idx) =>
-      runAgent(m, question, context, matches, idx, specialties[idx], patientContext, labText).then((reply) => {
-        const r1 = { ...reply, round: 1 as const };
-        onAgentDone?.(r1);
-        round1Map.set(m, r1);
-      }),
-    ),
+  const round1Promises = selected.map((m, idx) =>
+    runAgent(m, question, context, matches, idx, specialties[idx], patientContext, labText).then((reply) => {
+      const r1 = { ...reply, round: 1 as const };
+      onAgentDone?.(r1);
+      round1Map.set(m, r1);
+      return r1;
+    }),
   );
-  const round1Agents = selected.map((m) => round1Map.get(m)!);
+
+  if (LATENCY_V2) {
+    const quorum = Math.max(1, Math.ceil(selected.length * QUORUM_RATIO));
+    await awaitWithQuorum(round1Promises, quorum, ROUND1_WALLCLOCK_MS);
+  } else {
+    await Promise.all(round1Promises);
+  }
+  const round1Agents = selected.map((m) => round1Map.get(m)).filter((a): a is AgentReply & { round: 1 } => a !== undefined);
 
   // ── Round 2: Peer debate — only for complex/emergency (4+ agents) ────────
   let round2Agents: Array<AgentReply & { round: 2 }> = [];
 
-  if (selected.length >= 4) {
+  if (selected.length >= 4 && round1Agents.length >= 2) {
     onDebateStart?.();
 
     const specialtyByModel = new Map(selected.map((m, i) => [m, specialties[i]]));
     const round2Map = new Map<string, AgentReply & { round: 2 }>();
-    await Promise.all(
-      selected.map((m, idx) => {
-        const myAssessment = round1Map.get(m)?.message ?? "";
+    const round2Promises = selected
+      .map((m, idx) => {
+        const own = round1Map.get(m);
+        if (!own) return null;
         const peers = round1Agents
           .filter((a) => a.model !== m)
           .map((a) => ({
@@ -1507,13 +1577,21 @@ export async function runSwarm({
             role: specialtyByModel.get(a.model)?.role ?? a.model,
             message: a.message,
           }));
-        return runDebateAgent(m, question, context, myAssessment, peers, matches, idx, selected.length, specialties[idx]).then((reply) => {
+        return runDebateAgent(m, question, context, own.message, peers, matches, idx, round1Agents.length, specialties[idx]).then((reply) => {
           onAgentDone?.(reply);
           round2Map.set(m, reply);
+          return reply;
         });
-      }),
-    );
-    round2Agents = selected.map((m) => round2Map.get(m)!);
+      })
+      .filter((p): p is Promise<AgentReply & { round: 2 }> => p !== null);
+
+    if (LATENCY_V2) {
+      const quorum2 = Math.max(1, Math.ceil(round2Promises.length * QUORUM_RATIO));
+      await awaitWithQuorum(round2Promises, quorum2, ROUND2_WALLCLOCK_MS);
+    } else {
+      await Promise.all(round2Promises);
+    }
+    round2Agents = selected.map((m) => round2Map.get(m)).filter((a): a is AgentReply & { round: 2 } => a !== undefined);
   }
 
   // ── Round 3: Synthesis ───────────────────────────────────────────────────
