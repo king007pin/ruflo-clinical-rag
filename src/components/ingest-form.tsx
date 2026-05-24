@@ -5,6 +5,28 @@ import { useState } from "react";
 
 type Kind = "pdf" | "pdf-file" | "youtube" | "website" | "text";
 
+const SUBJECTS = [
+  "Anatomy",
+  "Physiology",
+  "Biochemistry",
+  "Pathology",
+  "Pharmacology",
+  "Microbiology",
+  "Forensic Medicine",
+  "Social & Preventive Medicine",
+  "General Medicine",
+  "General Surgery",
+  "Obstetrics & Gynaecology",
+  "Pediatrics",
+  "ENT",
+  "Ophthalmology",
+  "Orthopaedics",
+  "Anaesthesiology",
+  "Radiology",
+  "Psychiatry",
+  "Dermatology",
+];
+
 export default function IngestForm() {
   const [kind, setKind] = useState<Kind>("pdf");
   const [url, setUrl] = useState("");
@@ -12,6 +34,7 @@ export default function IngestForm() {
   const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [description, setDescription] = useState("");
+  const [subject, setSubject] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -32,6 +55,7 @@ export default function IngestForm() {
         form.append("file", file);
         if (title) form.append("title", title);
         if (description) form.append("description", description);
+        if (subject) form.append("subject", subject);
         res = await fetch("/api/ingest", {
           method: "POST",
           body: form,
@@ -46,6 +70,7 @@ export default function IngestForm() {
             text: normalizedKind === "text" ? text : undefined,
             title,
             description,
+            subject: subject || undefined,
           }),
         });
       }
@@ -56,6 +81,7 @@ export default function IngestForm() {
       setText("");
       setTitle("");
       setDescription("");
+      setSubject("");
       setFile(null);
     } catch (err) {
       setMessage((err as Error).message);
@@ -137,7 +163,27 @@ export default function IngestForm() {
         )}
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <label className="block text-sm" style={{ color: "var(--text)" }}>
+          MBBS Subject (optional)
+          <select
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            className="mt-1 w-full rounded-xl border px-3 py-2 text-sm focus:outline-none"
+            style={{
+              borderColor: "var(--card-border)",
+              backgroundColor: "var(--card)",
+              color: "var(--text)",
+            }}
+          >
+            <option value="">Select a Subject...</option>
+            {SUBJECTS.map((sub) => (
+              <option key={sub} value={sub}>
+                {sub}
+              </option>
+            ))}
+          </select>
+        </label>
         <label className="block text-sm" style={{ color: "var(--text)" }}>
           Title (optional)
           <input

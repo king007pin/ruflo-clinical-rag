@@ -15,6 +15,7 @@ const bodySchema = z.object({
   text: z.string().max(20000).optional(),
   title: z.string().min(2).max(240).optional(),
   description: z.string().max(400).optional(),
+  subject: z.string().max(100).optional(),
 });
 
 // W37: cap JSON body to 256 KiB. Zod validates field lengths but the raw
@@ -41,10 +42,11 @@ export async function POST(req: NextRequest) {
   if (!parsed.success)
     return NextResponse.json({ error: "Invalid payload", issues: parsed.error.issues }, { status: 400 });
 
-  const { kind, url, text, title, description } = parsed.data;
+  const { kind, url, text, title, description, subject } = parsed.data;
+  const updatedDesc = subject ? `subject: ${subject}${description ? ` | ${description}` : ""}` : description;
   try {
     const rawText = await harvestContent({ kind, url, text });
-    const result = await persistSource({ kind, rawText, url, title, description });
+    const result = await persistSource({ kind, rawText, url, title, description: updatedDesc });
     return NextResponse.json({ ok: true, chunkCount: result.chunkCount, sourceId: result.sourceId });
   } catch (err) {
     logger.error("ingest error", err);
@@ -62,6 +64,8 @@ async function handleMultipart(req: NextRequest) {
   const file = form.get("file");
   const title = form.get("title")?.toString();
   const description = form.get("description")?.toString();
+  const subject = form.get("subject")?.toString();
+  const updatedDesc = subject ? `subject: ${subject}${description ? ` | ${description}` : ""}` : description;
 
   if (!(file instanceof File))
     return NextResponse.json({ error: "A PDF file is required" }, { status: 400 });
@@ -75,7 +79,7 @@ async function handleMultipart(req: NextRequest) {
       rawText,
       url: undefined,
       title: title || file.name,
-      description,
+      description: updatedDesc,
     });
     return NextResponse.json({ ok: true, chunkCount: result.chunkCount, sourceId: result.sourceId });
   } catch (err) {

@@ -1,6 +1,7 @@
 import { textFromPdfBuffer } from "@/lib/rag";
 import { parseLabText } from "@/lib/lab-parser";
 import { requireAuth } from "@/lib/auth-guard";
+import { scrubPhi } from "@/lib/phi-scrubber";
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -46,5 +47,20 @@ export async function POST(req: NextRequest) {
   }
 
   const panel = parseLabText(rawText);
-  return NextResponse.json({ text: rawText, chars: rawText.length, panel, criticals: panel.criticals });
+
+  // W84 — Lab reports almost always include patient name, MRN, DOB, ordering
+  // physician, and clinic-letterhead identifiers around the structured lab
+  // values. Returning the full extracted text gives the client a plaintext
+  // PHI artifact that the user is likely to save locally, paste into chat,
+  // or email — none of which respect the envelope encryption applied at the
+  // DB layer. Scrub regex-detectable identifiers from the text echo before
+  // serialising. Structured `panel` values are numeric ranges and analyte
+  // names with no free-text PHI surface, so they pass through untouched.
+  const scrubbedText = scrubPhi(rawText);
+  return NextResponse.json({
+    text: scrubbedText,
+    chars: scrubbedText.length,
+    panel,
+    criticals: panel.criticals,
+  });
 }

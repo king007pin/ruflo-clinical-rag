@@ -16,6 +16,21 @@ const bodySchema = z.object({
   context: z.string().max(8000).optional(),
 });
 
+/**
+ * W69 — swarm_configs.config is a jsonb column whose shape is enforced only
+ * by the Drizzle TypeScript annotation, never by the database. A row inserted
+ * by an older code path, a manual SQL edit, or a corrupted migration could
+ * land with the wrong shape and crash this route at the first .map() call
+ * with a 500 that leaks the stack trace. Validate the shape on read and
+ * return a clean 503 with no leak when the row is malformed.
+ */
+const swarmConfigItemSchema = z.object({
+  role: z.string().min(1),
+  providerId: z.string().min(1),
+  model: z.string().min(1),
+});
+const swarmConfigArraySchema = z.array(swarmConfigItemSchema).min(1);
+
 const ROLE_PROMPTS: Record<string, string> = {
   "Case Summarizer":
     "You are a clinical case summarizer. Extract the key clinical features: demographics, chief complaint, timeline, relevant history, and vital signs. Output a structured SOAP-style summary. Be concise.",
@@ -59,6 +74,16 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // W69 — validate the jsonb shape before iterating.
+  const slotsParsed = swarmConfigArraySchema.safeParse(activeConfig.config);
+  if (!slotsParsed.success) {
+    return NextResponse.json(
+      { error: "Active swarm config is malformed. Re-run Auto-Select to repair." },
+      { status: 503 },
+    );
+  }
+  const slots = slotsParsed.data;
+
   // Decrypt all needed keys upfront
   const credMap = new Map<string, string>();
   const creds = await db.select().from(providerCredentials);
@@ -74,7 +99,7 @@ export async function POST(req: NextRequest) {
 
   // Round 1 — independent agent assessments
   const round1Results = await Promise.allSettled(
-    activeConfig.config.map(async (slot) => {
+    slots.map(async (slot) => {
       if (slot.role === "Final Synthesis") return null; // synthesis runs last
 
       const provider = PROVIDERS[slot.providerId];
@@ -109,7 +134,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Synthesis round — combine all agent outputs
-  const synthSlot = activeConfig.config.find((s) => s.role === "Final Synthesis");
+  const synthSlot = slots.find((s) => s.role === "Final Synthesis");
   const synthProvider = synthSlot ? PROVIDERS[synthSlot.providerId] : null;
   const synthKey = synthSlot ? credMap.get(synthSlot.providerId) : null;
 
