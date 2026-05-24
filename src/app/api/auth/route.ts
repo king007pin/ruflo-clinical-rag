@@ -159,6 +159,7 @@ export async function GET(req: NextRequest) {
     user: {
       id: user.id,
       email: user.email,
+      role: user.role,
     },
   });
 }

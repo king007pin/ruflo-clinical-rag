@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { caseProfiles } from "@/db/schema";
-import { requireAuth } from "@/lib/auth-guard";
-import { desc } from "drizzle-orm";
+import { requireRole } from "@/lib/auth-guard";
+import { desc, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -18,15 +18,31 @@ const createSchema = z.object({
 });
 
 export async function GET(req: NextRequest) {
-  const auth = await requireAuth(req);
+  const auth = await requireRole(req, ["admin", "clinician", "viewer"]);
   if (auth instanceof NextResponse) return auth;
 
-  const rows = await db.select().from(caseProfiles).orderBy(desc(caseProfiles.createdAt)).limit(12);
+  let query = db.select().from(caseProfiles);
+  
+  if (auth.role !== "admin") {
+    const rows = await db
+      .select()
+      .from(caseProfiles)
+      .where(eq(caseProfiles.createdBy, auth.userId))
+      .orderBy(desc(caseProfiles.createdAt))
+      .limit(12);
+    return NextResponse.json({ cases: rows });
+  }
+
+  const rows = await db
+    .select()
+    .from(caseProfiles)
+    .orderBy(desc(caseProfiles.createdAt))
+    .limit(12);
   return NextResponse.json({ cases: rows });
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await requireAuth(req);
+  const auth = await requireRole(req, ["admin", "clinician"]);
   if (auth instanceof NextResponse) return auth;
 
   const json = await req.json().catch(() => null);

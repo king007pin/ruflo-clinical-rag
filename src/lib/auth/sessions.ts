@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { sessions, type Session } from "@/db/schema";
+import { sessions, users, type Session } from "@/db/schema";
 import { hashClientFingerprint } from "./ip-ua-hash";
 import { eq, and, isNull, gt } from "drizzle-orm";
 
@@ -24,10 +24,14 @@ export async function createSession(
   return session;
 }
 
-export async function loadSession(sessionId: string): Promise<Session | null> {
+export async function loadSession(sessionId: string): Promise<(Session & { role: "admin" | "clinician" | "viewer" }) | null> {
   const rows = await db
-    .select()
+    .select({
+      session: sessions,
+      role: users.role,
+    })
     .from(sessions)
+    .innerJoin(users, eq(sessions.userId, users.id))
     .where(
       and(
         eq(sessions.id, sessionId),
@@ -35,7 +39,11 @@ export async function loadSession(sessionId: string): Promise<Session | null> {
         gt(sessions.expiresAt, new Date()),
       ),
     );
-  return rows[0] ?? null;
+  if (!rows[0]) return null;
+  return {
+    ...rows[0].session,
+    role: rows[0].role,
+  };
 }
 
 export async function revokeSession(sessionId: string): Promise<void> {

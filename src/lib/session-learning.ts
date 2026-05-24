@@ -35,6 +35,7 @@ export async function logSession(opts: {
   agentCount: number;
   agentAnswers: string[];
   consensusSnippet?: string;
+  userId?: string;
 }): Promise<number | null> {
   try {
     const hadGap = detectGap(opts.matchCount, opts.maxScore, opts.agentAnswers);
@@ -43,6 +44,7 @@ export async function logSession(opts: {
     const [row] = await db
       .insert(querySessions)
       .values({
+        userId: opts.userId ?? null,
         query: opts.query,
         queryEmbedding: opts.queryEmbedding,
         matchCount: opts.matchCount,

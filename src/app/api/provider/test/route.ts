@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { providerCredentials } from "@/db/schema";
 import { decrypt } from "@/lib/secretVault";
 import { PROVIDERS, callProvider, resolveProvider } from "@/lib/providerRegistry";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireRole } from "@/lib/auth-guard";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 const bodySchema = z.object({ providerId: z.string().min(1) });
 
 export async function POST(req: NextRequest) {
-  const auth = await requireAuth(req);
+  const auth = await requireRole(req, ["admin"]);
   if (auth instanceof NextResponse) return auth;
   const body = await req.json().catch(() => null);
   const parsed = bodySchema.safeParse(body);

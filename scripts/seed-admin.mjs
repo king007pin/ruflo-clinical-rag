@@ -92,13 +92,17 @@ async function main() {
     ]);
     if (check.rows[0]) {
       console.log(
-        `Admin user with email ${adminEmail} already exists. Skipping.`,
+        `Admin user with email ${adminEmail} already exists. Ensuring admin role...`,
       );
+      await client.query("UPDATE users SET role = 'admin' WHERE email = $1", [
+        adminEmail,
+      ]);
+      console.log("Admin user role ensured successfully!");
       return;
     }
 
     await client.query(
-      "INSERT INTO users (email, password_hash, active) VALUES ($1, $2, true)",
+      "INSERT INTO users (email, password_hash, role, active) VALUES ($1, $2, 'admin', true)",
       [adminEmail, passwordHash],
     );
     console.log("Admin user successfully seeded!");

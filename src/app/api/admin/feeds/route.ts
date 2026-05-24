@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { sourceFeeds } from "@/db/schema";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireRole } from "@/lib/auth-guard";
 import { logAudit, extractClientFingerprint } from "@/lib/audit";
 import { asc, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
@@ -9,7 +9,7 @@ import { z } from "zod";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
-  const auth = await requireAuth(req);
+  const auth = await requireRole(req, ["admin"]);
   if (auth instanceof NextResponse) return auth;
   const feeds = await db.select().from(sourceFeeds).orderBy(asc(sourceFeeds.name));
   return NextResponse.json({ feeds });
@@ -24,7 +24,7 @@ const patchSchema = z.object({
 });
 
 export async function PATCH(req: NextRequest) {
-  const auth = await requireAuth(req);
+  const auth = await requireRole(req, ["admin"]);
   if (auth instanceof NextResponse) return auth;
   const body = await req.json().catch(() => null);
   const parsed = patchSchema.safeParse(body);
@@ -53,7 +53,7 @@ export async function PATCH(req: NextRequest) {
 const deleteSchema = z.object({ id: z.number().int().positive() });
 
 export async function DELETE(req: NextRequest) {
-  const auth = await requireAuth(req);
+  const auth = await requireRole(req, ["admin"]);
   if (auth instanceof NextResponse) return auth;
   // W35: require explicit id. Earlier behaviour deleted the entire table on
   // any authenticated DELETE — a single accidental request wiped every

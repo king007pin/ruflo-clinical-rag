@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { sourceFeeds } from "@/db/schema";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireRole } from "@/lib/auth-guard";
 import { isPlaceholderUrl } from "@/lib/feeds";
 import { safeFetch } from "@/lib/safe-fetch";
 import { eq } from "drizzle-orm";
@@ -49,7 +49,7 @@ async function probeUrl(url: string, timeoutMs = 8000): Promise<{ ok: boolean; s
 const MASS_DISABLE_FAILURE_RATIO = 0.5;
 
 export async function POST(req: NextRequest) {
-  const auth = await requireAuth(req);
+  const auth = await requireRole(req, ["admin"]);
   if (auth instanceof NextResponse) return auth;
   const all = await db.select().from(sourceFeeds);
 

@@ -52,18 +52,20 @@ describe("Stateful Sessions database helper", () => {
       revokedAt: null,
       expiresAt: new Date(Date.now() + 100000),
     };
-    const mockWhere = vi.fn().mockResolvedValue([mockSession]);
-    const mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
+    const mockWhere = vi.fn().mockResolvedValue([{ session: mockSession, role: "clinician" }]);
+    const mockInnerJoin = vi.fn().mockReturnValue({ where: mockWhere });
+    const mockFrom = vi.fn().mockReturnValue({ innerJoin: mockInnerJoin });
     vi.mocked(db.select).mockReturnValue({ from: mockFrom } as any);
 
     const res = await loadSession("s-uuid");
-    expect(res).toEqual(mockSession);
+    expect(res).toEqual({ ...mockSession, role: "clinician" });
     expect(db.select).toHaveBeenCalled();
   });
 
   it("returns null when session is not found", async () => {
     const mockWhere = vi.fn().mockResolvedValue([]);
-    const mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
+    const mockInnerJoin = vi.fn().mockReturnValue({ where: mockWhere });
+    const mockFrom = vi.fn().mockReturnValue({ innerJoin: mockInnerJoin });
     vi.mocked(db.select).mockReturnValue({ from: mockFrom } as any);
 
     const res = await loadSession("s-missing");

@@ -1,12 +1,12 @@
 import { runFeedRefresh } from "@/lib/feed-refresh";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireRole } from "@/lib/auth-guard";
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 export async function POST(req: NextRequest) {
-  const auth = await requireAuth(req);
+  const auth = await requireRole(req, ["admin"]);
   if (auth instanceof NextResponse) return auth;
   try {
     const result = await runFeedRefresh();

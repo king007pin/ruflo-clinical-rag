@@ -99,6 +99,7 @@ export type SourceFeedInsert = typeof sourceFeeds.$inferInsert;
 // Query session log
 export const querySessions = pgTable("query_sessions", {
   id: serial("id").primaryKey(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
   query: encryptedText("query").notNull(),
   queryEmbedding: vector(1024)("query_embedding"),
   matchCount: integer("match_count").default(0).notNull(),
@@ -208,10 +209,13 @@ const citext = customType<{ data: string }>({
   },
 });
 
+export const userRoleEnum = pgEnum("user_role", ["admin", "clinician", "viewer"]);
+
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: citext("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
+  role: userRoleEnum("role").default("clinician").notNull(),
   active: boolean("active").default(true).notNull(),
   createdAt: timestamp("created_at", { withTimezone: false }).defaultNow().notNull(),
   lastLoginAt: timestamp("last_login_at", { withTimezone: false }),

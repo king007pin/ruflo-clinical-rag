@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { caseProfiles } from "@/db/schema";
-import { desc } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 
 const EMPTY_MESSAGE = "No case profiles yet. Save a query to create one.";
 
@@ -9,16 +9,32 @@ const EMPTY_MESSAGE = "No case profiles yet. Save a query to create one.";
 // surrounding try (they fire later, during reconciliation). Resolve the
 // data fetch outside the JSX render path so any throw lands as a string
 // flag we can branch on.
-async function loadCases() {
+async function loadCases(userId?: string, role?: string) {
   try {
-    return await db.select().from(caseProfiles).orderBy(desc(caseProfiles.createdAt)).limit(6);
+    if (role === "admin") {
+      return await db.select().from(caseProfiles).orderBy(desc(caseProfiles.createdAt)).limit(6);
+    }
+    if (userId) {
+      return await db
+        .select()
+        .from(caseProfiles)
+        .where(eq(caseProfiles.createdBy, userId))
+        .orderBy(desc(caseProfiles.createdAt))
+        .limit(6);
+    }
+    return [];
   } catch {
     return null;
   }
 }
 
-export default async function CaseList() {
-  const cases = await loadCases();
+interface CaseListProps {
+  userId?: string;
+  role?: "admin" | "clinician" | "viewer";
+}
+
+export default async function CaseList({ userId, role }: CaseListProps) {
+  const cases = await loadCases(userId, role);
   if (!cases || cases.length === 0) {
     return <p className="text-sm text-[color:var(--muted)]">{EMPTY_MESSAGE}</p>;
   }

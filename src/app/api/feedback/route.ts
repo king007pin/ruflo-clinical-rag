@@ -1,7 +1,8 @@
 import { db } from "@/db";
-import { sessionFeedback } from "@/db/schema";
-import { requireAuth } from "@/lib/auth-guard";
+import { sessionFeedback, querySessions } from "@/db/schema";
+import { requireRole } from "@/lib/auth-guard";
 import { NextRequest, NextResponse } from "next/server";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +16,7 @@ const schema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const auth = await requireAuth(req);
+  const auth = await requireRole(req, ["admin", "clinician"]);
   if (auth instanceof NextResponse) return auth;
   const json = await req.json().catch(() => null);
   const parsed = schema.safeParse(json);
@@ -23,6 +24,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
   }
   const { sessionId, rating, helpful, issueType, comment } = parsed.data;
+
+  // Retrieve session and check ownership (W58)
+  const sessionRows = await db
+    .select()
+    .from(querySessions)
+    .where(eq(querySessions.id, sessionId));
+  const sessionObj = sessionRows[0] ?? null;
+  if (!sessionObj) {
+    return NextResponse.json({ error: "Session not found" }, { status: 404 });
+  }
+
+  if (sessionObj.userId && auth.role !== "admin" && sessionObj.userId !== auth.userId) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   await db.insert(sessionFeedback).values({
     sessionId,
     rating,

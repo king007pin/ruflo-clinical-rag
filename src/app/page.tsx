@@ -13,6 +13,7 @@ import { embeddings, sources } from "@/db/schema";
 import { desc, sql } from "drizzle-orm";
 import { Suspense } from "react";
 import Image from "next/image";
+import { getSessionUser } from "@/lib/auth-guard";
 
 const HTML_ENTITIES: Record<string, string> = {
   "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": '"',
@@ -45,13 +46,99 @@ async function loadStats() {
 }
 
 export default async function HomePage() {
-  const { sourceCount, chunkCount, latest } = await loadStats();
+  const [stats, user] = await Promise.all([loadStats(), getSessionUser()]);
+  const { sourceCount, chunkCount, latest } = stats;
 
   return (
     <main className="min-h-screen" style={{ background: "var(--bg)", color: "var(--text)" }}>
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-6 px-4 py-6 text-center sm:gap-10 sm:px-6 sm:py-12">
-        <div className="flex w-full items-center justify-end">
-          <ThemeToggle />
+        <div className="flex w-full items-center justify-between gap-4">
+          <div className="flex-1" />
+          <div className="flex items-center gap-4">
+            {/* User Profile Glassmorphic Badge */}
+            {user && (
+              <div
+                className="flex items-center gap-3 rounded-2xl border p-2 pl-3 pr-4 shadow-sm backdrop-blur-md transition-all duration-300 hover:shadow-md"
+                style={{
+                  backgroundColor: "color-mix(in srgb, var(--card) 60%, transparent)",
+                  borderColor: "var(--card-border)",
+                  boxShadow: "0 4px 30px rgba(0, 0, 0, 0.03)",
+                }}
+              >
+                <div className="flex flex-col items-end gap-0.5 text-right">
+                  <span className="text-xs font-semibold" style={{ color: "var(--text)" }}>
+                    {user.email}
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {user.role === "admin" && (
+                      <>
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                        </span>
+                        <span
+                          className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border"
+                          style={{
+                            color: "#10b981",
+                            backgroundColor: "rgba(16, 185, 129, 0.1)",
+                            borderColor: "rgba(16, 185, 129, 0.2)",
+                          }}
+                        >
+                          Admin
+                        </span>
+                      </>
+                    )}
+                    {user.role === "clinician" && (
+                      <span
+                        className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border"
+                        style={{
+                          color: "#6366f1",
+                          backgroundColor: "rgba(99, 102, 241, 0.1)",
+                          borderColor: "rgba(99, 102, 241, 0.2)",
+                        }}
+                      >
+                        Clinician
+                      </span>
+                    )}
+                    {user.role === "viewer" && (
+                      <span
+                        className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border"
+                        style={{
+                          color: "#64748b",
+                          backgroundColor: "rgba(100, 116, 139, 0.1)",
+                          borderColor: "rgba(100, 116, 139, 0.2)",
+                        }}
+                      >
+                        Viewer
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Avatar */}
+                <div
+                  className="h-8 w-8 rounded-xl flex items-center justify-center text-xs font-black uppercase text-white"
+                  style={{
+                    background:
+                      user.role === "admin"
+                        ? "linear-gradient(135deg, #14b8a6, #10b981)"
+                        : user.role === "clinician"
+                        ? "linear-gradient(135deg, #6366f1, #8b5cf6)"
+                        : "linear-gradient(135deg, #64748b, #94a3b8)",
+                    boxShadow:
+                      user.role === "admin"
+                        ? "0 0 12px rgba(16, 185, 129, 0.4)"
+                        : user.role === "clinician"
+                        ? "0 0 12px rgba(99, 102, 241, 0.4)"
+                        : "0 0 12px rgba(100, 116, 139, 0.4)",
+                  }}
+                >
+                  {user.email.substring(0, 2)}
+                </div>
+              </div>
+            )}
+            <ThemeToggle />
+          </div>
         </div>
 
         <header className="grid w-full gap-8 md:grid-cols-[3fr,1fr] md:items-center">
@@ -187,20 +274,22 @@ export default async function HomePage() {
           >
             <IngestForm />
           </CollapsibleSection>
-          <CollapsibleSection
-            eyebrow="Multi-Provider AI"
-            title="Provider & Swarm Manager"
-            subtitle="Add API keys from 12 providers, auto-configure a 10-role clinical swarm"
-            features={[
-              { sub: "12", label: "Providers" },
-              { sub: "10", label: "Swarm Roles" },
-              { sub: "Auto", label: "Model Select" },
-              { sub: "Live", label: "Health Check" },
-            ]}
-            defaultOpen={false}
-          >
-            <ProviderKeyManager />
-          </CollapsibleSection>
+          {user?.role === "admin" && (
+            <CollapsibleSection
+              eyebrow="Multi-Provider AI"
+              title="Provider & Swarm Manager"
+              subtitle="Add API keys from 12 providers, auto-configure a 10-role clinical swarm"
+              features={[
+                { sub: "12", label: "Providers" },
+                { sub: "10", label: "Swarm Roles" },
+                { sub: "Auto", label: "Model Select" },
+                { sub: "Live", label: "Health Check" },
+              ]}
+              defaultOpen={false}
+            >
+              <ProviderKeyManager />
+            </CollapsibleSection>
+          )}
         </section>
  
         <CollapsibleSection
@@ -332,7 +421,7 @@ export default async function HomePage() {
           ]}
           defaultOpen={true}
         >
-          <CaseList />
+          <CaseList userId={user?.id} role={user?.role} />
         </CollapsibleSection>
  
         <CollapsibleSection
@@ -351,20 +440,22 @@ export default async function HomePage() {
           <ManagerPanel />
         </CollapsibleSection>
  
-        <CollapsibleSection
-          eyebrow="Continuous Learning"
-          title="Learning Insights"
-          subtitle="Session history, knowledge gaps, and auto-remediation via PubMed ingestion"
-          features={[
-            { sub: "Find", label: "Knowledge Gaps" },
-            { sub: "Auto", label: "PubMed Ingest" },
-            { sub: "Track", label: "Session History" },
-            { sub: "Improve", label: "Remediation" },
-          ]}
-          defaultOpen={true}
-        >
-          <InsightsPanel />
-        </CollapsibleSection>
+        {user?.role === "admin" && (
+          <CollapsibleSection
+            eyebrow="Continuous Learning"
+            title="Learning Insights"
+            subtitle="Session history, knowledge gaps, and auto-remediation via PubMed ingestion"
+            features={[
+              { sub: "Find", label: "Knowledge Gaps" },
+              { sub: "Auto", label: "PubMed Ingest" },
+              { sub: "Track", label: "Session History" },
+              { sub: "Improve", label: "Remediation" },
+            ]}
+            defaultOpen={true}
+          >
+            <InsightsPanel />
+          </CollapsibleSection>
+        )}
 
         <p className="mx-auto max-w-3xl text-center text-xs" style={{ color: "var(--muted)" }}>
           Disclaimer: This tool is for licensed clinicians. Always corroborate with clinical judgment and local

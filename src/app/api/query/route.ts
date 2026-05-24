@@ -7,6 +7,7 @@ import { checkDrugInteractions, extractDrugNamesFromReport } from "@/lib/drug-sa
 import { rateLimit, RL_QUERY } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
+import { requireRole } from "@/lib/auth-guard";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +25,10 @@ const bodySchema = z.object({
 export async function POST(req: NextRequest) {
   const rl = rateLimit(req, RL_QUERY);
   if (rl) return rl;
+
+  const auth = await requireRole(req, ["admin", "clinician"]);
+  if (auth instanceof NextResponse) return auth;
+
   const json = await req.json().catch(() => null);
   const parsed = bodySchema.safeParse(json);
   if (!parsed.success) {
@@ -139,7 +144,7 @@ export async function POST(req: NextRequest) {
           // Item 2: stream synthesis tokens to client
           onSynthesisToken: (token) => send({ type: "synthesis_token", token }),
           onManagerStatus: (msg) => send({ type: "status", message: msg }),
-          logSessionFn: logSession,
+          logSessionFn: (opts) => logSession({ ...opts, userId: auth.userId }),
         });
 
         // Q4: strip any [S#] that points outside the retrieved-evidence range

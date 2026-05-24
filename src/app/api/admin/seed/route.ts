@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { sourceFeeds } from "@/db/schema";
 import { MEDICAL_SEED_FEEDS } from "@/lib/medical-sources";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireRole } from "@/lib/auth-guard";
 import { isPlaceholderUrl } from "@/lib/feeds";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
-  const auth = await requireAuth(req);
+  const auth = await requireRole(req, ["admin"]);
   if (auth instanceof NextResponse) return auth;
 
   // W79 — Composite (name, url) dedupe. The seed catalogue is authoritative;

@@ -5,6 +5,10 @@ import { verifySessionToken } from "./auth/tokens";
 import { loadSession, revokeSession, updateSessionLastSeen } from "./auth/sessions";
 import { hashClientFingerprint } from "./auth/ip-ua-hash";
 import { extractClientFingerprint, logAudit } from "./audit";
+import { cookies } from "next/headers";
+import { db } from "@/db";
+import { users } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
 /**
  * Constant-time string compare that survives length mismatches without throwing.
@@ -40,9 +44,9 @@ const DEV_SESSION_ID = "00000000-0000-0000-0000-000000000000";
  */
 export async function requireAuth(
   req: NextRequest | Request,
-): Promise<{ userId: string; sessionId: string } | NextResponse> {
+): Promise<{ userId: string; sessionId: string; role: "admin" | "clinician" | "viewer" } | NextResponse> {
   if (process.env.NODE_ENV === "development") {
-    return { userId: DEV_USER_ID, sessionId: DEV_SESSION_ID };
+    return { userId: DEV_USER_ID, sessionId: DEV_SESSION_ID, role: "admin" };
   }
 
   const cookie = readCookie(req, SESSION_COOKIE);
@@ -53,7 +57,7 @@ export async function requireAuth(
   // 1. Dual-stack check: Legacy Cookie support
   const legacySecret = process.env.AUTH_SECRET;
   if (legacySecret && safeEqual(cookie, legacySecret)) {
-    return { userId: DEV_USER_ID, sessionId: "legacy-admin" };
+    return { userId: DEV_USER_ID, sessionId: "legacy-admin", role: "admin" };
   }
 
   // 2. Stateful JWT session verification
@@ -110,10 +114,24 @@ export async function requireAuth(
     // Fire-and-forget lastSeenAt update
     void updateSessionLastSeen(session.id);
 
-    return { userId: verified.userId, sessionId: verified.sessionId };
+    return { userId: verified.userId, sessionId: verified.sessionId, role: session.role };
   } catch (err) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+}
+
+export async function requireRole(
+  req: NextRequest | Request,
+  allowedRoles: Array<"admin" | "clinician" | "viewer">,
+): Promise<{ userId: string; sessionId: string; role: "admin" | "clinician" | "viewer" } | NextResponse> {
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) {
+    return auth;
+  }
+  if (!allowedRoles.includes(auth.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  return auth;
 }
 
 /**
@@ -162,6 +180,89 @@ export async function requireCron(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   return { userId: DEV_USER_ID, sessionId: "cron-secret" };
+}
+
+/**
+ * Retrieve the current session user server-side.
+ * Resolves to the user object (id, email, role) or null if unauthorized.
+ * In development, defaults to the seeded admin or a placeholder if database is unseeded.
+ */
+export async function getSessionUser(): Promise<{
+  id: string;
+  email: string;
+  role: "admin" | "clinician" | "viewer";
+} | null> {
+  const cookieStore = await cookies();
+  const cookie = cookieStore.get(SESSION_COOKIE)?.value;
+
+  if (!cookie) {
+    if (process.env.NODE_ENV === "development") {
+      try {
+        const rows = await db.select().from(users).limit(1);
+        if (rows[0]) {
+          return {
+            id: rows[0].id,
+            email: rows[0].email,
+            role: rows[0].role as "admin" | "clinician" | "viewer",
+          };
+        }
+      } catch (e) {
+        // Database not seeded or connected yet
+      }
+      return {
+        id: DEV_USER_ID,
+        email: "admin@mediq.ai",
+        role: "admin",
+      };
+    }
+    return null;
+  }
+
+  // 1. Dual-stack check: Legacy Cookie support
+  const legacySecret = process.env.AUTH_SECRET;
+  if (legacySecret && safeEqual(cookie, legacySecret)) {
+    try {
+      const adminRows = await db.select().from(users).limit(1);
+      const user = adminRows[0] ?? null;
+      if (user && user.active) {
+        return {
+          id: user.id,
+          email: user.email,
+          role: user.role as "admin" | "clinician" | "viewer",
+        };
+      }
+    } catch {
+      // ignore and fallback
+    }
+    return {
+      id: DEV_USER_ID,
+      email: "admin@mediq.ai",
+      role: "admin",
+    };
+  }
+
+  // 2. Stateful JWT session verification
+  try {
+    const verified = await verifySessionToken(cookie);
+    const session = await loadSession(verified.sessionId);
+    if (!session) {
+      return null;
+    }
+
+    const rows = await db.select().from(users).where(eq(users.id, verified.userId));
+    const user = rows[0] ?? null;
+    if (!user || !user.active) {
+      return null;
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
+      role: user.role as "admin" | "clinician" | "viewer",
+    };
+  } catch (err) {
+    return null;
+  }
 }
 
 export { SESSION_COOKIE };

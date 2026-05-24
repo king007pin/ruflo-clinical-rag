@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { providerCredentials } from "@/db/schema";
-import { requireAuth } from "@/lib/auth-guard";
+import { requireRole } from "@/lib/auth-guard";
 import { logAudit, extractClientFingerprint } from "@/lib/audit";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
@@ -12,7 +12,7 @@ const bodySchema = z.object({ providerId: z.string().min(1) });
 
 export async function POST(req: NextRequest) {
   // W22/W41: route-level auth + audit on credential mutations.
-  const auth = await requireAuth(req);
+  const auth = await requireRole(req, ["admin"]);
   if (auth instanceof NextResponse) return auth;
 
   const body = await req.json().catch(() => null);

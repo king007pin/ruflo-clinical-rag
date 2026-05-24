@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireAuth, requireCron, SESSION_COOKIE } from "../lib/auth-guard";
+import { requireAuth, requireCron, requireRole, SESSION_COOKIE } from "../lib/auth-guard";
 
 function makeNextRequest(
   opts: {
@@ -76,6 +76,7 @@ describe("requireAuth", () => {
     expect(res).toEqual({
       userId: "00000000-0000-0000-0000-000000000000",
       sessionId: "legacy-admin",
+      role: "admin",
     });
   });
 
@@ -87,6 +88,7 @@ describe("requireAuth", () => {
     expect(res).toEqual({
       userId: "00000000-0000-0000-0000-000000000000",
       sessionId: "00000000-0000-0000-0000-000000000000",
+      role: "admin",
     });
   });
 
@@ -98,6 +100,7 @@ describe("requireAuth", () => {
     expect(res).toEqual({
       userId: "00000000-0000-0000-0000-000000000000",
       sessionId: "legacy-admin",
+      role: "admin",
     });
   });
 });
@@ -179,5 +182,32 @@ describe("requireCron", () => {
       userId: "00000000-0000-0000-0000-000000000000",
       sessionId: "00000000-0000-0000-0000-000000000000",
     });
+  });
+});
+
+describe("requireRole", () => {
+  beforeEach(() => {
+    (process.env as Record<string, string>).NODE_ENV = "production";
+    process.env.AUTH_SECRET = "test-secret-value-aaaaaaaaaaaaaaaa";
+  });
+
+  it("passes when role is in allowedRoles", async () => {
+    const res = await requireRole(
+      makeNextRequest({ cookieValue: process.env.AUTH_SECRET! }),
+      ["admin", "clinician"],
+    );
+    expect(res).not.toBeInstanceOf(NextResponse);
+    expect((res as any).role).toBe("admin");
+  });
+
+  it("returns 403 when role is not in allowedRoles", async () => {
+    const res = await requireRole(
+      makeNextRequest({ cookieValue: process.env.AUTH_SECRET! }),
+      ["clinician"],
+    );
+    expect(res).toBeInstanceOf(NextResponse);
+    const r = res as NextResponse;
+    expect(r.status).toBe(403);
+    expect(await r.json()).toEqual({ error: "Forbidden" });
   });
 });
