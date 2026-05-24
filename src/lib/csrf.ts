@@ -1,27 +1,40 @@
 /**
  * W36 — CSRF defence for state-changing requests.
- *
- * Cookie is `sameSite=lax`, which blocks most cross-site form submissions but
- * NOT top-level POST navigations and not subdomain pivots once a custom
- * domain is added. Defence-in-depth: every state-changing request to
- * `/api/*` (except `/api/auth` POST so the login form keeps working from
- * outside an authenticated session) must come from the same origin.
+ * W68 — Double-submit token fallback for clients behind corporate proxies
+ * that strip `Origin` / `Referer` / `Sec-Fetch-Site`.
  *
  * Validation order:
  *   1. `Sec-Fetch-Site` (modern browsers, "same-origin" required).
  *   2. `Origin` header — must equal request origin.
  *   3. `Referer` host — must equal request host.
+ *   4. `x-csrf-token` header == `csrf-token` cookie (double-submit fallback).
  *
- * Fail-closed when none of those headers is present.
+ * Fail-closed when none of the above clears.
+ *
+ * The token cookie is set by `/api/csrf` and rotated on login. The cookie is
+ * intentionally NOT `HttpOnly` because client JS must read it to echo into
+ * the request header — that is the whole point of the double-submit pattern.
+ * Confidentiality of the token does not matter for CSRF; what matters is that
+ * a cross-site attacker cannot read the cookie value to construct a matching
+ * header (SameSite=Lax blocks the cross-site cookie disclosure).
  */
+import { randomBytes, timingSafeEqual } from "crypto";
 import type { NextRequest } from "next/server";
+
+export const CSRF_COOKIE = "mediq-csrf";
+export const CSRF_HEADER = "x-csrf-token";
+export const CSRF_TOKEN_BYTES = 32;
 
 export type CsrfVerdict = { ok: true } | { ok: false; reason: string };
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
-// Paths exempt from CSRF (login bootstrap, cron with bearer, health).
-const CSRF_EXEMPT_EXACT = new Set<string>(["/api/auth", "/api/health"]);
+// Paths exempt from CSRF (login bootstrap, cron with bearer, health, csrf mint).
+const CSRF_EXEMPT_EXACT = new Set<string>([
+  "/api/auth",
+  "/api/health",
+  "/api/csrf",
+]);
 const CSRF_EXEMPT_PREFIX = ["/api/cron"];
 
 function isExempt(pathname: string): boolean {
@@ -29,6 +42,22 @@ function isExempt(pathname: string): boolean {
   return CSRF_EXEMPT_PREFIX.some(
     (p) => pathname === p || pathname.startsWith(`${p}/`),
   );
+}
+
+function safeEqualString(a: string, b: string): boolean {
+  const ab = Buffer.from(a, "utf8");
+  const bb = Buffer.from(b, "utf8");
+  if (ab.length !== bb.length) return false;
+  return timingSafeEqual(ab, bb);
+}
+
+function readCsrfCookie(req: NextRequest): string | null {
+  const v = req.cookies.get(CSRF_COOKIE)?.value;
+  return v && v.length > 0 ? v : null;
+}
+
+export function mintCsrfToken(): string {
+  return randomBytes(CSRF_TOKEN_BYTES).toString("base64url");
 }
 
 export function checkCsrf(req: NextRequest): CsrfVerdict {
@@ -64,6 +93,15 @@ export function checkCsrf(req: NextRequest): CsrfVerdict {
     } catch {
       return { ok: false, reason: "referer-invalid" };
     }
+  }
+
+  // W68 — double-submit fallback. Corp proxies that strip `Origin` /
+  // `Referer` / `Sec-Fetch-Site` cannot strip a cookie + header that the
+  // client deliberately attaches. Both must be present AND equal.
+  const cookie = readCsrfCookie(req);
+  const header = req.headers.get(CSRF_HEADER);
+  if (cookie && header && safeEqualString(cookie, header)) {
+    return { ok: true };
   }
 
   return { ok: false, reason: "no-origin-header" };

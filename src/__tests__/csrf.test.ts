@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { NextRequest } from "next/server";
-import { checkCsrf } from "../lib/csrf";
+import { CSRF_COOKIE, CSRF_HEADER, checkCsrf, mintCsrfToken } from "../lib/csrf";
 
 function makeReq(
   pathname: string,
@@ -9,12 +9,18 @@ function makeReq(
     origin?: string;
     referer?: string;
     secFetchSite?: string;
+    csrfCookie?: string;
+    csrfHeader?: string;
   } = {},
 ): NextRequest {
   const headers = new Headers();
   if (opts.origin) headers.set("origin", opts.origin);
   if (opts.referer) headers.set("referer", opts.referer);
   if (opts.secFetchSite) headers.set("sec-fetch-site", opts.secFetchSite);
+  if (opts.csrfHeader) headers.set(CSRF_HEADER, opts.csrfHeader);
+  if (opts.csrfCookie) {
+    headers.set("cookie", `${CSRF_COOKIE}=${opts.csrfCookie}`);
+  }
   return new NextRequest(new URL(pathname, "https://example.test"), {
     method: opts.method ?? "POST",
     headers,
@@ -76,5 +82,48 @@ describe("checkCsrf — origin/referer", () => {
     const verdict = checkCsrf(makeReq("/api/cases"));
     expect(verdict.ok).toBe(false);
     if (!verdict.ok) expect(verdict.reason).toBe("no-origin-header");
+  });
+});
+
+describe("checkCsrf — W68 double-submit token fallback", () => {
+  it("allows POST when csrf cookie + header match (corp-proxy path)", () => {
+    const token = mintCsrfToken();
+    const verdict = checkCsrf(
+      makeReq("/api/cases", { csrfCookie: token, csrfHeader: token }),
+    );
+    expect(verdict.ok).toBe(true);
+  });
+
+  it("rejects when only csrf cookie present (header missing)", () => {
+    const token = mintCsrfToken();
+    const verdict = checkCsrf(makeReq("/api/cases", { csrfCookie: token }));
+    expect(verdict.ok).toBe(false);
+  });
+
+  it("rejects when only csrf header present (cookie missing)", () => {
+    const token = mintCsrfToken();
+    const verdict = checkCsrf(makeReq("/api/cases", { csrfHeader: token }));
+    expect(verdict.ok).toBe(false);
+  });
+
+  it("rejects when csrf cookie and header are different values", () => {
+    const verdict = checkCsrf(
+      makeReq("/api/cases", { csrfCookie: mintCsrfToken(), csrfHeader: mintCsrfToken() }),
+    );
+    expect(verdict.ok).toBe(false);
+  });
+
+  it("mintCsrfToken returns a random base64url string of stable length", () => {
+    const a = mintCsrfToken();
+    const b = mintCsrfToken();
+    expect(a).not.toBe(b);
+    expect(a).toMatch(/^[A-Za-z0-9_-]+$/);
+    expect(a.length).toBeGreaterThanOrEqual(32);
+  });
+});
+
+describe("checkCsrf — /api/csrf is exempt", () => {
+  it("allows POST /api/csrf without origin (so client can mint without prior token)", () => {
+    expect(checkCsrf(makeReq("/api/csrf")).ok).toBe(true);
   });
 });
