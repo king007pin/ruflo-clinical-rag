@@ -1,7 +1,7 @@
 import { assembleContext, embedBatch, embedText, searchByVector, rewriteQueryForRetrieval, searchPubMedLive, type Match } from "@/lib/rag";
 import { getSimilarPastCases, logSession } from "@/lib/session-learning";
 import { runManagedSwarm, classifyMedical } from "@/lib/manager";
-import { precomputeSwarmRouting } from "@/lib/swarm";
+import { precomputeSwarmRouting, verifyAndStripOrphanCitations } from "@/lib/swarm";
 import { checkDrugInteractions, extractDrugNamesFromReport } from "@/lib/drug-safety";
 import { rateLimit, RL_QUERY } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
@@ -141,13 +141,26 @@ export async function POST(req: NextRequest) {
           logSessionFn: logSession,
         });
 
+        // Q4: strip any [S#] that points outside the retrieved-evidence range
+        // before persistence and before the done event. The streamed
+        // synthesis_token events keep the raw output (the UI re-renders the
+        // cleaned answer when done arrives), but the archived/shared answer
+        // never contains a hallucinated citation.
+        const cleaned = verifyAndStripOrphanCitations(result.answer, topMatches.length);
+        if (cleaned.strippedCount > 0) {
+          logger.warn(
+            `[query] stripped ${cleaned.strippedCount} orphan citation(s) from synthesis: ${cleaned.orphanIds.join(",")}`,
+          );
+        }
+        const finalAnswer = cleaned.cleaned;
+
         // Item 6: DDI check post-synthesis
-        const drugNames = extractDrugNamesFromReport(result.answer);
+        const drugNames = extractDrugNamesFromReport(finalAnswer);
         const ddiFlags = await checkDrugInteractions(drugNames).catch(() => []);
 
         send({
           type: "done",
-          answer: result.answer,
+          answer: finalAnswer,
           agents: result.agents,
           round1Agents: result.round1Agents,
           sessionId: result.sessionId,

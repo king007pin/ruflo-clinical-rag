@@ -1625,6 +1625,10 @@ export async function runSwarm({
   return { answer, agents: finalAgents, round1Agents, round2Agents, hospitalDepartments: hospitalDepts, pgSubjects: pgSubjs };
 }
 
+// Q4: post-synthesis citation verification lives in citation-verify.ts so it
+// has zero runtime deps and can be unit-tested without the swarm/db chain.
+export { verifyAndStripOrphanCitations } from "./citation-verify";
+
 export function buildContextFromMatches(
   matches: Array<{ chunk: string; sourceTitle?: string | null; sourceUrl?: string | null }>,
 ) {
