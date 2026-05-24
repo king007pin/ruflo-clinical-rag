@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { managerEvents } from "@/db/schema";
 import { desc, sql } from "drizzle-orm";
-import { runSwarm } from "./swarm";
+import { runSwarm, type SwarmRouting } from "./swarm";
 
 // ── Emergency detection ──────────────────────────────────────────────────────
 // W46: extracted to `detect-emergency.ts` (zero DB deps → testable in isolation).
@@ -81,6 +81,7 @@ export async function runManagedSwarm(params: {
   patientContext?: string;
   labText?: string;
   queryEmbedding?: number[];
+  precomputedRouting?: SwarmRouting;
   onAgentDone?: Parameters<typeof runSwarm>[0]["onAgentDone"];
   onSwarmConfig?: Parameters<typeof runSwarm>[0]["onSwarmConfig"];
   onDebateStart?: () => void;
@@ -140,6 +141,7 @@ export async function runManagedSwarm(params: {
     swarmSize: agentCountSelected,
     patientContext,
     labText,
+    precomputedRouting: params.precomputedRouting,
     onAgentDone,
     onSwarmConfig: wrappedOnSwarmConfig,
     onDebateStart,

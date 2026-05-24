@@ -1393,6 +1393,32 @@ CAVEATS AND LIMITATIONS
 -  Evidence limited to provided snippets only`;
 }
 
+// T1.3: precomputeSwarmRouting lets callers fire the router LLM in parallel with
+// retrieval (embedding + vector search + PubMed) instead of serially before the
+// swarm. Same shape as the inline router+fallback dance previously embedded in
+// runSwarm, so passing the precomputed result back in is a drop-in.
+export type SwarmRouting = {
+  hospitalDepartments: string[];
+  pgSubjects: string[];
+  swarmSize: number;
+  specialties: SpecialtyMeta[];
+  models: string[];
+};
+
+export async function precomputeSwarmRouting(
+  question: string,
+  patientContext?: string,
+  labText?: string,
+  fallbackSwarmSize = 10,
+): Promise<SwarmRouting> {
+  try {
+    return await routeQueryAndAllocateSwarm(question, patientContext, labText);
+  } catch (err) {
+    logger.error("[AI Swarm Router] Router failed, falling back to static keyword allocation", err);
+    return getFallbackAllocation(question, fallbackSwarmSize);
+  }
+}
+
 export async function runSwarm({
   question,
   context,
@@ -1401,6 +1427,7 @@ export async function runSwarm({
   swarmSize = 10,
   patientContext,
   labText,
+  precomputedRouting,
   onAgentDone,
   onDebateStart,
   onSynthesisStart,
@@ -1414,6 +1441,7 @@ export async function runSwarm({
   swarmSize?: number;
   patientContext?: string;
   labText?: string;
+  precomputedRouting?: SwarmRouting;
   onAgentDone?: (agent: AgentReply & { round: 1 | 2 }) => void;
   onDebateStart?: () => void;
   onSynthesisStart?: () => void;
@@ -1425,33 +1453,18 @@ export async function runSwarm({
   let hospitalDepts: string[] = [];
   let pgSubjs: string[] = [];
 
-  try {
-    const routing = await routeQueryAndAllocateSwarm(question, patientContext, labText);
-    selected = routing.models;
-    specialties = routing.specialties;
-    hospitalDepts = routing.hospitalDepartments;
-    pgSubjs = routing.pgSubjects;
+  const routing = precomputedRouting ?? (await precomputeSwarmRouting(question, patientContext, labText, swarmSize));
+  selected = routing.models;
+  specialties = routing.specialties;
+  hospitalDepts = routing.hospitalDepartments;
+  pgSubjs = routing.pgSubjects;
 
-    if (model) {
-      selected = [model, ...selected.filter((m) => m !== model)].slice(0, selected.length);
-    }
-
-    logger.info(`[AI Swarm Router] Routed query to ${selected.length} agents. Departments: ${hospitalDepts.join(", ")}, PG Subjects: ${pgSubjs.join(", ")}`);
-    onSwarmConfig?.({ swarmSize: selected.length, hospitalDepartments: hospitalDepts, pgSubjects: pgSubjs });
-  } catch (err) {
-    logger.error("[AI Swarm Router] Router failed, falling back to static keyword allocation", err);
-    const fb = getFallbackAllocation(question, swarmSize);
-    selected = fb.models;
-    specialties = fb.specialties;
-    hospitalDepts = fb.hospitalDepartments;
-    pgSubjs = fb.pgSubjects;
-
-    if (model) {
-      selected = [model, ...selected.filter((m) => m !== model)].slice(0, selected.length);
-    }
-
-    onSwarmConfig?.({ swarmSize: selected.length, hospitalDepartments: hospitalDepts, pgSubjects: pgSubjs });
+  if (model) {
+    selected = [model, ...selected.filter((m) => m !== model)].slice(0, selected.length);
   }
+
+  logger.info(`[AI Swarm Router] Routed query to ${selected.length} agents. Departments: ${hospitalDepts.join(", ")}, PG Subjects: ${pgSubjs.join(", ")}`);
+  onSwarmConfig?.({ swarmSize: selected.length, hospitalDepartments: hospitalDepts, pgSubjects: pgSubjs });
 
   // ── Round 1: Independent analysis ───────────────────────────────────────
   const round1Map = new Map<string, AgentReply & { round: 1 }>();

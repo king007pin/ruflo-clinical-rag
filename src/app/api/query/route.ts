@@ -1,6 +1,7 @@
 import { assembleContext, embedBatch, embedText, searchByVector, rewriteQueryForRetrieval, searchPubMedLive, type Match } from "@/lib/rag";
 import { getSimilarPastCases, logSession } from "@/lib/session-learning";
 import { runManagedSwarm, classifyMedical } from "@/lib/manager";
+import { precomputeSwarmRouting } from "@/lib/swarm";
 import { checkDrugInteractions, extractDrugNamesFromReport } from "@/lib/drug-safety";
 import { rateLimit, RL_QUERY } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
@@ -43,16 +44,19 @@ export async function POST(req: NextRequest) {
   // T1.4: embed the original question in parallel with the rewrite-LLM call,
   // then batch the rewritten queries into a single embeddings round-trip.
   // Prior code issued N sequential single-item embed calls (~3× HTTPS RTT).
-  const [qEmbedding, rewrittenQueries] = await Promise.all([
+  // T1.3: precomputeSwarmRouting fires in the same parallel block so the
+  // 2-8s router LLM call overlaps fully with embedding + rewrite.
+  const [qEmbedding, rewrittenQueries, precomputedRouting] = await Promise.all([
     embedText(question, "query"),
     rewriteQueryForRetrieval(question),
+    precomputeSwarmRouting(question, patientContext, labText, swarmSize ?? 10),
   ]);
 
   const extraQueries = rewrittenQueries.slice(1);
   const queryEmbeddings = extraQueries.length > 0 ? await embedBatch(extraQueries, "query") : [];
 
   const allEmbeddings = [qEmbedding, ...queryEmbeddings];
-  
+
   // Parallelize local vector search with real-time PubMed E-utilities search for absolute 2026 currency
   const [allResults, liveMatches] = await Promise.all([
     Promise.all(allEmbeddings.map((emb) => searchByVector(emb, topK))),
@@ -124,6 +128,7 @@ export async function POST(req: NextRequest) {
           patientContext,
           labText,
           queryEmbedding: qEmbedding,
+          precomputedRouting,
           onAgentDone: (agent) => send({ type: "agent", ...agent }),
           onSwarmConfig: (config) => send({ type: "swarm_config", ...config }),
           onDebateStart: () =>
