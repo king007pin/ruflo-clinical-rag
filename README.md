@@ -128,7 +128,41 @@ OPENAI_API_KEY="sk-proj-XXXXXXXXXXXXXXXXXXXX"
 TINYFISH_API_KEY="tf-XXXXXXXXXXXXXXXX"
 ```
 
-### ⚙️ Quick Start Installation
+## 💻 Local Installation for the Best Experience (Highly Recommended)
+
+> [!TIP]
+> **Why Run Locally?**
+> For the absolute best clinical experience with zero delay, sub-second vector queries, and full auto-updating capabilities, we highly recommend running MedIQ on a local server. 
+> *   **No Password Friction**: Local execution unconditionally bypasses all login pages and access passwords, landing you directly on the clinical swarm dashboard.
+> *   **Sub-Second Latency**: Directly binds with your local environment reducing network roundtrip times.
+
+---
+
+### 🚀 One-Click Easy Launcher & Auto-Updater (macOS)
+
+We have introduced a fully automated launcher script (`start.sh`) designed for clinicians, operators, and developers who want a seamless "one-click" style experience. 
+
+It keeps you **permanently connected to the GitHub repository** to fetch the latest improvements and clinical crawlers dynamically every time it is run!
+
+#### 🔹 The Easy "Non-Technical" Method:
+
+1.  **Open Terminal**: Press `Cmd + Space` on your Mac, type **Terminal**, and press `Enter`.
+2.  **Paste & Run the Launcher**: Copy and paste the single command below into the terminal window, then press `Enter`:
+    ```bash
+    git clone https://github.com/king007pin/Mediq.git && cd Mediq && ./start.sh
+    ```
+3.  **Enjoy!**: The script will automatically pull the newest updates from GitHub, verify your system configuration, set up secure keys, boot the local server, and **automatically open the MedIQ dashboard in your browser**!
+
+> [!NOTE]
+> For all subsequent launches, you only need to run:
+> ```bash
+> cd Mediq && ./start.sh
+> ```
+> This automatically pulls down any new clinical features or guideline updates from GitHub and boots your local server immediately.
+
+---
+
+### ⚙️ Quick Start Installation (Manual Method)
 
 1.  **Clone and Install Dependencies**:
     ```bash
