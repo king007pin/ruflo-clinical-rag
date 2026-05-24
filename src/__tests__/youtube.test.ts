@@ -22,6 +22,46 @@ describe("YouTube Transcript & Whisper Fallback", () => {
     // Setup env keys for Whisper fallback
     process.env.GROQ_API_KEY = "mock-groq-key";
     delete process.env.OPENAI_API_KEY;
+
+    // Smart, URL-aware default implementation for safeFetch to prevent cross-test pollution
+    vi.mocked(safeFetch).mockImplementation(async (url: string) => {
+      if (url.includes("cobalt.tools") || url.includes("co.wuk.sh")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ url: "https://audio.cdn/stream.mp3" }),
+        } as any;
+      }
+      if (url.includes("api.groq.com") || url.includes("api.openai.com")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ text: "Hello World from Whisper Fallback" }),
+        } as any;
+      }
+      if (url.includes("audio.cdn")) {
+        return {
+          ok: true,
+          status: 200,
+          arrayBuffer: async () => new ArrayBuffer(500),
+        } as any;
+      }
+      if (url.includes("404.pdf")) {
+        return {
+          ok: false,
+          status: 404,
+          text: async () => "Not Found",
+        } as any;
+      }
+      if (url.includes("test.pdf") || url.includes("example.com")) {
+        return {
+          ok: true,
+          status: 200,
+          arrayBuffer: async () => new ArrayBuffer(100),
+        } as any;
+      }
+      return { ok: false, status: 500 } as any;
+    });
   });
 
   it("extracts transcript successfully via standard scraper", async () => {

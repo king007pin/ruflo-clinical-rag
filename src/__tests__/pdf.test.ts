@@ -19,6 +19,46 @@ import { safeFetch } from "../lib/safe-fetch";
 describe("unpdf parser", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+
+    // Smart, URL-aware default implementation for safeFetch to prevent cross-test pollution
+    vi.mocked(safeFetch).mockImplementation(async (url: string) => {
+      if (url.includes("cobalt.tools") || url.includes("co.wuk.sh")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ url: "https://audio.cdn/stream.mp3" }),
+        } as any;
+      }
+      if (url.includes("api.groq.com") || url.includes("api.openai.com")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ text: "Hello World from Whisper Fallback" }),
+        } as any;
+      }
+      if (url.includes("audio.cdn")) {
+        return {
+          ok: true,
+          status: 200,
+          arrayBuffer: async () => new ArrayBuffer(500),
+        } as any;
+      }
+      if (url.includes("404.pdf")) {
+        return {
+          ok: false,
+          status: 404,
+          text: async () => "Not Found",
+        } as any;
+      }
+      if (url.includes("test.pdf") || url.includes("example.com")) {
+        return {
+          ok: true,
+          status: 200,
+          arrayBuffer: async () => new ArrayBuffer(100),
+        } as any;
+      }
+      return { ok: false, status: 500 } as any;
+    });
   });
 
   it("extracts text from valid pdf buffer successfully", async () => {
