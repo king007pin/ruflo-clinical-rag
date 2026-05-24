@@ -1,3 +1,4 @@
+import { safeFetch } from "@/lib/safe-fetch";
 import type { CrawlerDef, CrawlerArticle } from "./types";
 import { stripHtml } from "../utils/html";
 
@@ -25,12 +26,12 @@ export const geneReviewsCrawler: CrawlerDef = {
   delayMs: DELAY_MS,
 
   async fetchUrls(): Promise<string[]> {
-    const res = await fetch(GENE_REVIEWS_TOC, {
+    const res = await safeFetch(GENE_REVIEWS_TOC, {
       headers: {
         "User-Agent": "MediqRAG/1.0 (clinical research; NCBI Bookshelf; contact: admin@mediq.ai)",
         Accept: "text/html",
       },
-      signal: AbortSignal.timeout(30000),
+      timeoutMs: 30000,
     });
     if (!res.ok) throw new Error(`GeneReviews TOC fetch failed (${res.status})`);
     const html = await res.text();
@@ -55,12 +56,12 @@ export const geneReviewsCrawler: CrawlerDef = {
   async fetchArticle(url: string): Promise<CrawlerArticle | null> {
     try {
       await new Promise((r) => setTimeout(r, DELAY_MS));
-      const res = await fetch(url, {
+      const res = await safeFetch(url, {
         headers: {
           "User-Agent": "MediqRAG/1.0 (clinical research; NCBI Bookshelf)",
           Accept: "text/html",
         },
-        signal: AbortSignal.timeout(25000),
+        timeoutMs: 25000,
       });
       if (!res.ok) return null;
       const html = await res.text();

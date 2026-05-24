@@ -2,6 +2,8 @@ import { db } from "@/db";
 import { providerCredentials, swarmConfigs } from "@/db/schema";
 import { decrypt } from "@/lib/secretVault";
 import { PROVIDERS, callProvider, resolveProvider } from "@/lib/providerRegistry";
+import { requireAuth } from "@/lib/auth-guard";
+import { rateLimit, RL_SWARM } from "@/lib/rate-limit";
 import { eq, desc } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -32,6 +34,10 @@ const ROLE_PROMPTS: Record<string, string> = {
 };
 
 export async function POST(req: NextRequest) {
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
+  const rl = rateLimit(req, RL_SWARM);
+  if (rl) return rl;
   const body = await req.json().catch(() => null);
   const parsed = bodySchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Invalid payload" }, { status: 400 });

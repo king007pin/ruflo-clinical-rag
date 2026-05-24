@@ -1,3 +1,4 @@
+import { safeFetch } from "@/lib/safe-fetch";
 import type { CrawlerDef, CrawlerArticle } from "./types";
 
 const PUBCHEM = "https://pubchem.ncbi.nlm.nih.gov";
@@ -67,9 +68,9 @@ export const pubchemCompoundsCrawler: CrawlerDef = {
   async fetchArticle(url: string): Promise<CrawlerArticle | null> {
     try {
       await new Promise((r) => setTimeout(r, 300));
-      const res = await fetch(url, {
+      const res = await safeFetch(url, {
         headers: { "User-Agent": UA },
-        signal: AbortSignal.timeout(25000),
+        timeoutMs: 25000,
       });
       if (!res.ok) return null;
       const data = (await res.json()) as {

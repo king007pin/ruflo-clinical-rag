@@ -1,3 +1,4 @@
+import { safeFetch } from "@/lib/safe-fetch";
 import type { CrawlerDef, CrawlerArticle } from "./types";
 import { stripHtml } from "../utils/html";
 
@@ -65,9 +66,9 @@ export const whoEssentialMedsCrawler: CrawlerDef = {
     // Crawl WHO medicines pages for additional content
     try {
       await new Promise((r) => setTimeout(r, 600));
-      const res = await fetch(`${WHO_BASE}/tools/essential-medicines`, {
+      const res = await safeFetch(`${WHO_BASE}/tools/essential-medicines`, {
         headers: { "User-Agent": UA, Accept: "text/html" },
-        signal: AbortSignal.timeout(25000),
+        timeoutMs: 25000,
       });
       if (res.ok) {
         const html = await res.text();
@@ -88,9 +89,9 @@ export const whoEssentialMedsCrawler: CrawlerDef = {
   async fetchArticle(url: string): Promise<CrawlerArticle | null> {
     try {
       await new Promise((r) => setTimeout(r, 600));
-      const res = await fetch(url, {
+      const res = await safeFetch(url, {
         headers: { "User-Agent": UA, Accept: "text/html" },
-        signal: AbortSignal.timeout(30000),
+        timeoutMs: 30000,
       });
       if (!res.ok) return null;
       const html = await res.text();

@@ -1,3 +1,4 @@
+import { safeFetch } from "@/lib/safe-fetch";
 import type { CrawlerDef, CrawlerArticle } from "./types";
 
 const CTGOV = "https://clinicaltrials.gov/api/v2";
@@ -36,9 +37,9 @@ export const clinicaltrialsCrawler: CrawlerDef = {
           fields: "NCTId",
           ...(pageToken ? { pageToken } : {}),
         });
-        const res = await fetch(`${CTGOV}/studies?${p}`, {
+        const res = await safeFetch(`${CTGOV}/studies?${p}`, {
           headers: { "User-Agent": UA },
-          signal: AbortSignal.timeout(20000),
+          timeoutMs: 20000,
         });
         if (!res.ok) break;
         const data = (await res.json()) as { studies?: CTStudy[]; nextPageToken?: string };
@@ -63,9 +64,9 @@ export const clinicaltrialsCrawler: CrawlerDef = {
       if (!nctId) return null;
 
       const p = new URLSearchParams({ format: "json" });
-      const res = await fetch(`${CTGOV}/studies/${nctId}?${p}`, {
+      const res = await safeFetch(`${CTGOV}/studies/${nctId}?${p}`, {
         headers: { "User-Agent": UA },
-        signal: AbortSignal.timeout(20000),
+        timeoutMs: 20000,
       });
       if (!res.ok) return null;
 

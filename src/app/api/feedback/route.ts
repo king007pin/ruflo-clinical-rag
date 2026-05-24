@@ -1,5 +1,6 @@
 import { db } from "@/db";
 import { sessionFeedback } from "@/db/schema";
+import { requireAuth } from "@/lib/auth-guard";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -14,6 +15,8 @@ const schema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
   const json = await req.json().catch(() => null);
   const parsed = schema.safeParse(json);
   if (!parsed.success) {

@@ -1,3 +1,4 @@
+import { safeFetch } from "@/lib/safe-fetch";
 import type { CrawlerDef, CrawlerArticle } from "./types";
 import { stripHtml } from "../utils/html";
 
@@ -21,14 +22,14 @@ export const cochraneSummariesCrawler: CrawlerDef = {
     for (let page = 1; page <= 30 && urls.length < 1500; page++) {
       try {
         await new Promise((r) => setTimeout(r, 600));
-        const res = await fetch(
+        const res = await safeFetch(
           `${COCHRANE_BASE}/cdsr/reviews?page=${page}&pageSize=50`,
           {
             headers: {
               "User-Agent": UA,
               Accept: "text/html",
             },
-            signal: AbortSignal.timeout(25000),
+            timeoutMs: 25000,
           },
         );
         if (!res.ok) break;
@@ -65,9 +66,9 @@ export const cochraneSummariesCrawler: CrawlerDef = {
   async fetchArticle(url: string): Promise<CrawlerArticle | null> {
     try {
       await new Promise((r) => setTimeout(r, 800));
-      const res = await fetch(url, {
+      const res = await safeFetch(url, {
         headers: { "User-Agent": UA, Accept: "text/html" },
-        signal: AbortSignal.timeout(30000),
+        timeoutMs: 30000,
       });
       if (!res.ok) return null;
       const html = await res.text();

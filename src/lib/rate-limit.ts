@@ -87,3 +87,7 @@ export function rateLimit(
 export const RL_AUTH = { windowMs: 60_000, max: 5, bucket: "auth" } satisfies RateLimitConfig;
 export const RL_QUERY = { windowMs: 60_000, max: 30, bucket: "query" } satisfies RateLimitConfig;
 export const RL_INGEST = { windowMs: 60_000, max: 10, bucket: "ingest" } satisfies RateLimitConfig;
+// Expensive multi-provider ops (health-check, auto-select, clinical-swarm): 5/min per IP.
+export const RL_SWARM = { windowMs: 60_000, max: 5, bucket: "swarm" } satisfies RateLimitConfig;
+// Per-crawler crawl trigger: 3 per 5-min window prevents parallel fire of all 40 crawlers.
+export const RL_CRAWL = { windowMs: 300_000, max: 3, bucket: "crawl" } satisfies RateLimitConfig;

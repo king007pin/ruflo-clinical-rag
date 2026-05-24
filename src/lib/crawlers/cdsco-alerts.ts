@@ -1,3 +1,4 @@
+import { safeFetch } from "@/lib/safe-fetch";
 import type { CrawlerDef, CrawlerArticle } from "./types";
 import { stripHtml } from "../utils/html";
 
@@ -15,7 +16,7 @@ const INDEX_PAGES = [
 
 async function extractLinks(pageUrl: string): Promise<string[]> {
   try {
-    const res = await fetch(pageUrl, { headers: { "User-Agent": UA, Accept: "text/html" }, signal: AbortSignal.timeout(20000) });
+    const res = await safeFetch(pageUrl, { headers: { "User-Agent": UA, Accept: "text/html" }, timeoutMs: 20000 });
     if (!res.ok) return [pageUrl];
     const html = await res.text();
     const seen = new Set<string>();
@@ -63,7 +64,7 @@ export const cdscoAlertsCrawler: CrawlerDef = {
   async fetchArticle(url: string): Promise<CrawlerArticle | null> {
     try {
       await new Promise((r) => setTimeout(r, DELAY_MS));
-      const res = await fetch(url, { headers: { "User-Agent": UA, Accept: "text/html" }, signal: AbortSignal.timeout(25000) });
+      const res = await safeFetch(url, { headers: { "User-Agent": UA, Accept: "text/html" }, timeoutMs: 25000 });
       if (!res.ok) return null;
       const html = await res.text();
       const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);

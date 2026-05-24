@@ -1,3 +1,4 @@
+import { safeFetch } from "@/lib/safe-fetch";
 import type { CrawlerDef, CrawlerArticle } from "./types";
 
 const WIKEM_API = "https://wikem.org/w/api.php";
@@ -29,9 +30,9 @@ export const wikiEmCrawler: CrawlerDef = {
           origin: "*",
           ...(apcontinue ? { apcontinue } : {}),
         });
-        const res = await fetch(`${WIKEM_API}?${p}`, {
+        const res = await safeFetch(`${WIKEM_API}?${p}`, {
           headers: { "User-Agent": UA },
-          signal: AbortSignal.timeout(20000),
+          timeoutMs: 20000,
         });
         if (!res.ok) break;
         const data = (await res.json()) as {
@@ -67,9 +68,9 @@ export const wikiEmCrawler: CrawlerDef = {
         format: "json",
         origin: "*",
       });
-      const res = await fetch(`${WIKEM_API}?${p}`, {
+      const res = await safeFetch(`${WIKEM_API}?${p}`, {
         headers: { "User-Agent": UA },
-        signal: AbortSignal.timeout(20000),
+        timeoutMs: 20000,
       });
       if (!res.ok) return null;
       const data = (await res.json()) as {

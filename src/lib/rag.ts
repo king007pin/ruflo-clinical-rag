@@ -21,7 +21,7 @@ async function fetchYoutubeAudioUrl(url: string): Promise<string> {
   let lastErr = null;
   for (const cobaltUrl of cobaltUrls) {
     try {
-      const res = await fetch(cobaltUrl, {
+      const res = await safeFetch(cobaltUrl, {
         method: "POST",
         headers: {
           "Accept": "application/json",
@@ -61,7 +61,7 @@ async function transcribeAudioWithWhisper(audioBuffer: ArrayBuffer, filename: st
   formData.append("file", blob, filename);
   formData.append("model", model);
 
-  const res = await fetch(url, {
+  const res = await safeFetch(url, {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${apiKey}`,
@@ -149,14 +149,14 @@ export async function textFromWebsite(url: string): Promise<string> {
 async function textFromTinyfish(url: string): Promise<string> {
   // Tinyfish: JS-rendered + anti-bot bypassing web crawling API
   // Inspired by: https://github.com/tinyfish-io/tinyfish-cookbook
-  const res = await fetch("https://api.tinyfish.io/api/v1/scrape", {
+  const res = await safeFetch("https://api.tinyfish.io/api/v1/scrape", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${process.env.TINYFISH_API_KEY}`,
     },
     body: JSON.stringify({ url, return_markdown: true }),
-    signal: AbortSignal.timeout(30000),
+    timeoutMs: 30000,
   });
   if (!res.ok) throw new Error(`Tinyfish failed (${res.status})`);
   const data = (await res.json()) as { markdown?: string; text?: string; content?: string };
@@ -414,9 +414,9 @@ export async function searchPubMedLive(question: string, limit = 4): Promise<Mat
       retmax: String(limit),
     });
 
-    const res = await fetch(`${EUTILS}/esearch.fcgi?${p}`, {
+    const res = await safeFetch(`${EUTILS}/esearch.fcgi?${p}`, {
       headers: { "User-Agent": UA },
-      signal: AbortSignal.timeout(6000),
+      timeoutMs: 6000,
     });
 
     if (!res.ok) return [];
@@ -432,9 +432,9 @@ export async function searchPubMedLive(question: string, limit = 4): Promise<Mat
           rettype: "abstract",
           retmode: "text",
         });
-        const fetchRes = await fetch(`${EUTILS}/efetch.fcgi?${fp}`, {
+        const fetchRes = await safeFetch(`${EUTILS}/efetch.fcgi?${fp}`, {
           headers: { "User-Agent": UA },
-          signal: AbortSignal.timeout(8000),
+          timeoutMs: 8000,
         });
         if (!fetchRes.ok) return null;
         const text = await fetchRes.text();

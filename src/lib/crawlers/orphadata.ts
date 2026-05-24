@@ -1,3 +1,4 @@
+import { safeFetch } from "@/lib/safe-fetch";
 import type { CrawlerDef, CrawlerArticle } from "./types";
 import { stripHtml } from "../utils/html";
 
@@ -36,12 +37,12 @@ export const orphadataCrawler: CrawlerDef = {
     let xml = "";
     for (const candidate of XML_CANDIDATES) {
       try {
-        const res = await fetch(candidate, {
+        const res = await safeFetch(candidate, {
           headers: {
             "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
             Accept: "application/xml, text/xml, */*",
           },
-          signal: AbortSignal.timeout(60000),
+          timeoutMs: 60000,
         });
         if (res.ok) {
           xml = await res.text();
@@ -57,14 +58,14 @@ export const orphadataCrawler: CrawlerDef = {
       for (let page = 1; page <= 50 && fallbackUrls.length < 3000; page++) {
         try {
           await new Promise((r) => setTimeout(r, 500));
-          const res = await fetch(
+          const res = await safeFetch(
             `${ORPHANET_BASE}/en/disease/search?name=&page=${page}`,
             {
               headers: {
                 "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
                 Accept: "text/html",
               },
-              signal: AbortSignal.timeout(20000),
+              timeoutMs: 20000,
             },
           );
           if (!res.ok) break;
@@ -104,12 +105,12 @@ export const orphadataCrawler: CrawlerDef = {
     try {
       await new Promise((r) => setTimeout(r, DELAY_MS));
 
-      const res = await fetch(url, {
+      const res = await safeFetch(url, {
         headers: {
           "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
           Accept: "text/html",
         },
-        signal: AbortSignal.timeout(25000),
+        timeoutMs: 25000,
       });
       if (!res.ok) return null;
       const html = await res.text();

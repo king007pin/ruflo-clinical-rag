@@ -1,3 +1,4 @@
+import { safeFetch } from "@/lib/safe-fetch";
 import type { CrawlerDef, CrawlerArticle } from "./types";
 import { stripHtml } from "../utils/html";
 import { textFromPdfBuffer } from "@/lib/pdf";
@@ -36,9 +37,9 @@ export const aiimProtocolsCrawler: CrawlerDef = {
     for (const seedUrl of seedPages) {
       try {
         await new Promise((r) => setTimeout(r, 800));
-        const res = await fetch(seedUrl, {
+        const res = await safeFetch(seedUrl, {
           headers: { "User-Agent": UA, Accept: "text/html" },
-          signal: AbortSignal.timeout(25000),
+          timeoutMs: 25000,
         });
         if (!res.ok) continue;
         const html = await res.text();
@@ -79,9 +80,9 @@ export const aiimProtocolsCrawler: CrawlerDef = {
 
       const isDirectPdf = url.toLowerCase().endsWith(".pdf");
 
-      const res = await fetch(url, {
+      const res = await safeFetch(url, {
         headers: { "User-Agent": UA },
-        signal: AbortSignal.timeout(30000),
+        timeoutMs: 30000,
       });
       if (!res.ok) return null;
 

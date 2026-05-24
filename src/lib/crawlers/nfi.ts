@@ -1,3 +1,4 @@
+import { safeFetch } from "@/lib/safe-fetch";
 import type { CrawlerDef, CrawlerArticle } from "./types";
 import { stripHtml } from "../utils/html";
 import { textFromPdfBuffer } from "@/lib/pdf";
@@ -16,7 +17,7 @@ const INDEX_URLS = [
 
 async function extractPdfLinks(pageUrl: string): Promise<string[]> {
   try {
-    const res = await fetch(pageUrl, { headers: { "User-Agent": UA, Accept: "text/html" }, signal: AbortSignal.timeout(20000) });
+    const res = await safeFetch(pageUrl, { headers: { "User-Agent": UA, Accept: "text/html" }, timeoutMs: 20000 });
     if (!res.ok) return [];
     const html = await res.text();
     const seen = new Set<string>();
@@ -62,14 +63,14 @@ export const nfiCrawler: CrawlerDef = {
       await new Promise((r) => setTimeout(r, DELAY_MS));
       const isPdf = url.toLowerCase().endsWith(".pdf");
       if (isPdf) {
-        const res = await fetch(url, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(90000) });
+        const res = await safeFetch(url, { headers: { "User-Agent": UA }, timeoutMs: 90000 });
         if (!res.ok) return null;
         const content = await parsePdfBuffer(await res.arrayBuffer());
         if (content.length < 200) return null;
         const filename = decodeURIComponent(url.split("/").pop() ?? "").replace(/\.pdf$/i, "").replace(/[-_]/g, " ").trim();
         return { url, title: filename || "National Formulary of India", content: content.slice(0, 15_000), description: "India NFI — National Formulary of India (IPC) formulary reference" };
       }
-      const res = await fetch(url, { headers: { "User-Agent": UA, Accept: "text/html" }, signal: AbortSignal.timeout(20000) });
+      const res = await safeFetch(url, { headers: { "User-Agent": UA, Accept: "text/html" }, timeoutMs: 20000 });
       if (!res.ok) return null;
       const content = stripHtml(await res.text());
       if (content.length < 200) return null;

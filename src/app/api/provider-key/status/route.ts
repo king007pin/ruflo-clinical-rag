@@ -1,11 +1,14 @@
 import { db } from "@/db";
 import { providerCredentials } from "@/db/schema";
+import { requireAuth } from "@/lib/auth-guard";
 import { asc } from "drizzle-orm";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
   const rows = await db
     .select({
       providerId: providerCredentials.providerId,

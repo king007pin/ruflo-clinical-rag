@@ -2,11 +2,17 @@ import { db } from "@/db";
 import { providerCredentials, swarmHealthReports } from "@/db/schema";
 import { decrypt } from "@/lib/secretVault";
 import { PROVIDERS, callProvider, resolveProvider } from "@/lib/providerRegistry";
-import { NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth-guard";
+import { rateLimit, RL_SWARM } from "@/lib/rate-limit";
+import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-export async function POST() {
+export async function POST(req: NextRequest) {
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
+  const rl = rateLimit(req, RL_SWARM);
+  if (rl) return rl;
   const creds = await db.select().from(providerCredentials);
 
   const results = await Promise.allSettled(

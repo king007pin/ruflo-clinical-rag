@@ -1,3 +1,4 @@
+import { safeFetch } from "@/lib/safe-fetch";
 import type { CrawlerDef, CrawlerArticle } from "./types";
 
 const OPENFDA = "https://api.fda.gov";
@@ -41,9 +42,9 @@ export const whoDrugSafetyCrawler: CrawlerDef = {
   async fetchArticle(url: string): Promise<CrawlerArticle | null> {
     try {
       await new Promise((r) => setTimeout(r, 300));
-      const res = await fetch(url, {
+      const res = await safeFetch(url, {
         headers: { "User-Agent": UA },
-        signal: AbortSignal.timeout(20000),
+        timeoutMs: 20000,
       });
       if (!res.ok) return null;
       const data = (await res.json()) as {

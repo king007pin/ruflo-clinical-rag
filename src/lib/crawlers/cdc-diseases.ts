@@ -1,3 +1,4 @@
+import { safeFetch } from "@/lib/safe-fetch";
 import type { CrawlerDef, CrawlerArticle } from "./types";
 import { stripHtml } from "../utils/html";
 
@@ -52,9 +53,9 @@ export const cdcDiseasesCrawler: CrawlerDef = {
       if (urls.length >= 600) break;
       try {
         await new Promise((r) => setTimeout(r, 300));
-        const res = await fetch(seedUrl, {
+        const res = await safeFetch(seedUrl, {
           headers: { "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)", Accept: "text/html" },
-          signal: AbortSignal.timeout(15000),
+          timeoutMs: 15000,
         });
         if (!res.ok) continue;
         const html = await res.text();
@@ -73,12 +74,12 @@ export const cdcDiseasesCrawler: CrawlerDef = {
   async fetchArticle(url: string): Promise<CrawlerArticle | null> {
     try {
       await new Promise((r) => setTimeout(r, DELAY_MS));
-      const res = await fetch(url, {
+      const res = await safeFetch(url, {
         headers: {
           "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
           Accept: "text/html",
         },
-        signal: AbortSignal.timeout(25000),
+        timeoutMs: 25000,
       });
       if (!res.ok) return null;
       const html = await res.text();

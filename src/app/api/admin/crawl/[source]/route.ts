@@ -3,6 +3,7 @@ import { sourceFeeds } from "@/db/schema";
 import { persistSource } from "@/lib/ingest-pipeline";
 import { CRAWLERS } from "@/lib/crawl-registry";
 import { requireAuth } from "@/lib/auth-guard";
+import { rateLimit, RL_CRAWL } from "@/lib/rate-limit";
 import { eq, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -65,6 +66,8 @@ export async function POST(
 ) {
   const auth = await requireAuth(req);
   if (auth instanceof NextResponse) return auth;
+  const rl = rateLimit(req, RL_CRAWL);
+  if (rl) return rl;
   const { source } = await params;
   const crawler = CRAWLERS[source];
   if (!crawler) {

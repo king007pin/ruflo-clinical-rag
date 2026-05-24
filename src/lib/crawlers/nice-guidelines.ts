@@ -1,3 +1,4 @@
+import { safeFetch } from "@/lib/safe-fetch";
 import type { CrawlerDef, CrawlerArticle } from "./types";
 import { stripHtml } from "../utils/html";
 
@@ -32,12 +33,12 @@ export const niceGuidelinesCrawler: CrawlerDef = {
       try {
         await new Promise((r) => setTimeout(r, 500));
         const pageUrl = `${NICE_BASE}/guidance/published?type=ng,cg&pagesize=60&page=${page}`;
-        const res = await fetch(pageUrl, {
+        const res = await safeFetch(pageUrl, {
           headers: {
             "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
             Accept: "text/html",
           },
-          signal: AbortSignal.timeout(20000),
+          timeoutMs: 20000,
         });
         if (!res.ok) break;
         const html = await res.text();
@@ -77,12 +78,12 @@ export const niceGuidelinesCrawler: CrawlerDef = {
       const recommendationsUrl = `${url}/chapter/recommendations`;
 
       try {
-        const recRes = await fetch(recommendationsUrl, {
+        const recRes = await safeFetch(recommendationsUrl, {
           headers: {
             "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
             Accept: "text/html",
           },
-          signal: AbortSignal.timeout(25000),
+          timeoutMs: 25000,
         });
         if (recRes.ok) {
           html = await recRes.text();
@@ -93,12 +94,12 @@ export const niceGuidelinesCrawler: CrawlerDef = {
 
       // Fall back to base URL if recommendations chapter not available
       if (!html) {
-        const baseRes = await fetch(url, {
+        const baseRes = await safeFetch(url, {
           headers: {
             "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
             Accept: "text/html",
           },
-          signal: AbortSignal.timeout(25000),
+          timeoutMs: 25000,
         });
         if (!baseRes.ok) return null;
         html = await baseRes.text();

@@ -8,6 +8,9 @@ function getJwtSecret(): Uint8Array {
   return new TextEncoder().encode(secretStr);
 }
 
+const JWT_ISSUER = "mediq";
+const JWT_AUDIENCE = "mediq";
+
 export async function signSessionToken(payload: {
   userId: string;
   sessionId: string;
@@ -18,6 +21,8 @@ export async function signSessionToken(payload: {
     .setJti(payload.sessionId)
     .setIssuedAt()
     .setExpirationTime("24h")
+    .setIssuer(JWT_ISSUER)
+    .setAudience(JWT_AUDIENCE)
     .sign(secret);
 }
 
@@ -28,6 +33,8 @@ export async function verifySessionToken(token: string): Promise<{
   const secret = getJwtSecret();
   const { payload } = await jwtVerify(token, secret, {
     algorithms: ["HS256"],
+    issuer: JWT_ISSUER,
+    audience: JWT_AUDIENCE,
   });
   if (!payload.uid || !payload.jti) {
     throw new Error("Invalid JWT payload claims");

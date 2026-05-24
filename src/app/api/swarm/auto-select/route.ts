@@ -2,8 +2,10 @@ import { db } from "@/db";
 import { providerCredentials, swarmConfigs } from "@/db/schema";
 import { decrypt } from "@/lib/secretVault";
 import { PROVIDERS, callProvider, listProviderModels, resolveProvider } from "@/lib/providerRegistry";
+import { requireAuth } from "@/lib/auth-guard";
+import { rateLimit, RL_SWARM } from "@/lib/rate-limit";
 import { eq } from "drizzle-orm";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +21,11 @@ const SWARM_ROLES = [
 
 type SwarmSlot = { role: string; providerId: string; model: string; latencyMs: number };
 
-export async function POST() {
+export async function POST(req: NextRequest) {
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
+  const rl = rateLimit(req, RL_SWARM);
+  if (rl) return rl;
   const creds = await db.select().from(providerCredentials);
   if (creds.length === 0) {
     return NextResponse.json({ error: "No providers configured. Add at least one API key first." }, { status: 400 });

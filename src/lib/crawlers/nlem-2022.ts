@@ -1,3 +1,4 @@
+import { safeFetch } from "@/lib/safe-fetch";
 import type { CrawlerDef, CrawlerArticle } from "./types";
 import { textFromPdfBuffer } from "@/lib/pdf";
 
@@ -28,9 +29,9 @@ export const nlem2022Crawler: CrawlerDef = {
   async fetchArticle(url: string): Promise<CrawlerArticle | null> {
     try {
       await new Promise((r) => setTimeout(r, DELAY_MS));
-      const res = await fetch(url, {
+      const res = await safeFetch(url, {
         headers: { "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)" },
-        signal: AbortSignal.timeout(90000),
+        timeoutMs: 90000,
       });
       if (!res.ok) return null;
       const content = await parsePdfBuffer(await res.arrayBuffer());

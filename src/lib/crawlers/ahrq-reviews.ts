@@ -1,3 +1,4 @@
+import { safeFetch } from "@/lib/safe-fetch";
 import type { CrawlerDef, CrawlerArticle } from "./types";
 import { stripHtml } from "../utils/html";
 
@@ -21,11 +22,11 @@ export const ahrqReviewsCrawler: CrawlerDef = {
     for (let page = 0; page <= 20 && urls.length < 1000; page++) {
       try {
         await new Promise((r) => setTimeout(r, 600));
-        const res = await fetch(
+        const res = await safeFetch(
           `${AHRQ_BASE}/products?page=${page}`,
           {
             headers: { "User-Agent": UA, Accept: "text/html" },
-            signal: AbortSignal.timeout(25000),
+            timeoutMs: 25000,
           },
         );
         if (!res.ok) break;
@@ -50,9 +51,9 @@ export const ahrqReviewsCrawler: CrawlerDef = {
 
     // Also try the topic finder
     try {
-      const res = await fetch(`${AHRQ_BASE}/products/topic-finder`, {
+      const res = await safeFetch(`${AHRQ_BASE}/products/topic-finder`, {
         headers: { "User-Agent": UA, Accept: "text/html" },
-        signal: AbortSignal.timeout(25000),
+        timeoutMs: 25000,
       });
       if (res.ok) {
         const html = await res.text();
@@ -73,9 +74,9 @@ export const ahrqReviewsCrawler: CrawlerDef = {
   async fetchArticle(url: string): Promise<CrawlerArticle | null> {
     try {
       await new Promise((r) => setTimeout(r, 700));
-      const res = await fetch(url, {
+      const res = await safeFetch(url, {
         headers: { "User-Agent": UA, Accept: "text/html" },
-        signal: AbortSignal.timeout(30000),
+        timeoutMs: 30000,
       });
       if (!res.ok) return null;
       const html = await res.text();

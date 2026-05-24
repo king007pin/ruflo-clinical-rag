@@ -1,3 +1,4 @@
+import { safeFetch } from "@/lib/safe-fetch";
 import type { CrawlerDef, CrawlerArticle } from "./types";
 import { stripHtml } from "../utils/html";
 import { textFromPdfBuffer } from "@/lib/pdf";
@@ -30,12 +31,12 @@ const INDEX_PAGES = [
 
 async function extractPdfLinksFromPage(pageUrl: string): Promise<string[]> {
   try {
-    const res = await fetch(pageUrl, {
+    const res = await safeFetch(pageUrl, {
       headers: {
         "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
         Accept: "text/html",
       },
-      signal: AbortSignal.timeout(20000),
+      timeoutMs: 20000,
     });
     if (!res.ok) return [];
     const html = await res.text();
@@ -100,11 +101,11 @@ export const indiaGovCrawler: CrawlerDef = {
       const isPdf = url.toLowerCase().endsWith(".pdf");
 
       if (isPdf) {
-        const res = await fetch(url, {
+        const res = await safeFetch(url, {
           headers: {
             "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
           },
-          signal: AbortSignal.timeout(60000),
+          timeoutMs: 60000,
         });
         if (!res.ok) return null;
 
@@ -127,12 +128,12 @@ export const indiaGovCrawler: CrawlerDef = {
         };
       } else {
         // HTML page
-        const res = await fetch(url, {
+        const res = await safeFetch(url, {
           headers: {
             "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
             Accept: "text/html",
           },
-          signal: AbortSignal.timeout(25000),
+          timeoutMs: 25000,
         });
         if (!res.ok) return null;
         const html = await res.text();

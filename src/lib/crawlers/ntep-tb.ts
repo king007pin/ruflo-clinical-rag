@@ -1,3 +1,4 @@
+import { safeFetch } from "@/lib/safe-fetch";
 import type { CrawlerDef, CrawlerArticle } from "./types";
 import { textFromPdfBuffer } from "@/lib/pdf";
 
@@ -13,9 +14,9 @@ async function parsePdfBuffer(arrayBuffer: ArrayBuffer): Promise<string> {
 
 async function extractPdfLinks(pageUrl: string): Promise<string[]> {
   try {
-    const res = await fetch(pageUrl, {
+    const res = await safeFetch(pageUrl, {
       headers: { "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)", Accept: "text/html" },
-      signal: AbortSignal.timeout(20000),
+      timeoutMs: 20000,
     });
     if (!res.ok) return [];
     const html = await res.text();
@@ -62,9 +63,9 @@ export const ntepTbCrawler: CrawlerDef = {
       await new Promise((r) => setTimeout(r, DELAY_MS));
       const isPdf = url.toLowerCase().endsWith(".pdf");
       if (isPdf) {
-        const res = await fetch(url, {
+        const res = await safeFetch(url, {
           headers: { "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)" },
-          signal: AbortSignal.timeout(60000),
+          timeoutMs: 60000,
         });
         if (!res.ok) return null;
         const content = await parsePdfBuffer(await res.arrayBuffer());
@@ -72,9 +73,9 @@ export const ntepTbCrawler: CrawlerDef = {
         const filename = decodeURIComponent(url.split("/").pop() ?? "").replace(/\.pdf$/i, "").replace(/[-_]/g, " ").trim();
         return { url, title: filename || "NTEP TB Guideline", content: content.slice(0, 15_000), description: "India NTEP — National TB Elimination Programme official guideline" };
       }
-      const res = await fetch(url, {
+      const res = await safeFetch(url, {
         headers: { "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)", Accept: "text/html" },
-        signal: AbortSignal.timeout(20000),
+        timeoutMs: 20000,
       });
       if (!res.ok) return null;
       const html = await res.text();

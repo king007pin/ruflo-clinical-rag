@@ -1,5 +1,6 @@
 import { textFromPdfBuffer } from "@/lib/rag";
 import { parseLabText } from "@/lib/lab-parser";
+import { requireAuth } from "@/lib/auth-guard";
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -8,6 +9,8 @@ const MAX_CHARS = 10_000;
 const MAX_LAB_BYTES = 10 * 1024 * 1024;
 
 export async function POST(req: NextRequest) {
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
   let formData: FormData;
   try {
     formData = await req.formData();

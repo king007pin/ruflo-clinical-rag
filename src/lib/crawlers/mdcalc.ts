@@ -1,3 +1,4 @@
+import { safeFetch } from "@/lib/safe-fetch";
 import type { CrawlerDef, CrawlerArticle } from "./types";
 import { stripHtml } from "../utils/html";
 
@@ -17,12 +18,12 @@ function extractTag(html: string, tag: string, attr?: string): string {
 async function fetchUrlsFromHomepage(): Promise<Set<string>> {
   const seen = new Set<string>();
   try {
-    const res = await fetch(`${MDCALC_BASE}/`, {
+    const res = await safeFetch(`${MDCALC_BASE}/`, {
       headers: {
         "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
         Accept: "text/html",
       },
-      signal: AbortSignal.timeout(30000),
+      timeoutMs: 30000,
     });
     if (!res.ok) return seen;
     const html = await res.text();
@@ -41,11 +42,11 @@ async function fetchUrlsFromHomepage(): Promise<Set<string>> {
 async function fetchUrlsFromSitemap(): Promise<Set<string>> {
   const seen = new Set<string>();
   try {
-    const res = await fetch(`${MDCALC_BASE}/sitemap.xml`, {
+    const res = await safeFetch(`${MDCALC_BASE}/sitemap.xml`, {
       headers: {
         "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
       },
-      signal: AbortSignal.timeout(30000),
+      timeoutMs: 30000,
     });
     if (!res.ok) return seen;
     const xml = await res.text();
@@ -82,12 +83,12 @@ export const mdcalcCrawler: CrawlerDef = {
   async fetchArticle(url: string): Promise<CrawlerArticle | null> {
     try {
       await new Promise((r) => setTimeout(r, DELAY_MS));
-      const res = await fetch(url, {
+      const res = await safeFetch(url, {
         headers: {
           "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
           Accept: "text/html",
         },
-        signal: AbortSignal.timeout(25000),
+        timeoutMs: 25000,
       });
       if (!res.ok) return null;
       const html = await res.text();

@@ -1,3 +1,5 @@
+import { safeFetch } from "./safe-fetch";
+
 export type FeedItem = {
   title: string;
   url: string;
@@ -33,9 +35,9 @@ function extractUrl(block: string): string {
 }
 
 export async function fetchRssFeed(url: string, maxItems = 15): Promise<FeedItem[]> {
-  const res = await fetch(url, {
+  const res = await safeFetch(url, {
     headers: { "User-Agent": "MediqRAG/1.0 (clinical research copilot)" },
-    signal: AbortSignal.timeout(20000),
+    timeoutMs: 20000,
   });
   if (!res.ok) throw new Error(`RSS fetch failed (${res.status}): ${url}`);
   const xml = await res.text();
@@ -58,9 +60,9 @@ export async function fetchRssFeed(url: string, maxItems = 15): Promise<FeedItem
 export async function fetchPubmedAbstracts(query: string, maxResults = 10): Promise<FeedItem[]> {
   const key = process.env.NCBI_API_KEY ? `&api_key=${process.env.NCBI_API_KEY}` : "";
 
-  const searchRes = await fetch(
+  const searchRes = await safeFetch(
     `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${encodeURIComponent(query)}&sort=pub+date&retmax=${maxResults}&retmode=json${key}`,
-    { signal: AbortSignal.timeout(20000) },
+    { timeoutMs: 20000 },
   );
   if (!searchRes.ok) throw new Error(`PubMed search failed (${searchRes.status})`);
   const searchData = (await searchRes.json()) as {
@@ -72,9 +74,9 @@ export async function fetchPubmedAbstracts(query: string, maxResults = 10): Prom
   // Respect NCBI rate limit (3 req/s without key, 10 with)
   await new Promise((r) => setTimeout(r, process.env.NCBI_API_KEY ? 110 : 400));
 
-  const fetchRes = await fetch(
+  const fetchRes = await safeFetch(
     `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=${ids.join(",")}&rettype=abstract&retmode=text${key}`,
-    { signal: AbortSignal.timeout(30000) },
+    { timeoutMs: 30000 },
   );
   if (!fetchRes.ok) throw new Error(`PubMed fetch failed (${fetchRes.status})`);
   const text = await fetchRes.text();
