@@ -545,8 +545,16 @@ function AgentCard({ agent, meta, color, idx, phase, pending, compact }: {
   agent?: AgentReply; meta?: ModelMeta | null; color: (typeof MODEL_COLORS)[0];
   idx: number; phase: "r1" | "r2"; pending?: boolean; compact?: boolean;
 }) {
+  // W50 — collapse-on-compact previously lived in a useEffect, which trips
+  // React 19's react-hooks/set-state-in-effect rule. The official "adjusting
+  // state while rendering" pattern (https://react.dev/reference/react/useState#storing-information-from-previous-renders)
+  // achieves the same effect without queuing a follow-up render.
   const [expanded, setExpanded] = useState(false);
-  useEffect(() => { if (compact) setExpanded(false); }, [compact]);
+  const [prevCompact, setPrevCompact] = useState(compact);
+  if (compact !== prevCompact) {
+    setPrevCompact(compact);
+    if (compact) setExpanded(false);
+  }
   const label = meta?.label ?? agent?.model ?? `Agent ${idx + 1}`;
   const role = meta?.role ?? "";
   const strategy = agent ? (MODEL_STRATEGY_LABELS[agent.model] ?? agent.reasoning) : "";
@@ -1487,7 +1495,7 @@ export default function QueryBox() {
                 <div className="flex-1 h-px" style={{ backgroundColor: "rgba(129,140,248,0.25)" }} />
               </div>
               <p className="mt-1 text-[11px] text-center" style={{ color: "var(--muted)" }}>
-                Each agent reviewed peers' reasoning and refined its assessment
+                Each agent reviewed peers&rsquo; reasoning and refined its assessment
               </p>
             </div>
           )}

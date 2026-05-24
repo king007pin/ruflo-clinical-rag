@@ -1297,7 +1297,7 @@ async function awaitWithQuorum<T>(
       }
     };
     const timer = setTimeout(done, wallclockMs);
-    Promise.all(indexed).then(() => {
+    void Promise.all(indexed).then(() => {
       clearTimeout(timer);
       done();
     });

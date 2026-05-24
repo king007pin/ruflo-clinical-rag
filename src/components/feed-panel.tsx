@@ -243,6 +243,8 @@ function StatpearlsCrawl() {
     setCurrentOffset(data.offset);
   }, []);
 
+  // W50 — fetch-on-mount; setState is network-driven (see insights-panel.tsx).
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void loadStatus(); }, [loadStatus]);
 
   async function runBatch(): Promise<BatchResult> {
@@ -415,6 +417,8 @@ function GenericCrawlCard({ crawler }: { crawler: CrawlerMeta }) {
     }
   }, [apiBase]);
 
+  // W50 — fetch-on-mount; setState is network-driven (see insights-panel.tsx).
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void loadStatus(); }, [loadStatus]);
 
   async function runBatch(): Promise<BatchResult> {
@@ -648,6 +652,8 @@ export default function FeedPanel() {
     }
   }, []);
 
+  // W50 — fetch-on-mount; setState is network-driven (see insights-panel.tsx).
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void loadFeeds(); }, [loadFeeds]);
 
   async function seed() {
