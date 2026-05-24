@@ -544,6 +544,19 @@ JSON SCHEMA:
 
   validSpecialties = validSpecialties.slice(0, swarmSize);
 
+  // Q6: mandate emergency / red-flag specialist in every swarm of 3+ so
+  // dangerous-Dx detection never relies on luck of the router's specialty pick.
+  // If the router did not pick emergency, swap the lowest-priority slot for it.
+  // The synthesis system prompt audit section #3 explicitly requires dangerous
+  // alternative diagnoses to be ranked; without an emergency lens in Round 1,
+  // there is nothing to source that ranking from.
+  if (swarmSize >= 3 && !validSpecialties.some((s) => s.id === "emergency")) {
+    const em = SPECIALTY_POOL.find((s) => s.id === "emergency");
+    if (em) {
+      validSpecialties[validSpecialties.length - 1] = em;
+    }
+  }
+
   const selectedSpecialtyIds = validSpecialties.map(s => s.id);
   const models = allocateModelsToSpecialties(selectedSpecialtyIds);
 
