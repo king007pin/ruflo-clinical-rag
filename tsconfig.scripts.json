@@ -1,0 +1,23 @@
+{
+  "//": "W77 — Lightweight typecheck pass for scripts/*.mjs. These files were previously invisible to `npm run typecheck` because tsconfig.json excludes anything outside src/. A typo in a maintenance script could ship to main with no warning. This config enables checkJs but stays permissive (noImplicitAny off) so the bar to entry is the same and the cost is only catching obvious bugs (wrong import paths, undefined references).",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2023", "DOM"],
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "strict": false,
+    "noImplicitAny": false,
+    "isolatedModules": false,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["scripts/**/*.mjs", "scripts/**/*.ts"]
+}

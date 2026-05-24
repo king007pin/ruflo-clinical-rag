@@ -6,7 +6,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.scripts.json",
     "test": "vitest run",
     "quality:baseline": "tsx scripts/quality-harness.ts --out=src/__tests__/quality/baseline.json",
     "quality:current": "tsx scripts/quality-harness.ts --out=src/__tests__/quality/current.json --diff=src/__tests__/quality/baseline.json",

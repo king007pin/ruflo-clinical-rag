@@ -11,7 +11,10 @@ updates:
       - "security"
 
   - package-ecosystem: "pip"
-    directory: "/"
+    # W78 — Python deps live in the sidecar/ optional CLI tool, not at repo
+    # root. Point Dependabot at /sidecar so it does not open PRs that look
+    # like first-class dependency bumps for the Next.js app.
+    directory: "/sidecar"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -19,6 +22,7 @@ updates:
     labels:
       - "dependencies"
       - "security"
+      - "sidecar"
 
   - package-ecosystem: "github-actions"
     directory: "/"
