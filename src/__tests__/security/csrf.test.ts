@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { NextRequest } from "next/server";
-import { CSRF_COOKIE, CSRF_HEADER, checkCsrf, mintCsrfToken } from "../lib/csrf";
+import { CSRF_COOKIE, CSRF_HEADER, checkCsrf, mintCsrfToken } from "../../lib/csrf";
 
 function makeReq(
   pathname: string,
@@ -10,6 +10,7 @@ function makeReq(
     referer?: string;
     secFetchSite?: string;
     csrfCookie?: string;
+    hostCsrfCookie?: string;
     csrfHeader?: string;
   } = {},
 ): NextRequest {
@@ -18,8 +19,15 @@ function makeReq(
   if (opts.referer) headers.set("referer", opts.referer);
   if (opts.secFetchSite) headers.set("sec-fetch-site", opts.secFetchSite);
   if (opts.csrfHeader) headers.set(CSRF_HEADER, opts.csrfHeader);
+  const cookies: string[] = [];
   if (opts.csrfCookie) {
-    headers.set("cookie", `${CSRF_COOKIE}=${opts.csrfCookie}`);
+    cookies.push(`${CSRF_COOKIE}=${opts.csrfCookie}`);
+  }
+  if (opts.hostCsrfCookie) {
+    cookies.push(`__Host-${CSRF_COOKIE}=${opts.hostCsrfCookie}`);
+  }
+  if (cookies.length > 0) {
+    headers.set("cookie", cookies.join("; "));
   }
   return new NextRequest(new URL(pathname, "https://example.test"), {
     method: opts.method ?? "POST",
@@ -109,6 +117,27 @@ describe("checkCsrf — W68 double-submit token fallback", () => {
   it("rejects when csrf cookie and header are different values", () => {
     const verdict = checkCsrf(
       makeReq("/api/cases", { csrfCookie: mintCsrfToken(), csrfHeader: mintCsrfToken() }),
+    );
+    expect(verdict.ok).toBe(false);
+  });
+
+  it("allows POST when host csrf cookie + header match (corp-proxy path)", () => {
+    const token = mintCsrfToken();
+    const verdict = checkCsrf(
+      makeReq("/api/cases", { hostCsrfCookie: token, csrfHeader: token }),
+    );
+    expect(verdict.ok).toBe(true);
+  });
+
+  it("rejects when only host csrf cookie present (header missing)", () => {
+    const token = mintCsrfToken();
+    const verdict = checkCsrf(makeReq("/api/cases", { hostCsrfCookie: token }));
+    expect(verdict.ok).toBe(false);
+  });
+
+  it("rejects when host csrf cookie and header are different values", () => {
+    const verdict = checkCsrf(
+      makeReq("/api/cases", { hostCsrfCookie: mintCsrfToken(), csrfHeader: mintCsrfToken() }),
     );
     expect(verdict.ok).toBe(false);
   });

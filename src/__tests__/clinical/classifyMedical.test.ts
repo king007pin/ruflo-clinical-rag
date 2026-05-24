@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { classifyMedical } from "../lib/classify-medical";
+import { classifyMedical } from "../../lib/classify-medical";
 
 describe("classifyMedical — W18 off-topic classifier", () => {
   // ── Should ACCEPT (medical queries) ──────────────────────────────────────

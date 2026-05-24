@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { textFromYoutubeUrl } from "../lib/rag";
+import { textFromYoutubeUrl } from "../../lib/rag";
 
 // Mock youtube-transcript
 vi.mock("youtube-transcript", () => ({
@@ -9,12 +9,12 @@ vi.mock("youtube-transcript", () => ({
 }));
 
 // Mock safe-fetch
-vi.mock("../lib/safe-fetch", () => ({
+vi.mock("../../lib/safe-fetch", () => ({
   safeFetch: vi.fn(),
 }));
 
 import { YoutubeTranscript } from "youtube-transcript";
-import { safeFetch } from "../lib/safe-fetch";
+import { safeFetch } from "../../lib/safe-fetch";
 
 describe("YouTube Transcript & Whisper Fallback", () => {
   beforeEach(() => {
@@ -97,7 +97,7 @@ describe("YouTube Transcript & Whisper Fallback", () => {
     };
 
     // 3. Mock safeFetch to route requests based on URL
-    vi.mocked(safeFetch).mockImplementation(async (url) => {
+    vi.mocked(safeFetch).mockImplementation(async (url: string) => {
       if (url.includes("cobalt.tools") || url.includes("co.wuk.sh")) {
         return cobaltResponse as any;
       }

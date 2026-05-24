@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { detectEmergency, EMERGENCY_PATTERNS } from "../lib/detect-emergency";
+import { detectEmergency, EMERGENCY_PATTERNS } from "../../lib/detect-emergency";
 
 describe("detectEmergency — positive cases (W46)", () => {
   const positives: Array<[string, string[]]> = [

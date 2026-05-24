@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { resolveRetentionDays } from "../app/api/cron/retention/_resolve";
+import { resolveRetentionDays } from "../../app/api/cron/retention/_resolve";
 
 function silenceLogger(): void {
   vi.spyOn(console, "warn").mockImplementation(() => {});

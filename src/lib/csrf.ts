@@ -52,7 +52,7 @@ function safeEqualString(a: string, b: string): boolean {
 }
 
 function readCsrfCookie(req: NextRequest): string | null {
-  const v = req.cookies.get(CSRF_COOKIE)?.value;
+  const v = req.cookies.get(CSRF_COOKIE)?.value || req.cookies.get(`__Host-${CSRF_COOKIE}`)?.value;
   return v && v.length > 0 ? v : null;
 }
 

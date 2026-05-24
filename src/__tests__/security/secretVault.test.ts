@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 // Set env before importing the module
 process.env.APP_SECRET_KEY = "aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899";
 
-import { encrypt, decrypt } from "../lib/secretVault";
+import { encrypt, decrypt } from "../../lib/secretVault";
 
 describe("secretVault — AES-256-GCM", () => {
   it("encrypts and decrypts a short API key", () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { AUDIT_TARGET_RE, auditTargetSchema } from "../db/schema";
+import { AUDIT_TARGET_RE, auditTargetSchema } from "../../db/schema";
 
 describe("auditTargetSchema (W81)", () => {
   it("accepts kind:id form", () => {

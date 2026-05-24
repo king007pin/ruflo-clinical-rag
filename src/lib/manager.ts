@@ -7,6 +7,7 @@ import { runSwarm, type SwarmRouting } from "./swarm";
 // W46: extracted to `detect-emergency.ts` (zero DB deps → testable in isolation).
 // Re-exported below so existing imports from `manager.ts` keep working.
 import { detectEmergency, EMERGENCY_PATTERNS } from "./detect-emergency";
+import { detectEmergencyML } from "./detect-emergency-ml";
 export { detectEmergency, EMERGENCY_PATTERNS };
 
 // ── Off-topic detection ──────────────────────────────────────────────────────
@@ -110,7 +111,7 @@ export async function runManagedSwarm(params: {
   onManagerStatus?.("Manager: running pre-flight checks…");
 
   const isMedical = classifyMedical(question);
-  const { isEmergency, triggers: emergencyTriggers } = detectEmergency(question);
+  const { isEmergency, triggers: emergencyTriggers } = await detectEmergencyML(question);
   const complexity = scoreComplexity(question, isEmergency);
   const agentCountSelected = params.swarmSize ?? SWARM_SIZE_MAP[complexity];
   const preCheckPassed = isMedical;

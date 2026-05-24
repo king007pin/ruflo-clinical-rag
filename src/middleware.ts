@@ -46,9 +46,9 @@ function applySecurityHeaders(res: NextResponse): NextResponse {
 export async function middleware(req: NextRequest): Promise<NextResponse> {
   const { pathname } = req.nextUrl;
 
-  // W36: enforce CSRF on state-changing /api/* requests before any other
-  // logic. Cron and auth login are exempt (see `csrf.ts`). Public assets and
-  // safe methods pass through.
+  // W36, W68: enforce CSRF on state-changing /api/* requests before any other
+  // logic. Supports validating against a standard or `__Host-`-prefixed double-submit
+  // CSRF cookie matched with `x-csrf-token` header if Origin/Referer headers are stripped.
   if (pathname.startsWith("/api/")) {
     const verdict = checkCsrf(req);
     if (!verdict.ok) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { scrubPhi, scrubPhiDeep } from "../lib/phi-scrubber";
+import { scrubPhi, scrubPhiDeep } from "../../lib/phi-scrubber";
 
 describe("scrubPhi — regex redaction", () => {
   it("redacts titled names", () => {

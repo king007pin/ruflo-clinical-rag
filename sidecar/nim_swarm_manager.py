@@ -146,44 +146,78 @@ def _atomic_write_json(path: str, data: Any) -> None:
                 pass
 
 
-def _validate_config_shape(data: Any, source_path: str) -> None:
-    """W71: validate top-level shape of loaded swarm config JSON."""
+def validate_config_schema(data: Any) -> list[str]:
+    """W71: Perform schema validation of loaded swarm config JSON."""
+    errors = []
     if not isinstance(data, dict):
-        raise ValueError(
-            f"Invalid swarm config in {source_path!r}: expected top-level object, "
-            f"got {type(data).__name__}"
-        )
-    swarm = data.get("swarm")
-    if not isinstance(swarm, list):
-        raise ValueError(
-            f"Invalid swarm config in {source_path!r}: 'swarm' must be a list, "
-            f"got {type(swarm).__name__}"
-        )
-    required_keys = ("role", "model")
-    for idx, entry in enumerate(swarm):
-        if not isinstance(entry, dict):
-            raise ValueError(
-                f"Invalid swarm config in {source_path!r}: swarm[{idx}] must be an "
-                f"object, got {type(entry).__name__}"
-            )
-        for key in required_keys:
-            if key not in entry:
-                raise ValueError(
-                    f"Invalid swarm config in {source_path!r}: swarm[{idx}] missing "
-                    f"required key {key!r}"
-                )
-            if not isinstance(entry[key], str) or not entry[key]:
-                raise ValueError(
-                    f"Invalid swarm config in {source_path!r}: swarm[{idx}].{key} "
-                    f"must be a non-empty string"
-                )
+        errors.append("Config must be a JSON object (dictionary)")
+        return errors
+        
+    if "manager_model" in data and not isinstance(data["manager_model"], str):
+        errors.append("manager_model must be a string")
+        
+    if "settings" in data and not isinstance(data["settings"], dict):
+        errors.append("settings must be a JSON object (dictionary)")
+        
+    if "swarm" not in data:
+        errors.append("Missing required field 'swarm'")
+    elif not isinstance(data["swarm"], list):
+        errors.append("'swarm' must be a JSON array (list)")
+    else:
+        for idx, entry in enumerate(data["swarm"]):
+            if not isinstance(entry, dict):
+                errors.append(f"swarm[{idx}] must be a JSON object")
+                continue
+            for req_key in ("role", "model"):
+                if req_key not in entry:
+                    errors.append(f"swarm[{idx}] is missing required key '{req_key}'")
+                elif not isinstance(entry[req_key], str) or not entry[req_key].strip():
+                    errors.append(f"swarm[{idx}].{req_key} must be a non-empty string")
+            
+            if "required_capability" in entry and not isinstance(entry["required_capability"], str):
+                errors.append(f"swarm[{idx}].required_capability must be a string")
+                
+            if "prefer" in entry:
+                if not isinstance(entry["prefer"], list):
+                    errors.append(f"swarm[{idx}].prefer must be a list")
+                elif not all(isinstance(x, str) for x in entry["prefer"]):
+                    errors.append(f"swarm[{idx}].prefer must contain only strings")
+                    
+            if "avoid" in entry:
+                if not isinstance(entry["avoid"], list):
+                    errors.append(f"swarm[{idx}].avoid must be a list")
+                elif not all(isinstance(x, str) for x in entry["avoid"]):
+                    errors.append(f"swarm[{idx}].avoid must contain only strings")
+                    
+    return errors
 
 
 def load_config(path: str) -> Config:
-    with open(path, encoding="utf-8") as f:
-        data = json.load(f)
-    _validate_config_shape(data, path)
-    return Config.from_dict(data)
+    try:
+        if not os.path.exists(path):
+            print(f"WARNING: Config file {path!r} not found. Using default empty config.", file=sys.stderr)
+            return Config(manager_model="openai/gpt-oss-120b", settings={}, swarm=[])
+            
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+            
+        errors = validate_config_schema(data)
+        if errors:
+            print(f"ERROR: Configuration schema validation failed for {path!r}:", file=sys.stderr)
+            for err in errors:
+                print(f"  - {err}", file=sys.stderr)
+            print("Falling back to safe empty configuration to prevent crash.", file=sys.stderr)
+            return Config(manager_model="openai/gpt-oss-120b", settings={}, swarm=[])
+            
+        return Config.from_dict(data)
+    except json.JSONDecodeError as e:
+        print(f"ERROR: Config file {path!r} contains invalid JSON: {e}", file=sys.stderr)
+        print("Falling back to safe empty configuration to prevent crash.", file=sys.stderr)
+        return Config(manager_model="openai/gpt-oss-120b", settings={}, swarm=[])
+    except Exception as e:
+        print(f"ERROR: Unexpected error loading config file {path!r}: {e}", file=sys.stderr)
+        print("Falling back to safe empty configuration to prevent crash.", file=sys.stderr)
+        return Config(manager_model="openai/gpt-oss-120b", settings={}, swarm=[])
 
 
 def save_config(config: Config, path: str) -> None:

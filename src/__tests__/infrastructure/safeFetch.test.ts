@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertUrlIsPublic } from "../lib/safe-fetch";
+import { assertUrlIsPublic } from "../../lib/safe-fetch";
 
 describe("assertUrlIsPublic — SSRF blocklist", () => {
   it.each([

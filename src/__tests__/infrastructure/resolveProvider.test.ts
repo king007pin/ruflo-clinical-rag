@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { PROVIDERS, resolveProvider } from "../lib/providerRegistry";
+import { PROVIDERS, resolveProvider } from "../../lib/providerRegistry";
 
 describe("resolveProvider — defense against customBaseUrl exfil", () => {
   it("ignores customBaseUrl for known providers (openai)", () => {
@@ -52,9 +52,9 @@ describe("secretVault — APP_SECRET_KEY hardening (W9)", () => {
     delete process.env.APP_SECRET_KEY;
     process.env.AUTH_SECRET = "some-session-secret";
     // Force re-import so the env read happens after we mutated process.env.
-    const mod = await import("../lib/secretVault?w9-no-fallback" as string).catch(async () => {
+    const mod = await import("../../lib/secretVault?w9-no-fallback" as string).catch(async () => {
       // Path query trick doesn't help with vitest caching; instead just call:
-      const m = await import("../lib/secretVault");
+      const m = await import("../../lib/secretVault");
       return m;
     });
     expect(() => mod.encrypt("x")).toThrow(/APP_SECRET_KEY env var not set/);
@@ -66,7 +66,7 @@ describe("secretVault — APP_SECRET_KEY hardening (W9)", () => {
     const prev = { app: process.env.APP_SECRET_KEY, auth: process.env.AUTH_SECRET };
     process.env.APP_SECRET_KEY = "same-value-everywhere";
     process.env.AUTH_SECRET = "same-value-everywhere";
-    const mod = await import("../lib/secretVault");
+    const mod = await import("../../lib/secretVault");
     expect(() => mod.encrypt("x")).toThrow(/must not equal AUTH_SECRET/);
     if (prev.app !== undefined) process.env.APP_SECRET_KEY = prev.app; else delete process.env.APP_SECRET_KEY;
     if (prev.auth !== undefined) process.env.AUTH_SECRET = prev.auth; else delete process.env.AUTH_SECRET;

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { PROVIDERS } from "../lib/providerRegistry";
+import { PROVIDERS } from "../../lib/providerRegistry";
 
 describe("providerRegistry — catalog", () => {
   it("has exactly 12 providers", () => {

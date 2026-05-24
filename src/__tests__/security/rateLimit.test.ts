@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { rateLimit, RL_AUTH } from "../lib/rate-limit";
+import { rateLimit, RL_AUTH } from "../../lib/rate-limit";
 
 function makeReq(ip = "1.2.3.4"): Request {
   return new Request("https://example.test/api/auth", {

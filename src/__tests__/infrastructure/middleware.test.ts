@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { NextRequest } from "next/server";
 
-import { middleware } from "../middleware";
-import { SESSION_COOKIE } from "../lib/auth-constants";
+import { middleware } from "../../middleware";
+import { SESSION_COOKIE } from "../../lib/auth-constants";
 
 function makeReq(
   pathname: string,

@@ -1,5 +1,5 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { _resetPubMedState, searchPubMedLive } from "../lib/rag";
+import { _resetPubMedState, searchPubMedLive } from "../../lib/rag";
 
 const originalFetch = global.fetch;
 

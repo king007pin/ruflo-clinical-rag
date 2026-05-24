@@ -1,8 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { textFromPdfBuffer, textFromPdfUrl } from "../lib/pdf";
+import { textFromPdfBuffer, textFromPdfUrl } from "../../lib/pdf";
 
 // Mock safe-fetch
-vi.mock("../lib/safe-fetch", () => ({
+vi.mock("../../lib/safe-fetch", () => ({
   safeFetch: vi.fn(),
   assertUrlIsPublic: vi.fn(),
 }));
@@ -14,7 +14,7 @@ vi.mock("unpdf", () => ({
 }));
 
 import { getDocumentProxy, extractText } from "unpdf";
-import { safeFetch } from "../lib/safe-fetch";
+import { safeFetch } from "../../lib/safe-fetch";
 
 describe("unpdf parser", () => {
   beforeEach(() => {

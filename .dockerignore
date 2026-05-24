@@ -5,6 +5,7 @@
 .github
 .gitignore
 .planning
+docs
 sidecar
 node_modules
 .next

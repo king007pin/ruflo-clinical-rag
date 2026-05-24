@@ -4,7 +4,7 @@ import {
   __resetLogBufferForTests,
   getRecentLogs,
   logger,
-} from "../lib/logger";
+} from "../../lib/logger";
 
 const ORIGINAL_ENV = { ...process.env };
 

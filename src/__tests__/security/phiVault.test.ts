@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach } from "vitest";
-import { encryptPhi, decryptPhi, isEncrypted } from "../lib/phi-vault";
+import { encryptPhi, decryptPhi, isEncrypted } from "../../lib/phi-vault";
 
 describe("PHI Envelope Encryption Vault", () => {
   beforeEach(() => {

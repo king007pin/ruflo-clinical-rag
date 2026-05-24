@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { deriveTitle } from "../lib/ingest-pipeline";
+import { deriveTitle } from "../../lib/ingest-pipeline";
 
 describe("deriveTitle", () => {
   it("uses hostname from URL when present", () => {
