@@ -1,4 +1,4 @@
-import { assembleContext, embedText, searchByVector, rewriteQueryForRetrieval, searchPubMedLive, type Match } from "@/lib/rag";
+import { assembleContext, embedBatch, embedText, searchByVector, rewriteQueryForRetrieval, searchPubMedLive, type Match } from "@/lib/rag";
 import { getSimilarPastCases, logSession } from "@/lib/session-learning";
 import { runManagedSwarm, classifyMedical } from "@/lib/manager";
 import { checkDrugInteractions, extractDrugNamesFromReport } from "@/lib/drug-safety";
@@ -40,14 +40,16 @@ export async function POST(req: NextRequest) {
   }
 
   // Item 5: multi-query retrieval with deduplication
+  // T1.4: embed the original question in parallel with the rewrite-LLM call,
+  // then batch the rewritten queries into a single embeddings round-trip.
+  // Prior code issued N sequential single-item embed calls (~3× HTTPS RTT).
   const [qEmbedding, rewrittenQueries] = await Promise.all([
     embedText(question, "query"),
     rewriteQueryForRetrieval(question),
   ]);
 
-  const queryEmbeddings = await Promise.all(
-    rewrittenQueries.slice(1).map((q) => embedText(q, "query")),
-  );
+  const extraQueries = rewrittenQueries.slice(1);
+  const queryEmbeddings = extraQueries.length > 0 ? await embedBatch(extraQueries, "query") : [];
 
   const allEmbeddings = [qEmbedding, ...queryEmbeddings];
   
