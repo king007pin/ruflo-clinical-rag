@@ -42,6 +42,19 @@ export function scrubPhi(text: string | null | undefined): string {
 }
 
 /**
+ * W65 helper — scrub regex-detectable PHI and clamp to a preview length so a
+ * decrypted PHI column never leaves the server as a full plaintext blob. Used
+ * by the admin insights endpoint to display short, redacted previews of past
+ * queries and gap topics. Kept here (rather than in session-learning.ts) so
+ * unit tests do not transitively load the database client.
+ */
+export const PHI_PREVIEW_LEN = 140;
+export function scrubPhiPreview(text: string | null | undefined): string {
+  const cleaned = scrubPhi(text);
+  return cleaned.length > PHI_PREVIEW_LEN ? cleaned.slice(0, PHI_PREVIEW_LEN) + "…" : cleaned;
+}
+
+/**
  * Recursive scrubber for objects passed to loggers. Strings are
  * replaced; primitives, dates, errors, etc. are preserved. Cycles are
  * broken by a WeakSet visited tracker.

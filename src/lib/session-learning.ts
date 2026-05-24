@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { knowledgeGaps, querySessions, sessionFeedback } from "@/db/schema";
-import { scrubPhi } from "./phi-scrubber";
+import { scrubPhi, scrubPhiPreview } from "./phi-scrubber";
 import { and, desc, eq, sql } from "drizzle-orm";
 
 // Called gap when: few sources OR low max score OR agent text contains "not supported"
@@ -159,14 +159,14 @@ export async function getLearningStats() {
     .select({ count: sql<number>`count(*)` })
     .from(sessionFeedback);
 
-  const recentGaps = await db
+  const recentGapsRaw = await db
     .select()
     .from(knowledgeGaps)
     .where(eq(knowledgeGaps.resolved, false))
     .orderBy(desc(knowledgeGaps.queryCount))
     .limit(10);
 
-  const recentSessions = await db
+  const recentSessionsRaw = await db
     .select({
       id: querySessions.id,
       query: querySessions.query,
@@ -178,6 +178,22 @@ export async function getLearningStats() {
     .from(querySessions)
     .orderBy(desc(querySessions.createdAt))
     .limit(20);
+
+  // W65 — decrypted PHI columns must be scrubbed before exposure to admin UI.
+  // querySessions.query and knowledgeGaps.{topic,pubmedQuery} are encryptedText
+  // at rest but Drizzle returns plaintext to the select. Without scrubbing, any
+  // authed user opening the admin panel sees raw clinician notes / patient
+  // identifiers from every prior request. Run through phi-scrubber regex and
+  // truncate to a preview length so a leaked screen capture exposes less.
+  const recentSessions = recentSessionsRaw.map((r) => ({
+    ...r,
+    query: scrubPhiPreview(r.query),
+  }));
+  const recentGaps = recentGapsRaw.map((r) => ({
+    ...r,
+    topic: scrubPhiPreview(r.topic),
+    pubmedQuery: r.pubmedQuery ? scrubPhiPreview(r.pubmedQuery) : null,
+  }));
 
   return {
     totalSessions: Number(totalSessionsRow?.count ?? 0),
