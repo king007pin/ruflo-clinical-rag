@@ -1,11 +1,39 @@
-.next
-node_modules
+# W72: keep the build context (and any accidental COPY .) free of dev-only
+# artifacts, docs, and the Python sidecar. The Dockerfile builder stage now
+# uses explicit COPY paths, but this is the belt to that suspenders.
 .git
+.github
+.gitignore
+.planning
+sidecar
+node_modules
+.next
+out
+coverage
+.vscode
+.idea
+.cache
+.turbo
+
+# Env / secrets — never bake into image layers.
 .env
 .env.local
-.env*.local
+.env.*.local
+.env*
+
+# Root-level docs and audit notes.
+*.md
+!public/**/*.md
+
+# Local logs and OS noise.
 *.log
+.DS_Store
+
+# Docker meta (already on host, not needed inside image).
 Dockerfile
 .dockerignore
-README.md
-NIM_SWARM_README.md
+
+# Quality-harness / scripts artifacts not needed at runtime.
+scripts
+test-results
+playwright-report

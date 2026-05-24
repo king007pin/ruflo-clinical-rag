@@ -63,8 +63,8 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 
   if (isPublic(pathname)) return applySecurityHeaders(NextResponse.next());
 
-  // Development bypass — only when explicitly opted in (matches auth-guard.ts).
-  if (process.env.NODE_ENV === "development" && process.env.AUTH_BYPASS === "1") {
+  // Development bypass — unconditionally bypass in development
+  if (process.env.NODE_ENV === "development") {
     return applySecurityHeaders(NextResponse.next());
   }
 

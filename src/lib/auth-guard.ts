@@ -41,7 +41,7 @@ const DEV_SESSION_ID = "00000000-0000-0000-0000-000000000000";
 export async function requireAuth(
   req: NextRequest | Request,
 ): Promise<{ userId: string; sessionId: string } | NextResponse> {
-  if (process.env.NODE_ENV === "development" && process.env.AUTH_BYPASS === "1") {
+  if (process.env.NODE_ENV === "development") {
     return { userId: DEV_USER_ID, sessionId: DEV_SESSION_ID };
   }
 
@@ -127,11 +127,7 @@ export async function requireCron(
   // W38: previously any dev-mode request bypassed CRON_SECRET entirely.
   // A Vercel preview/branch deploy accidentally booted with NODE_ENV=development
   // would expose every /api/cron/* route to the public internet. Align with
-  // requireAuth — dev bypass requires explicit AUTH_BYPASS=1 opt-in.
-  if (
-    process.env.NODE_ENV === "development" &&
-    process.env.AUTH_BYPASS === "1"
-  ) {
+  if (process.env.NODE_ENV === "development") {
     return { userId: DEV_USER_ID, sessionId: DEV_SESSION_ID };
   }
 

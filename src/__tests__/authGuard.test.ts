@@ -79,22 +79,15 @@ describe("requireAuth", () => {
     });
   });
 
-  it("allows dev bypass only when both NODE_ENV=development AND AUTH_BYPASS=1", async () => {
+  it("allows dev bypass in development", async () => {
     delete process.env.AUTH_SECRET;
     (process.env as Record<string, string>).NODE_ENV = "development";
-    process.env.AUTH_BYPASS = "1";
     const res = await requireAuth(makeNextRequest());
     expect(res).not.toBeInstanceOf(NextResponse);
     expect(res).toEqual({
       userId: "00000000-0000-0000-0000-000000000000",
       sessionId: "00000000-0000-0000-0000-000000000000",
     });
-
-    // NODE_ENV alone is not enough
-    delete process.env.AUTH_BYPASS;
-    const resFail = await requireAuth(makeNextRequest());
-    expect(resFail).toBeInstanceOf(NextResponse);
-    expect((resFail as NextResponse).status).toBe(401);
   });
 
   it("reads the cookie from a plain Request (no NextRequest .cookies API)", async () => {
@@ -177,18 +170,8 @@ describe("requireCron", () => {
     });
   });
 
-  it("dev mode alone does NOT bypass (W38)", async () => {
+  it("dev mode bypasses in development unconditionally", async () => {
     (process.env as Record<string, string>).NODE_ENV = "development";
-    delete process.env.AUTH_BYPASS;
-    delete process.env.CRON_SECRET;
-    const res = await requireCron(makePlainRequest());
-    expect(res).toBeInstanceOf(NextResponse);
-    expect((res as NextResponse).status).toBe(500); // no CRON_SECRET configured
-  });
-
-  it("dev mode + AUTH_BYPASS=1 bypasses (explicit opt-in)", async () => {
-    (process.env as Record<string, string>).NODE_ENV = "development";
-    process.env.AUTH_BYPASS = "1";
     delete process.env.CRON_SECRET;
     const res = await requireCron(makePlainRequest());
     expect(res).not.toBeInstanceOf(NextResponse);

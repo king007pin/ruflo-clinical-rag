@@ -7,7 +7,7 @@
  * table does not become a PII goldmine if leaked.
  */
 import { db } from "@/db";
-import { auditEvents, type AuditEventInsert } from "@/db/schema";
+import { auditEvents, auditTargetSchema, type AuditEventInsert } from "@/db/schema";
 import { hashClientFingerprint } from "./auth/ip-ua-hash";
 import { logger } from "./logger";
 
@@ -46,10 +46,24 @@ export async function logAudit(ctx: AuditContext): Promise<void> {
       hashClientFingerprint(ctx.ip ?? null),
       hashClientFingerprint(ctx.ua ?? null),
     ]);
+    // W81 — validate `target` shape; coerce to null on malformed input so
+    // the audit row still lands. Never throw from the audit path.
+    let safeTarget: string | null = null;
+    if (ctx.target != null) {
+      const parsed = auditTargetSchema.safeParse(ctx.target);
+      if (parsed.success) {
+        safeTarget = parsed.data;
+      } else {
+        logger.warn("[audit] dropping malformed target", {
+          action: ctx.action,
+          target: ctx.target,
+        });
+      }
+    }
     const row: AuditEventInsert = {
       actorId: ctx.actorId ?? null,
       action: ctx.action,
-      target: ctx.target ?? null,
+      target: safeTarget,
       success: ctx.success ?? true,
       ipHash,
       uaHash,

@@ -11,6 +11,7 @@ import argparse
 import json
 import os
 import sys
+import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass, field
@@ -118,14 +119,75 @@ class ReplacementRecord:
 
 # ── Config I/O ───────────────────────────────────────────────────────────────
 
+def _atomic_write_json(path: str, data: Any) -> None:
+    """W70: write JSON via temp file + fsync + os.replace to prevent torn writes."""
+    directory = os.path.dirname(os.path.abspath(path)) or "."
+    tmp_path: Optional[str] = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=directory,
+            prefix=os.path.basename(path) + ".tmp.",
+            suffix=f".{os.getpid()}",
+            delete=False,
+        ) as tmp:
+            tmp_path = tmp.name
+            json.dump(data, tmp, indent=2)
+            tmp.flush()
+            os.fsync(tmp.fileno())
+        os.replace(tmp_path, path)
+        tmp_path = None
+    finally:
+        if tmp_path is not None:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+
+
+def _validate_config_shape(data: Any, source_path: str) -> None:
+    """W71: validate top-level shape of loaded swarm config JSON."""
+    if not isinstance(data, dict):
+        raise ValueError(
+            f"Invalid swarm config in {source_path!r}: expected top-level object, "
+            f"got {type(data).__name__}"
+        )
+    swarm = data.get("swarm")
+    if not isinstance(swarm, list):
+        raise ValueError(
+            f"Invalid swarm config in {source_path!r}: 'swarm' must be a list, "
+            f"got {type(swarm).__name__}"
+        )
+    required_keys = ("role", "model")
+    for idx, entry in enumerate(swarm):
+        if not isinstance(entry, dict):
+            raise ValueError(
+                f"Invalid swarm config in {source_path!r}: swarm[{idx}] must be an "
+                f"object, got {type(entry).__name__}"
+            )
+        for key in required_keys:
+            if key not in entry:
+                raise ValueError(
+                    f"Invalid swarm config in {source_path!r}: swarm[{idx}] missing "
+                    f"required key {key!r}"
+                )
+            if not isinstance(entry[key], str) or not entry[key]:
+                raise ValueError(
+                    f"Invalid swarm config in {source_path!r}: swarm[{idx}].{key} "
+                    f"must be a non-empty string"
+                )
+
+
 def load_config(path: str) -> Config:
     with open(path, encoding="utf-8") as f:
-        return Config.from_dict(json.load(f))
+        data = json.load(f)
+    _validate_config_shape(data, path)
+    return Config.from_dict(data)
 
 
 def save_config(config: Config, path: str) -> None:
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(config.to_dict(), f, indent=2)
+    _atomic_write_json(path, config.to_dict())
     print(f"  Saved updated config → {path}")
 
 
@@ -546,8 +608,7 @@ def write_report(
         "checks": [asdict(r) for r in check_results.values()],
         "replacements": [asdict(r) for r in replacements],
     }
-    with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(report, f, indent=2)
+    _atomic_write_json(output_path, report)
     print(f"  Report written → {output_path}")
 
 

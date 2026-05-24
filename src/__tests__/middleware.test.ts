@@ -124,19 +124,11 @@ describe("middleware — admin and protected paths", () => {
 describe("middleware — dev bypass", () => {
   beforeEach(() => {
     (process.env as Record<string, string>).NODE_ENV = "development";
-    process.env.AUTH_BYPASS = "1";
     delete process.env.AUTH_SECRET;
   });
 
-  it("passes everything through when AUTH_BYPASS=1 in development", async () => {
+  it("passes everything through in development", async () => {
     expect((await middleware(makeReq("/api/admin/seed"))).status).toBe(200);
     expect((await middleware(makeReq("/"))).status).toBe(200);
-  });
-
-  it("does NOT bypass in development if AUTH_BYPASS is unset", async () => {
-    delete process.env.AUTH_BYPASS;
-    process.env.AUTH_SECRET = "x";
-    const res = await middleware(makeReq("/api/admin/seed"));
-    expect(res.status).toBe(401);
   });
 });

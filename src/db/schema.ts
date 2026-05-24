@@ -1,6 +1,7 @@
 // Keep the schema entrypoint present so models can define tables and run
 // `npx drizzle-kit push` without bootstrapping Drizzle config first.
 import { boolean, customType, integer, jsonb, pgEnum, pgTable, real, serial, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { z } from "zod";
 import { encryptPhi, decryptPhi, isEncrypted } from "../lib/phi-vault";
 
 // pgvector custom type — stores as binary vector(N) instead of jsonb, ~3x space savings
@@ -254,3 +255,14 @@ export const auditEvents = pgTable("audit_events", {
 export type AuditEvent = typeof auditEvents.$inferSelect;
 export type AuditEventInsert = typeof auditEvents.$inferInsert;
 
+// W81 — `auditEvents.target` is intentionally polymorphic free-form text
+// (no FK; multiple table targets + wildcards). Enforce a shape via Zod
+// instead so malformed targets are coerced to null at write-time without
+// breaking the live audit path. Accepts either `kind:id` (e.g.
+// "feed:42", "providerId:openai", "user:7f3-…") or `kind:*` (wildcard
+// scope, e.g. "feeds:*"). `kind` must start with a lowercase letter and
+// may contain lowercase letters, underscores, or hyphens.
+export const AUDIT_TARGET_RE = /^[a-z][A-Za-z_-]*:(?:[A-Za-z0-9_-]+|\*)$/;
+export const auditTargetSchema = z
+  .string()
+  .regex(AUDIT_TARGET_RE, "invalid audit target shape");

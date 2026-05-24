@@ -9,7 +9,15 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts
-COPY . .
+# W72: copy only runtime/build inputs — exclude sidecar/, *.md docs, .planning/
+COPY src ./src
+COPY public ./public
+COPY next.config.ts ./
+COPY drizzle.config.ts ./
+COPY tsconfig.json ./
+COPY postcss.config.mjs ./
+COPY eslint.config.mjs ./
+COPY next-env.d.ts ./
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_OPTIONS="--max-old-space-size=1536"
 # DATABASE_URL is intentionally NOT set at build time. src/db/index.ts gates
