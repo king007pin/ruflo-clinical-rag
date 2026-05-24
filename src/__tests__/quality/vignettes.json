@@ -1,0 +1,200 @@
+{
+  "$schema": "Golden clinical vignettes for Mediq quality harness. Each vignette defines expected diagnostic signals — used to score retrieval quality, citation grounding, section completeness, red-flag sensitivity, and differential breadth without enforcing exact wording.",
+  "vignettes": [
+    {
+      "id": "v01-stemi",
+      "complexity": "emergency",
+      "question": "55-year-old male, sudden crushing substernal chest pain radiating to left arm, diaphoresis, BP 90/60, HR 110. What is the most likely diagnosis and immediate management?",
+      "patientContext": "Male, 55y, hypertension, smoker",
+      "expected": {
+        "leadingDxKeywords": ["STEMI", "ST-elevation", "acute coronary syndrome", "acute MI", "myocardial infarction"],
+        "differentialMustInclude": ["aortic dissection", "pulmonary embolism", "pericarditis"],
+        "redFlagKeywords": ["STAT", "emergency", "<1h", "cath lab", "PCI", "reperfusion"],
+        "minDifferentialCount": 4,
+        "mustHaveSections": ["CLINICAL INTERPRETATION", "DIFFERENTIAL DIAGNOSIS", "MOST LIKELY DIAGNOSIS", "RECOMMENDED EVALUATION NOW", "RED FLAGS", "TREATMENT PLAN"]
+      }
+    },
+    {
+      "id": "v02-peds-fever",
+      "complexity": "moderate",
+      "question": "3-month-old with fever 39.2°C, lethargy, refusing feeds for 6 hours. What workup and management?",
+      "patientContext": "Infant, 3 months, full-term, immunizations up to date",
+      "expected": {
+        "leadingDxKeywords": ["serious bacterial infection", "sepsis", "meningitis", "UTI", "occult bacteremia"],
+        "differentialMustInclude": ["bacterial meningitis", "UTI", "pneumonia"],
+        "redFlagKeywords": ["full septic workup", "LP", "lumbar puncture", "empirical antibiotics", "admit"],
+        "minDifferentialCount": 3,
+        "mustHaveSections": ["CLINICAL INTERPRETATION", "DIFFERENTIAL DIAGNOSIS", "RECOMMENDED EVALUATION NOW", "RED FLAGS", "TREATMENT PLAN"]
+      }
+    },
+    {
+      "id": "v03-stroke",
+      "complexity": "emergency",
+      "question": "70-year-old female with sudden onset right-sided weakness and aphasia 90 minutes ago. NIHSS 12. Next steps?",
+      "patientContext": "Female, 70y, atrial fibrillation, on warfarin, INR 1.8",
+      "expected": {
+        "leadingDxKeywords": ["acute ischemic stroke", "ischaemic stroke", "AIS", "stroke"],
+        "differentialMustInclude": ["intracerebral hemorrhage", "TIA", "seizure", "hypoglycemia"],
+        "redFlagKeywords": ["non-contrast CT", "tPA", "alteplase", "thrombectomy", "window", "STAT"],
+        "minDifferentialCount": 4,
+        "mustHaveSections": ["CLINICAL INTERPRETATION", "DIFFERENTIAL DIAGNOSIS", "RECOMMENDED EVALUATION NOW", "RED FLAGS"]
+      }
+    },
+    {
+      "id": "v04-dka",
+      "complexity": "emergency",
+      "question": "Type 1 diabetic adolescent with nausea, vomiting, Kussmaul breathing, glucose 480, pH 7.18, bicarb 8. Management?",
+      "patientContext": "Female, 16y, T1DM x 4 years, recent flu",
+      "expected": {
+        "leadingDxKeywords": ["diabetic ketoacidosis", "DKA"],
+        "differentialMustInclude": ["HHS", "lactic acidosis", "starvation ketosis"],
+        "redFlagKeywords": ["IV fluids", "insulin infusion", "potassium", "monitor", "ICU"],
+        "minDifferentialCount": 3,
+        "mustHaveSections": ["CLINICAL INTERPRETATION", "RECOMMENDED EVALUATION NOW", "TREATMENT PLAN", "DRUG INTERACTION"]
+      }
+    },
+    {
+      "id": "v05-preeclampsia",
+      "complexity": "emergency",
+      "question": "32-week pregnant woman, BP 168/110, headache, visual disturbance, proteinuria 3+. What is this and what to do?",
+      "patientContext": "G2P1, 32 weeks gestation, prior uncomplicated pregnancy",
+      "expected": {
+        "leadingDxKeywords": ["preeclampsia with severe features", "severe preeclampsia", "preeclampsia"],
+        "differentialMustInclude": ["eclampsia", "HELLP", "chronic hypertension"],
+        "redFlagKeywords": ["magnesium sulfate", "MgSO4", "antihypertensive", "delivery", "betamethasone"],
+        "minDifferentialCount": 3,
+        "mustHaveSections": ["CLINICAL INTERPRETATION", "DIFFERENTIAL DIAGNOSIS", "RED FLAGS", "TREATMENT PLAN"]
+      }
+    },
+    {
+      "id": "v06-sepsis",
+      "complexity": "emergency",
+      "question": "Elderly patient from nursing home with confusion, fever 38.9, BP 88/55, HR 118, RR 26, lactate 4.1. Diagnosis and immediate management?",
+      "patientContext": "Male, 78y, CKD3, indwelling catheter",
+      "expected": {
+        "leadingDxKeywords": ["septic shock", "severe sepsis", "sepsis", "urosepsis"],
+        "differentialMustInclude": ["pneumonia", "intra-abdominal infection", "endocarditis"],
+        "redFlagKeywords": ["1-hour bundle", "lactate", "blood cultures", "broad-spectrum antibiotics", "fluid resuscitation", "30 mL/kg"],
+        "minDifferentialCount": 3,
+        "mustHaveSections": ["CLINICAL INTERPRETATION", "RECOMMENDED EVALUATION NOW", "RED FLAGS", "TREATMENT PLAN"]
+      }
+    },
+    {
+      "id": "v07-lupus-flare",
+      "complexity": "complex",
+      "question": "28F with SLE, presenting with rising creatinine, new proteinuria 2.5g/24h, low C3/C4, anti-dsDNA elevated. Workup and treatment approach?",
+      "patientContext": "Female, 28y, SLE diagnosed 5 years ago, on hydroxychloroquine",
+      "expected": {
+        "leadingDxKeywords": ["lupus nephritis", "SLE flare", "nephritis"],
+        "differentialMustInclude": ["thrombotic microangiopathy", "drug-induced nephritis", "infection"],
+        "redFlagKeywords": ["renal biopsy", "ISN/RPS classification", "induction immunosuppression"],
+        "minDifferentialCount": 3,
+        "mustHaveSections": ["CLINICAL INTERPRETATION", "DIFFERENTIAL DIAGNOSIS", "RECOMMENDED EVALUATION NOW", "TREATMENT PLAN", "SURVEILLANCE"]
+      }
+    },
+    {
+      "id": "v08-tsc-pediatric",
+      "complexity": "complex",
+      "question": "8-month-old with infantile spasms, hypomelanotic macules, cardiac rhabdomyomas on echo. Workup, family screening, surveillance plan?",
+      "patientContext": "Male, 8 months, no family history known",
+      "expected": {
+        "leadingDxKeywords": ["tuberous sclerosis", "TSC"],
+        "differentialMustInclude": ["other neurocutaneous syndromes", "isolated infantile spasms"],
+        "redFlagKeywords": ["vigabatrin", "TSC1", "TSC2", "genetic testing", "brain MRI"],
+        "minDifferentialCount": 2,
+        "mustHaveSections": ["DIAGNOSTIC CRITERIA", "RECOMMENDED EVALUATION NOW", "SURVEILLANCE", "FAMILY", "TREATMENT PLAN"]
+      }
+    },
+    {
+      "id": "v09-uri-simple",
+      "complexity": "simple",
+      "question": "Adult with 4 days of sore throat, cough, low-grade fever, no exudate, no lymphadenopathy. Management?",
+      "patientContext": "Female, 35y, healthy",
+      "expected": {
+        "leadingDxKeywords": ["viral URI", "viral pharyngitis", "common cold", "upper respiratory"],
+        "differentialMustInclude": ["streptococcal pharyngitis", "influenza"],
+        "redFlagKeywords": ["return if", "worsening", "difficulty breathing"],
+        "minDifferentialCount": 2,
+        "mustHaveSections": ["CLINICAL INTERPRETATION", "DIFFERENTIAL DIAGNOSIS", "TREATMENT PLAN"]
+      }
+    },
+    {
+      "id": "v10-aki-elderly",
+      "complexity": "moderate",
+      "question": "Elderly patient on lisinopril and NSAIDs presents with rising creatinine from 1.0 to 2.4 over 1 week, decreased urine output. Workup and management?",
+      "patientContext": "Male, 72y, HTN, OA",
+      "expected": {
+        "leadingDxKeywords": ["acute kidney injury", "AKI", "pre-renal", "drug-induced"],
+        "differentialMustInclude": ["intrinsic AKI", "obstructive", "interstitial nephritis"],
+        "redFlagKeywords": ["stop NSAIDs", "hold ACE", "fluid status", "renal ultrasound"],
+        "minDifferentialCount": 3,
+        "mustHaveSections": ["CLINICAL INTERPRETATION", "DIFFERENTIAL DIAGNOSIS", "RECOMMENDED EVALUATION NOW", "TREATMENT PLAN", "DRUG INTERACTION"]
+      }
+    },
+    {
+      "id": "v11-anaphylaxis",
+      "complexity": "emergency",
+      "question": "Adult develops generalized urticaria, wheezing, throat tightness, hypotension 5 minutes after IV antibiotic. Immediate management?",
+      "patientContext": "Female, 40y, no prior known allergies",
+      "expected": {
+        "leadingDxKeywords": ["anaphylaxis", "anaphylactic shock"],
+        "differentialMustInclude": ["asthma exacerbation", "vasovagal", "angioedema"],
+        "redFlagKeywords": ["IM epinephrine", "0.3", "0.5", "airway", "STAT"],
+        "minDifferentialCount": 2,
+        "mustHaveSections": ["CLINICAL INTERPRETATION", "RED FLAGS", "TREATMENT PLAN"]
+      }
+    },
+    {
+      "id": "v12-meningitis",
+      "complexity": "emergency",
+      "question": "College student with fever, severe headache, neck stiffness, photophobia, petechial rash for 6 hours. Diagnosis and management?",
+      "patientContext": "Male, 19y, college dorm resident",
+      "expected": {
+        "leadingDxKeywords": ["meningococcal", "bacterial meningitis", "meningococcemia"],
+        "differentialMustInclude": ["viral meningitis", "subarachnoid hemorrhage"],
+        "redFlagKeywords": ["empirical antibiotics", "ceftriaxone", "STAT", "isolation", "contact tracing", "LP"],
+        "minDifferentialCount": 3,
+        "mustHaveSections": ["CLINICAL INTERPRETATION", "DIFFERENTIAL DIAGNOSIS", "RECOMMENDED EVALUATION NOW", "RED FLAGS", "TREATMENT PLAN"]
+      }
+    },
+    {
+      "id": "v13-pe",
+      "complexity": "complex",
+      "question": "Postoperative patient day 5 after hip replacement, sudden dyspnea, pleuritic chest pain, tachycardia 120, O2 sat 89%. Diagnosis and workup?",
+      "patientContext": "Female, 68y, total hip replacement 5 days ago",
+      "expected": {
+        "leadingDxKeywords": ["pulmonary embolism", "PE"],
+        "differentialMustInclude": ["pneumonia", "MI", "pneumothorax", "atelectasis"],
+        "redFlagKeywords": ["CT pulmonary angiogram", "CTPA", "anticoagulation", "heparin"],
+        "minDifferentialCount": 4,
+        "mustHaveSections": ["CLINICAL INTERPRETATION", "DIFFERENTIAL DIAGNOSIS", "RECOMMENDED EVALUATION NOW", "TREATMENT PLAN"]
+      }
+    },
+    {
+      "id": "v14-overdose",
+      "complexity": "emergency",
+      "question": "Young adult brought to ED unresponsive, pinpoint pupils, RR 6, found with empty oxycodone bottle. Immediate management?",
+      "patientContext": "Male, 22y, history of opioid use disorder",
+      "expected": {
+        "leadingDxKeywords": ["opioid overdose", "opioid toxidrome", "opioid intoxication"],
+        "differentialMustInclude": ["sedative overdose", "head injury", "hypoglycemia"],
+        "redFlagKeywords": ["naloxone", "airway", "ventilation", "STAT"],
+        "minDifferentialCount": 2,
+        "mustHaveSections": ["CLINICAL INTERPRETATION", "RED FLAGS", "TREATMENT PLAN"]
+      }
+    },
+    {
+      "id": "v15-staging-workup",
+      "complexity": "complex",
+      "question": "55F with newly diagnosed invasive ductal breast carcinoma, 2.5cm, ER+/PR+/HER2-, palpable axillary node. Staging workup and treatment planning?",
+      "patientContext": "Female, 55y, postmenopausal, BRCA unknown",
+      "expected": {
+        "leadingDxKeywords": ["breast cancer", "invasive ductal carcinoma", "IDC"],
+        "differentialMustInclude": ["inflammatory breast cancer", "lobular carcinoma"],
+        "redFlagKeywords": ["axillary ultrasound", "sentinel node", "BRCA", "MRI breast", "staging"],
+        "minDifferentialCount": 2,
+        "mustHaveSections": ["CLINICAL INTERPRETATION", "RECOMMENDED EVALUATION NOW", "TREATMENT PLAN", "FAMILY"]
+      }
+    }
+  ]
+}
