@@ -2,7 +2,9 @@ import { timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE } from "./auth-constants";
 import { verifySessionToken } from "./auth/tokens";
-import { loadSession, updateSessionLastSeen } from "./auth/sessions";
+import { loadSession, revokeSession, updateSessionLastSeen } from "./auth/sessions";
+import { hashClientFingerprint } from "./auth/ip-ua-hash";
+import { extractClientFingerprint, logAudit } from "./audit";
 
 /**
  * Constant-time string compare that survives length mismatches without throwing.
@@ -60,6 +62,49 @@ export async function requireAuth(
     const session = await loadSession(verified.sessionId);
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // W64 — session-binding check.
+    // sessions.ipHash + sessions.uaHash were captured at createSession() but
+    // never compared on subsequent requests, so a stolen cookie was usable
+    // from any IP and any UA for the full 24 h absolute window. Recompute
+    // the hashes from the current request and compare:
+    //   - UA mismatch: strict — UA almost never legitimately changes for a
+    //     live session. Revoke the row and return 401.
+    //   - IP mismatch: lenient — mobile / NAT / corporate egress IPs rotate
+    //     legitimately. Log via audit but allow the request.
+    // Legacy rows with null ipHash/uaHash skip the strict path (no baseline
+    // to compare against).
+    const { ip, ua } = extractClientFingerprint(req);
+    if (session.uaHash) {
+      const currentUaHash = await hashClientFingerprint(ua);
+      if (!currentUaHash || currentUaHash !== session.uaHash) {
+        await revokeSession(session.id);
+        void logAudit({
+          actorId: verified.userId,
+          action: "session.verify.fail",
+          target: `session:${session.id}`,
+          success: false,
+          ip,
+          ua,
+          meta: { reason: "ua_mismatch" },
+        });
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    }
+    if (session.ipHash) {
+      const currentIpHash = await hashClientFingerprint(ip);
+      if (currentIpHash && currentIpHash !== session.ipHash) {
+        void logAudit({
+          actorId: verified.userId,
+          action: "session.verify.fail",
+          target: `session:${session.id}`,
+          success: true,
+          ip,
+          ua,
+          meta: { reason: "ip_drift" },
+        });
+      }
     }
 
     // Fire-and-forget lastSeenAt update

@@ -30,6 +30,46 @@ if (!dbUrl) throw new Error("DATABASE_URL is not set");
 if (!adminEmail) throw new Error("ADMIN_EMAIL is not set");
 if (!appPassword) throw new Error("APP_PASSWORD is not set");
 
+/**
+ * W66 — Refuse to seed an admin account with a trivial password. Without this
+ * floor, a weak APP_PASSWORD silently passes through the argon2id KDF and the
+ * cost parameters become security theatre: an offline attacker who steals the
+ * password_hash will exhaust a small dictionary in seconds. The banned-list is
+ * illustrative rather than exhaustive — defence in depth, not the only line.
+ */
+function rejectWeakPassword(pw) {
+  const reasons = [];
+  if (pw.length < 12) reasons.push("must be at least 12 characters");
+  if (!/[a-z]/.test(pw)) reasons.push("must contain a lowercase letter");
+  if (!/[A-Z]/.test(pw)) reasons.push("must contain an uppercase letter");
+  if (!/[0-9]/.test(pw)) reasons.push("must contain a digit");
+  if (!/[^A-Za-z0-9]/.test(pw)) reasons.push("must contain a symbol");
+  const banned = [
+    "password",
+    "admin",
+    "qwerty",
+    "letmein",
+    "welcome",
+    "changeme",
+    "p@ssw0rd",
+    "passw0rd",
+    "iloveyou",
+    "123456",
+    "12345678",
+    "mediq",
+  ];
+  const lower = pw.toLowerCase();
+  if (banned.some((b) => lower.includes(b))) {
+    reasons.push("contains a banned common-password substring");
+  }
+  if (reasons.length > 0) {
+    throw new Error(
+      `APP_PASSWORD rejected by W66 complexity check: ${reasons.join("; ")}.`,
+    );
+  }
+}
+rejectWeakPassword(appPassword);
+
 const pool = new Pool({ connectionString: dbUrl, max: 1 });
 
 async function main() {
