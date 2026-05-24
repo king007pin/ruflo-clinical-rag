@@ -2,6 +2,7 @@ import { assembleContext, embedBatch, embedText, searchByVector, rewriteQueryFor
 import { getSimilarPastCases, logSession } from "@/lib/session-learning";
 import { runManagedSwarm, classifyMedical } from "@/lib/manager";
 import { precomputeSwarmRouting, verifyAndStripOrphanCitations } from "@/lib/swarm";
+import { auditSections } from "@/lib/section-completeness";
 import { checkDrugInteractions, extractDrugNamesFromReport } from "@/lib/drug-safety";
 import { rateLimit, RL_QUERY } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
@@ -154,6 +155,17 @@ export async function POST(req: NextRequest) {
         }
         const finalAnswer = cleaned.cleaned;
 
+        // Q5: audit mandatory section presence before emitting done. Missing
+        // sections are logged and surfaced via the (additive) sectionAudit
+        // field on the done event so the UI/ops can show a banner without
+        // breaking any existing consumer.
+        const sectionAudit = auditSections(finalAnswer);
+        if (!sectionAudit.allMandatoryPresent) {
+          logger.warn(
+            `[query] synthesis missing mandatory section(s): ${sectionAudit.missingMandatory.join(", ")}`,
+          );
+        }
+
         // Item 6: DDI check post-synthesis
         const drugNames = extractDrugNamesFromReport(finalAnswer);
         const ddiFlags = await checkDrugInteractions(drugNames).catch(() => []);
@@ -161,6 +173,7 @@ export async function POST(req: NextRequest) {
         send({
           type: "done",
           answer: finalAnswer,
+          sectionAudit,
           agents: result.agents,
           round1Agents: result.round1Agents,
           sessionId: result.sessionId,
