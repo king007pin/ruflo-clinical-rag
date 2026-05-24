@@ -1238,6 +1238,15 @@ async function callRufloApi(payload: Record<string, unknown>): Promise<string | 
   }
 }
 
+// T1.7: Round-1 max_tokens cap for non-primary agents.
+// The buildUserPrompt requires "Minimum 450 words", and the per-model NIM cap
+// is 2048-4096. Non-primary agents are compressed to ~280 words before being
+// fed to synthesis (see compressAgentResponse), so generating 1500 tokens
+// (~1100 words) for them is still 2× the floor and matches their effective
+// information density. Primary agent (idx 0) keeps the full per-model cap so
+// the synthesis anchor's reasoning chain stays unconstrained.
+const ROUND1_NONPRIMARY_MAX_TOKENS = 1500;
+
 async function runAgent(
   model: string,
   question: string,
@@ -1252,13 +1261,14 @@ async function runAgent(
   const system = buildSystemPrompt(specialty, cognitiveStrategy);
   const user = buildUserPrompt(question, context, patientContext, labText);
   const tag = cognitiveStrategy ? `${specialty.role} · ${cognitiveStrategy.strategy}` : specialty.role;
+  const maxTokens = agentIndex === 0 ? undefined : ROUND1_NONPRIMARY_MAX_TOKENS;
 
   const rufloMsg = await callRufloApi({ model, system, question, context, evidence: matches });
   if (rufloMsg) return { model, message: rufloMsg, reasoning: `Ruflo · ${tag}`, round: 1 };
 
   if (hasNvidiaKey()) {
     try {
-      const message = await nvidiaChat(model, system, user);
+      const message = await nvidiaChat(model, system, user, undefined, maxTokens);
       return { model, message, reasoning: tag, round: 1 };
     } catch (err) {
       return { model, message: buildLocalFallback(question, matches, agentIndex), reasoning: `fallback (${(err as Error).message.slice(0, 60)})`, round: 1 };
