@@ -17,11 +17,24 @@ const bodySchema = z.object({
   description: z.string().max(400).optional(),
 });
 
+// W37: cap JSON body to 256 KiB. Zod validates field lengths but the raw
+// request body itself was unbounded — a multi-MiB payload of unknown fields
+// would buffer fully before Zod ever ran. Reject early via Content-Length.
+const MAX_JSON_BYTES = 256 * 1024;
+
 export async function POST(req: NextRequest) {
   const rl = rateLimit(req, RL_INGEST);
   if (rl) return rl;
   const contentType = req.headers.get("content-type") ?? "";
   if (contentType.includes("multipart/form-data")) return handleMultipart(req);
+
+  const declaredLen = Number(req.headers.get("content-length") ?? 0);
+  if (declaredLen > MAX_JSON_BYTES) {
+    return NextResponse.json(
+      { error: `Payload too large (limit ${MAX_JSON_BYTES} bytes)` },
+      { status: 413 },
+    );
+  }
 
   const json = await req.json().catch(() => null);
   const parsed = bodySchema.safeParse(json);

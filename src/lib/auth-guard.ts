@@ -79,7 +79,14 @@ export async function requireAuth(
 export async function requireCron(
   req: Request,
 ): Promise<{ userId: string; sessionId: string } | NextResponse> {
-  if (process.env.NODE_ENV === "development") {
+  // W38: previously any dev-mode request bypassed CRON_SECRET entirely.
+  // A Vercel preview/branch deploy accidentally booted with NODE_ENV=development
+  // would expose every /api/cron/* route to the public internet. Align with
+  // requireAuth — dev bypass requires explicit AUTH_BYPASS=1 opt-in.
+  if (
+    process.env.NODE_ENV === "development" &&
+    process.env.AUTH_BYPASS === "1"
+  ) {
     return { userId: DEV_USER_ID, sessionId: DEV_SESSION_ID };
   }
 

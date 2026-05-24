@@ -177,8 +177,18 @@ describe("requireCron", () => {
     });
   });
 
-  it("dev mode bypasses entirely", async () => {
+  it("dev mode alone does NOT bypass (W38)", async () => {
     (process.env as Record<string, string>).NODE_ENV = "development";
+    delete process.env.AUTH_BYPASS;
+    delete process.env.CRON_SECRET;
+    const res = await requireCron(makePlainRequest());
+    expect(res).toBeInstanceOf(NextResponse);
+    expect((res as NextResponse).status).toBe(500); // no CRON_SECRET configured
+  });
+
+  it("dev mode + AUTH_BYPASS=1 bypasses (explicit opt-in)", async () => {
+    (process.env as Record<string, string>).NODE_ENV = "development";
+    process.env.AUTH_BYPASS = "1";
     delete process.env.CRON_SECRET;
     const res = await requireCron(makePlainRequest());
     expect(res).not.toBeInstanceOf(NextResponse);

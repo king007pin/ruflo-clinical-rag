@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE } from "@/lib/auth-constants";
 import { rateLimit, RL_AUTH } from "@/lib/rate-limit";
-import { verifyPassword } from "@/lib/auth/passwords";
+import { hashPassword, verifyPassword } from "@/lib/auth/passwords";
 import { signSessionToken } from "@/lib/auth/tokens";
 import { createSession, revokeSession } from "@/lib/auth/sessions";
 import { requireAuth } from "@/lib/auth-guard";
+import { logAudit, extractClientFingerprint } from "@/lib/audit";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { timingSafeEqual } from "crypto";
+import { randomBytes, timingSafeEqual } from "crypto";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs"; // Argon2 native bindings need Node runtime
@@ -24,8 +25,19 @@ function safeEqual(a: string, b: string): boolean {
   return timingSafeEqual(ax, bx) && ab.length === bb.length;
 }
 
-// Dummy hash to maintain timing-safety during user lookup failures
-const DUMMY_HASH = "$argon2id$v=19$m=65536,t=3,p=4$4m26TqG0SOW7D49vQkI0Qg$8eH6s435qg03945vQkI0Qg";
+// W39: Dummy hash to maintain timing-safety during user lookup failures.
+// The earlier hard-coded string was a structurally malformed argon2id token —
+// `verifyPassword` would fast-fail on parse error and return false in ~1ms,
+// leaking user-existence via timing (real users took ~100ms for full KDF).
+// Compute a real argon2id hash at module init from random bytes so the
+// not-found path runs the same KDF cost as the found path.
+let DUMMY_HASH_PROMISE: Promise<string> | null = null;
+function dummyHash(): Promise<string> {
+  if (!DUMMY_HASH_PROMISE) {
+    DUMMY_HASH_PROMISE = hashPassword(randomBytes(32).toString("hex"));
+  }
+  return DUMMY_HASH_PROMISE;
+}
 
 export async function POST(req: NextRequest) {
   const rl = rateLimit(req, RL_AUTH);
@@ -51,10 +63,18 @@ export async function POST(req: NextRequest) {
       .where(eq(users.email, email.toLowerCase().trim()));
     const foundUser = rows[0] ?? null;
 
-    const hashToVerify = foundUser ? foundUser.passwordHash : DUMMY_HASH;
+    const hashToVerify = foundUser ? foundUser.passwordHash : await dummyHash();
     const isValid = await verifyPassword(hashToVerify, password);
 
     if (!foundUser || !isValid || !foundUser.active) {
+      const fp = extractClientFingerprint(req);
+      void logAudit({
+        action: "login.fail",
+        target: email ? `email:${email.toLowerCase().trim()}` : null,
+        success: false,
+        ...fp,
+        meta: { reason: !foundUser ? "no_user" : !isValid ? "bad_password" : "inactive" },
+      });
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
     user = foundUser;
@@ -66,6 +86,14 @@ export async function POST(req: NextRequest) {
     }
 
     if (!safeEqual(password, appPassword)) {
+      const fp = extractClientFingerprint(req);
+      void logAudit({
+        action: "login.fail",
+        target: "legacy-admin",
+        success: false,
+        ...fp,
+        meta: { reason: "bad_password" },
+      });
       return NextResponse.json({ error: "Invalid password" }, { status: 401 });
     }
 
@@ -93,6 +121,16 @@ export async function POST(req: NextRequest) {
     .update(users)
     .set({ lastLoginAt: new Date() })
     .where(eq(users.id, user.id));
+
+  void logAudit({
+    actorId: user.id,
+    action: "login.success",
+    target: `user:${user.id}`,
+    success: true,
+    ip,
+    ua,
+    meta: { flow: email ? "per-user" : "legacy" },
+  });
 
   const res = NextResponse.json({ ok: true });
   res.cookies.set(SESSION_COOKIE, token, {
@@ -133,6 +171,15 @@ export async function DELETE(req: NextRequest) {
   if (auth.sessionId !== "legacy-admin") {
     await revokeSession(auth.sessionId);
   }
+
+  const fp = extractClientFingerprint(req);
+  void logAudit({
+    actorId: auth.userId,
+    action: "logout",
+    target: `session:${auth.sessionId}`,
+    success: true,
+    ...fp,
+  });
 
   const res = NextResponse.json({ ok: true });
   res.cookies.delete(SESSION_COOKIE);

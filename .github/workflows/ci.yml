@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: typecheck + test + lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Stub env so module-load checks (e.g. db/index.ts DATABASE_URL throw,
+      # phi-vault.ts KEK length check) pass without a live DB or secrets.
+      DATABASE_URL: postgres://stub:stub@localhost:5432/stub
+      AUTH_SECRET: ci-auth-secret-padded-to-32-chars
+      CRON_SECRET: ci-cron-secret-padded-to-32-chars
+      JWT_SECRET: ci-jwt-secret-padded-to-thirty-two-chars
+      APP_SECRET_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+      APP_PHI_KEK: "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
+      NODE_ENV: test
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint (non-blocking pending W50 cleanup of pre-existing React 19 set-state-in-effect violations)
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Test
+        run: npm test

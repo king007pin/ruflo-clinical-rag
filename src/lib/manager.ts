@@ -4,29 +4,10 @@ import { desc, sql } from "drizzle-orm";
 import { runSwarm } from "./swarm";
 
 // ── Emergency detection ──────────────────────────────────────────────────────
-
-const EMERGENCY_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
-  { pattern: /chest\s+pain.{0,40}(short|breath|dyspn)/i,   label: "ACS/PE presentation" },
-  { pattern: /\b(STEMI|NSTEMI|cardiac\s+arrest)\b/i,        label: "Cardiac emergency" },
-  { pattern: /\banaphylax/i,                                  label: "Anaphylaxis" },
-  { pattern: /\bseptic\s+shock\b/i,                          label: "Septic shock" },
-  { pattern: /\b(stroke|CVA|TIA).{0,30}(acute|sudden)/i,    label: "Acute stroke" },
-  { pattern: /\b(unconscious|unresponsive|collapse[sd]?)\b/i,label: "Loss of consciousness" },
-  { pattern: /\b(suicid|self.harm|overdos)/i,                label: "Mental health emergency" },
-  { pattern: /meningitis.{0,30}(fever|rash|petechiae)/i,     label: "Meningococcal disease" },
-  { pattern: /\b(tension\s+pneumo|tamponade|dissect)/i,      label: "Surgical emergency" },
-  { pattern: /\b(DKA|diabetic\s+keto)/i,                    label: "DKA" },
-  { pattern: /\beclampsia\b/i,                               label: "Eclampsia" },
-  { pattern: /\b(status\s+epilepticus|prolonged\s+seizure)/i,label: "Status epilepticus" },
-];
-
-function detectEmergency(text: string): { isEmergency: boolean; triggers: string[] } {
-  const triggers: string[] = [];
-  for (const { pattern, label } of EMERGENCY_PATTERNS) {
-    if (pattern.test(text)) triggers.push(label);
-  }
-  return { isEmergency: triggers.length > 0, triggers };
-}
+// W46: extracted to `detect-emergency.ts` (zero DB deps → testable in isolation).
+// Re-exported below so existing imports from `manager.ts` keep working.
+import { detectEmergency, EMERGENCY_PATTERNS } from "./detect-emergency";
+export { detectEmergency, EMERGENCY_PATTERNS };
 
 // ── Off-topic detection ──────────────────────────────────────────────────────
 // W18: Classifier extracted to classify-medical.ts (zero DB deps → testable).

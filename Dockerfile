@@ -1,12 +1,14 @@
 FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+# W42: block supply-chain postinstall RCE surface. Matches vercel.json install.
+# @node-rs/argon2 and pgvector wheels ship prebuilt — no postinstall needed.
+RUN npm ci --omit=dev --ignore-scripts
 
 FROM node:22-alpine AS builder
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci --ignore-scripts
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_OPTIONS="--max-old-space-size=1536"

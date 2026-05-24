@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "db:enable-citext": "node scripts/enable-citext.mjs",
+    "db:setup": "node scripts/enable-citext.mjs && npx drizzle-kit push",
     "db:seed-admin": "node scripts/seed-admin.mjs",
     "setup-secrets": "node scripts/setup-secrets.mjs",
     "db:add-source-feeds-unique": "node scripts/add-source-feeds-unique.mjs",

@@ -2,6 +2,8 @@ import { db } from "@/db";
 import { providerCredentials } from "@/db/schema";
 import { encrypt } from "@/lib/secretVault";
 import { PROVIDERS } from "@/lib/providerRegistry";
+import { requireAuth } from "@/lib/auth-guard";
+import { logAudit, extractClientFingerprint } from "@/lib/audit";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -14,6 +16,10 @@ const bodySchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  // W22/W41: route-level auth + audit on credential mutations.
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
+
   const body = await req.json().catch(() => null);
   const parsed = bodySchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
@@ -69,6 +75,16 @@ export async function POST(req: NextRequest) {
       target: providerCredentials.providerId,
       set: { encryptedData, customBaseUrl: storedCustomBaseUrl, providerName: provider.name, updatedAt: new Date() },
     });
+
+  const fp = extractClientFingerprint(req);
+  void logAudit({
+    actorId: auth.userId,
+    action: "provider-key.save",
+    target: `providerId:${providerId}`,
+    success: true,
+    ...fp,
+    meta: { customBaseUrl: storedCustomBaseUrl },
+  });
 
   return NextResponse.json({ ok: true });
 }

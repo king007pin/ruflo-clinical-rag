@@ -332,10 +332,76 @@ export function assembleContext(top: Match[]) {
     .join("\n\n---\n\n");
 }
 
+// W47 — module-level cache + circuit breaker for live PubMed E-utility calls.
+// Hot path on /api/query was making an outbound NCBI call per request with no
+// throttling and no failure tracking — silent .catch(() => []) made degraded
+// mode invisible. Cache hits short-circuit the round trip; breaker opens
+// after consecutive failures so a long NCBI outage stops blocking queries.
+const PUBMED_CACHE_TTL_MS = 5 * 60 * 1000;
+const PUBMED_BREAKER_FAILURE_THRESHOLD = 5;
+const PUBMED_BREAKER_OPEN_MS = 60 * 1000;
+
+type PubMedCacheEntry = { value: Match[]; expiresAt: number };
+const pubmedGlobal = globalThis as typeof globalThis & {
+  __mediqPubMedCache?: Map<string, PubMedCacheEntry>;
+  __mediqPubMedBreaker?: { failures: number; openedAt: number | null };
+};
+
+function pubmedCache(): Map<string, PubMedCacheEntry> {
+  if (!pubmedGlobal.__mediqPubMedCache) pubmedGlobal.__mediqPubMedCache = new Map();
+  return pubmedGlobal.__mediqPubMedCache;
+}
+function pubmedBreaker(): { failures: number; openedAt: number | null } {
+  if (!pubmedGlobal.__mediqPubMedBreaker) {
+    pubmedGlobal.__mediqPubMedBreaker = { failures: 0, openedAt: null };
+  }
+  return pubmedGlobal.__mediqPubMedBreaker;
+}
+function breakerOpen(): boolean {
+  const b = pubmedBreaker();
+  if (b.openedAt == null) return false;
+  if (Date.now() - b.openedAt > PUBMED_BREAKER_OPEN_MS) {
+    b.openedAt = null;
+    b.failures = 0;
+    return false;
+  }
+  return true;
+}
+function recordPubMedFailure() {
+  const b = pubmedBreaker();
+  b.failures += 1;
+  if (b.failures >= PUBMED_BREAKER_FAILURE_THRESHOLD) {
+    b.openedAt = Date.now();
+  }
+}
+function recordPubMedSuccess() {
+  const b = pubmedBreaker();
+  b.failures = 0;
+  b.openedAt = null;
+}
+
+export function _resetPubMedState() {
+  pubmedCache().clear();
+  const b = pubmedBreaker();
+  b.failures = 0;
+  b.openedAt = null;
+}
+
 export async function searchPubMedLive(question: string, limit = 4): Promise<Match[]> {
+  const cleanQ = question.replace(/[?.,!]/g, "").replace(/\s+/g, " ").trim();
+  const cacheKey = `${cleanQ}::${limit}`;
+  const cache = pubmedCache();
+  const hit = cache.get(cacheKey);
+  if (hit && hit.expiresAt > Date.now()) {
+    return hit.value;
+  }
+  if (breakerOpen()) {
+    console.warn("[pubmed-live] breaker open — skipping outbound call");
+    return [];
+  }
+
   const UA = "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)";
   const EUTILS = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils";
-  const cleanQ = question.replace(/[?.,!]/g, "").replace(/\s+/g, " ").trim();
   const currentYear = new Date().getFullYear();
   const startYear = currentYear - 2;
   const term = `(${cleanQ}) AND ${startYear}:${currentYear}[pdat] AND open access[filter]`;
@@ -404,8 +470,12 @@ export async function searchPubMedLive(question: string, limit = 4): Promise<Mat
     });
 
     const results = await Promise.all(fetchPromises);
-    return results.filter((r): r is Match => r !== null);
+    const matches = results.filter((r): r is NonNullable<typeof r> => r !== null);
+    cache.set(cacheKey, { value: matches, expiresAt: Date.now() + PUBMED_CACHE_TTL_MS });
+    recordPubMedSuccess();
+    return matches;
   } catch (err) {
+    recordPubMedFailure();
     console.error("[pubmed-live] error:", err);
     return [];
   }

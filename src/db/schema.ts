@@ -120,16 +120,19 @@ export const sessionFeedback = pgTable("session_feedback", {
   createdAt: timestamp("created_at", { withTimezone: false }).defaultNow().notNull(),
 });
 
-// Knowledge gaps — topics that repeatedly had inadequate sources
+// Knowledge gaps — topics that repeatedly had inadequate sources.
+// W44: `topic` and `pubmedQuery` are derived from user queries that may contain
+// PHI. Both columns are encrypted at rest with the same envelope used for
+// query_sessions.query / consensusSnippet (see phi-vault.ts).
 export const knowledgeGaps = pgTable("knowledge_gaps", {
   id: serial("id").primaryKey(),
-  topic: text("topic").notNull(),
+  topic: encryptedText("topic").notNull(),
   queryCount: integer("query_count").default(1).notNull(),
   firstSeenAt: timestamp("first_seen_at", { withTimezone: false }).defaultNow().notNull(),
   lastSeenAt: timestamp("last_seen_at", { withTimezone: false }).defaultNow().notNull(),
   resolved: boolean("resolved").default(false).notNull(),
   resolvedAt: timestamp("resolved_at", { withTimezone: false }),
-  pubmedQuery: text("pubmed_query"),
+  pubmedQuery: encryptedText("pubmed_query"),
   ingestedCount: integer("ingested_count").default(0).notNull(),
 });
 
@@ -228,4 +231,26 @@ export type User = typeof users.$inferSelect;
 export type UserInsert = typeof users.$inferInsert;
 export type Session = typeof sessions.$inferSelect;
 export type SessionInsert = typeof sessions.$inferInsert;
+
+// ── Audit log (W41) ─────────────────────────────────────────────────────────
+// One row per auth attempt, admin mutation, or PHI-bearing access. Stored
+// indefinitely (retention cron handled separately for PHI tables; audit is
+// kept long-term for forensics).
+export const auditEvents = pgTable("audit_events", {
+  id: serial("id").primaryKey(),
+  actorId: uuid("actor_id").references(() => users.id, { onDelete: "set null" }),
+  // Human-readable action key: "login.success", "login.fail",
+  // "logout", "admin.feeds.delete", "provider-key.save", etc.
+  action: text("action").notNull(),
+  // Free-form identifier of the affected object ("feed:42", "providerId:openai", null).
+  target: text("target"),
+  success: boolean("success").default(true).notNull(),
+  ipHash: text("ip_hash"),
+  uaHash: text("ua_hash"),
+  meta: jsonb("meta").$type<Record<string, unknown>>(),
+  createdAt: timestamp("created_at", { withTimezone: false }).defaultNow().notNull(),
+});
+
+export type AuditEvent = typeof auditEvents.$inferSelect;
+export type AuditEventInsert = typeof auditEvents.$inferInsert;
 
