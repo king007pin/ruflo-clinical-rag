@@ -13,6 +13,47 @@
 
 ---
 
+## 💻 Local Installation for the Best Experience (Highly Recommended)
+
+> [!TIP]
+> **Why Run Locally?**
+> For the absolute best clinical experience with zero delay, sub-second vector queries, and full auto-updating capabilities, we highly recommend running MedIQ on a local server. 
+> *   **No Password Friction**: Local execution unconditionally bypasses all login pages and access passwords, landing you directly on the clinical swarm dashboard.
+> *   **Sub-Second Latency**: Directly binds with your local environment reducing network roundtrip times.
+
+---
+
+### 🚀 One-Click Easy Launcher & Auto-Updater
+
+We have introduced fully automated launcher scripts designed for clinicians, operators, and developers who want a seamless "one-click" style experience. 
+
+These launchers keep you **permanently connected to the GitHub repository** to fetch the latest improvements and clinical crawlers dynamically every time they are run!
+
+#### 🍏 For macOS Users (Mac):
+
+1.  **Open Terminal**: Press `Cmd + Space` on your Mac, type **Terminal**, and press `Enter`.
+2.  **Paste & Run the Launcher**: Copy and paste the single command below into the terminal window, then press `Enter`:
+    ```bash
+    git clone https://github.com/king007pin/Mediq.git && cd Mediq && ./start.sh
+    ```
+3.  **Enjoy!**: The script will automatically pull the newest updates from GitHub, verify your system configuration, set up secure keys, boot the local server, and **automatically open the MedIQ dashboard in your browser**!
+    *   *For subsequent launches*, simply run:
+        ```bash
+        cd Mediq && ./start.sh
+        ```
+
+#### 🪟 For Windows Users (PC):
+
+1.  **Open Command Prompt**: Press the `Windows Key`, type **cmd**, and press `Enter`.
+2.  **Paste & Run the Launcher**: Copy and paste the single command below into the Command Prompt window, then press `Enter`:
+    ```cmd
+    git clone https://github.com/king007pin/Mediq.git && cd Mediq && start.bat
+    ```
+3.  **Enjoy!**: The script will automatically pull updates, verify Node.js, install packages, configure secrets, boot the local server, and **automatically open the MedIQ dashboard in your web browser**!
+    *   *For subsequent launches*, you can simply **double-click the `start.bat` file** inside the `Mediq` folder using Windows Explorer! It will pull updates from GitHub and start your server immediately.
+
+---
+
 ## 🧠 Architectural Overview
 
 MedIQ represents a paradigm shift in Clinical Decision Support. Rather than routing complex multi-system complaints to a single "generalist" LLM (which introduces severe diagnostic anchoring bias), MedIQ maps symptoms to a **21-Specialty Clinical Matrix** matching **19 MBBS Post-Graduate (PG) subject tracks**.
@@ -127,40 +168,6 @@ OPENAI_API_KEY="sk-proj-XXXXXXXXXXXXXXXXXXXX"
 # Crawler Credentials (Optional)
 TINYFISH_API_KEY="tf-XXXXXXXXXXXXXXXX"
 ```
-
-## 💻 Local Installation for the Best Experience (Highly Recommended)
-
-> [!TIP]
-> **Why Run Locally?**
-> For the absolute best clinical experience with zero delay, sub-second vector queries, and full auto-updating capabilities, we highly recommend running MedIQ on a local server. 
-> *   **No Password Friction**: Local execution unconditionally bypasses all login pages and access passwords, landing you directly on the clinical swarm dashboard.
-> *   **Sub-Second Latency**: Directly binds with your local environment reducing network roundtrip times.
-
----
-
-### 🚀 One-Click Easy Launcher & Auto-Updater (macOS)
-
-We have introduced a fully automated launcher script (`start.sh`) designed for clinicians, operators, and developers who want a seamless "one-click" style experience. 
-
-It keeps you **permanently connected to the GitHub repository** to fetch the latest improvements and clinical crawlers dynamically every time it is run!
-
-#### 🔹 The Easy "Non-Technical" Method:
-
-1.  **Open Terminal**: Press `Cmd + Space` on your Mac, type **Terminal**, and press `Enter`.
-2.  **Paste & Run the Launcher**: Copy and paste the single command below into the terminal window, then press `Enter`:
-    ```bash
-    git clone https://github.com/king007pin/Mediq.git && cd Mediq && ./start.sh
-    ```
-3.  **Enjoy!**: The script will automatically pull the newest updates from GitHub, verify your system configuration, set up secure keys, boot the local server, and **automatically open the MedIQ dashboard in your browser**!
-
-> [!NOTE]
-> For all subsequent launches, you only need to run:
-> ```bash
-> cd Mediq && ./start.sh
-> ```
-> This automatically pulls down any new clinical features or guideline updates from GitHub and boots your local server immediately.
-
----
 
 ### ⚙️ Quick Start Installation (Manual Method)
 
