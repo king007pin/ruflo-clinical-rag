@@ -1,27 +1,7 @@
 import { Agent } from "undici";
+import { getNvidiaDispatcher } from "./swarm/connection-pool";
 
 const NVIDIA_BASE = "https://integrate.api.nvidia.com/v1";
-
-// T1.6: Connection keep-alive for NIM. A single clinical query fires 11+ NIM calls
-// (router, 3-10 round-1, 3-10 round-2, synthesis stream, optional rewrite). Each
-// bare fetch() previously did a fresh TLS handshake (~120-180ms on Vercel/Cloud Run
-// to integrate.api.nvidia.com). Pooling cuts that to one handshake per worker,
-// amortized across hours of warm connections.
-//
-// Lazy init so the harness/tests that mock fetch are unaffected and module load
-// stays free of side-effects when NIM is not used (build-time, edge runtime).
-let nvidiaDispatcher: Agent | null = null;
-function getNvidiaDispatcher(): Agent {
-  if (!nvidiaDispatcher) {
-    nvidiaDispatcher = new Agent({
-      keepAliveTimeout: 60_000,
-      keepAliveMaxTimeout: 600_000,
-      connections: 32,
-      pipelining: 1,
-    });
-  }
-  return nvidiaDispatcher;
-}
 
 type NvidiaFetchInit = RequestInit & { dispatcher?: Agent };
 function nvidiaFetchInit(init: RequestInit): NvidiaFetchInit {

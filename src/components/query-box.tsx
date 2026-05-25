@@ -1,9 +1,13 @@
 "use client";
 
 import React, { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { ThinkingDots } from "./query-box/AgentDebateBubble";
+import { DebateGrid } from "./query-box/DebateGrid";
+import { ConsensusReport } from "./query-box/ConsensusReport";
+import { EvidenceSources } from "./query-box/EvidenceSources";
 
-type AgentReply = { model: string; message: string; reasoning: string; round?: 1 | 2 };
-type Match = {
+export type AgentReply = { model: string; message: string; reasoning: string; round?: 1 | 2 };
+export type Match = {
   sourceId: number;
   sourceTitle?: string | null;
   sourceType?: string | null;
@@ -12,9 +16,9 @@ type Match = {
   chunk: string;
   score: number;
 };
-type DDIFlag = { drug: string; warning: string; severity: "BLACK_BOX" | "SERIOUS" | "MODERATE" };
-type LabCritical = { name: string; value: number; unit: string };
-type ResponseShape = {
+export type DDIFlag = { drug: string; warning: string; severity: "BLACK_BOX" | "SERIOUS" | "MODERATE" };
+export type LabCritical = { name: string; value: number; unit: string };
+export type ResponseShape = {
   answer: string;
   agents: AgentReply[];
   round1Agents: AgentReply[];
@@ -24,17 +28,17 @@ type ResponseShape = {
   pgSubjects?: string[];
   ddiFlags?: DDIFlag[];
 };
-type SavePayload = {
+export type SavePayload = {
   title?: string;
   patientName?: string;
   patientAge?: number;
   patientDetails?: string;
   clinicianNotes?: string;
 };
-type PatientInfo = { name: string; age: string; gender: string; phone: string; address: string };
-type ModelMeta = { id: string; label: string; role: string; description: string; tags: string[]; size: string };
+export type PatientInfo = { name: string; age: string; gender: string; phone: string; address: string };
+export type ModelMeta = { id: string; label: string; role: string; description: string; tags: string[]; size: string };
 
-const MODELS: ModelMeta[] = [
+export const MODELS: ModelMeta[] = [
   { id: "meta/llama-3.3-70b-instruct", label: "Llama 3.3 70B", role: "Internal Medicine",
     description: "Synthesis anchor. Bayesian probabilistic differentials, evidence-based workup, chronic disease context, internal medicine guidelines.",
     tags: ["free", "70B", "synthesis anchor", "generalist"], size: "70B" },
@@ -67,7 +71,7 @@ const MODELS: ModelMeta[] = [
     tags: ["free", "70B", "NVIDIA", "evidence grading", "guidelines"], size: "70B" },
 ];
 
-const MODEL_COLORS = [
+export const MODEL_COLORS = [
   { border: "#818cf8", bg: "rgba(129,140,248,0.08)", dot: "#818cf8", glow: "rgba(129,140,248,0.25)" },
   { border: "#34d399", bg: "rgba(52,211,153,0.08)",  dot: "#34d399", glow: "rgba(52,211,153,0.25)"  },
   { border: "#f472b6", bg: "rgba(244,114,182,0.08)", dot: "#f472b6", glow: "rgba(244,114,182,0.25)" },
@@ -80,134 +84,7 @@ const MODEL_COLORS = [
   { border: "#e879f9", bg: "rgba(232,121,249,0.08)", dot: "#e879f9", glow: "rgba(232,121,249,0.25)" },
 ];
 
-// ── Plain-text report renderer ───────────────────────────────────────────────
 
-function ReportTable({ lines }: { lines: string[] }) {
-  const parseRow = (line: string) =>
-    line.split("|").slice(1, -1).map((c) => c.trim());
-
-  const isSeparator = (line: string) => /^\|[-|\s]+\|$/.test(line.trim());
-  const nonSep = lines.filter((l) => !isSeparator(l));
-  const sepIdx = lines.findIndex(isSeparator);
-
-  const headerLines = sepIdx > 0 ? lines.slice(0, sepIdx) : [lines[0]];
-  const dataLines = sepIdx >= 0 ? lines.slice(sepIdx + 1).filter((l) => !isSeparator(l)) : lines.slice(1);
-
-  const headers = headerLines.flatMap(parseRow);
-  const dataRows = dataLines.map(parseRow).filter((r) => r.some((c) => c));
-
-  if (!nonSep.length) return null;
-
-  return (
-    <div className="overflow-x-auto rounded-xl border my-2" style={{ borderColor: "var(--card-border)" }}>
-      <table className="w-full text-xs border-collapse">
-        <thead>
-          <tr style={{ backgroundColor: "var(--pill)" }}>
-            {headers.map((h, i) => (
-              <th key={i} className="px-3 py-2 text-left font-bold uppercase tracking-wide"
-                style={{ color: "var(--accent)", borderBottom: "1px solid var(--card-border)" }}>
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {dataRows.map((row, ri) => (
-            <tr key={ri} style={{ borderBottom: "1px solid var(--card-border)" }}>
-              {row.map((cell, ci) => (
-                <td key={ci} className="px-3 py-2 leading-relaxed"
-                  style={{ color: ci === 0 ? "var(--text)" : "var(--muted)" }}>
-                  {cell}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function ReportView({ text }: { text: string }) {
-  const lines = text.split("\n");
-  const elements: React.ReactNode[] = [];
-  let i = 0;
-  let key = 0;
-
-  const isAllCapsHeader = (l: string) =>
-    /^[A-Z][A-Z\s\d&\/\-–—:()]+$/.test(l.trim()) && l.trim().length >= 4 && l.trim().length <= 60;
-  const isDashLine = (l: string) => /^[-─═]+$/.test(l.trim()) && l.trim().length >= 8;
-  const isTableLine = (l: string) => l.trim().startsWith("|");
-  const isNumbered = (l: string) => /^\d+\.\s{1,3}/.test(l.trim());
-  const isBullet = (l: string) => /^[-•]\s{1,3}/.test(l.trim());
-
-  while (i < lines.length) {
-    const line = lines[i];
-
-    if (line.trim() === "") { i++; continue; }
-
-    // Collect pipe table block
-    if (isTableLine(line)) {
-      const tableLines: string[] = [];
-      while (i < lines.length && (isTableLine(lines[i]) || /^\|[-|\s]+\|$/.test(lines[i].trim()))) {
-        tableLines.push(lines[i]);
-        i++;
-      }
-      elements.push(<ReportTable key={key++} lines={tableLines} />);
-      continue;
-    }
-
-    // Dash separator → skip (visual handled by header spacing)
-    if (isDashLine(line)) { i++; continue; }
-
-    // ALL CAPS section header
-    if (isAllCapsHeader(line)) {
-      elements.push(
-        <div key={key++} className="mt-5 mb-1">
-          <p className="text-[15px] font-extrabold uppercase tracking-[0.06em] flex items-center gap-1.5" style={{ color: "var(--accent)" }}>
-            <span>•</span>
-            <span className="underline underline-offset-4">{line.trim()}</span>
-          </p>
-        </div>
-      );
-      i++;
-      continue;
-    }
-
-    // Numbered list
-    if (isNumbered(line)) {
-      elements.push(
-        <p key={key++} className="text-sm leading-relaxed pl-4 my-0.5" style={{ color: "var(--text)" }}>
-          {line.trim()}
-        </p>
-      );
-      i++;
-      continue;
-    }
-
-    // Bullet list
-    if (isBullet(line)) {
-      elements.push(
-        <p key={key++} className="text-sm leading-relaxed pl-4 my-0.5 flex gap-2" style={{ color: "var(--muted)" }}>
-          <span style={{ color: "var(--accent)" }}>–</span>
-          <span>{line.trim().replace(/^[-•]\s{1,3}/, "")}</span>
-        </p>
-      );
-      i++;
-      continue;
-    }
-
-    // Regular line
-    elements.push(
-      <p key={key++} className="text-sm leading-relaxed my-0.5" style={{ color: "var(--text)" }}>
-        {line}
-      </p>
-    );
-    i++;
-  }
-
-  return <div className="space-y-0 text-left">{elements}</div>;
-}
 
 // ── PDF generation ──────────────────────────────────────────────────────────
 
@@ -488,190 +365,7 @@ function ModelCard({ meta, selected, onClick }: { meta: ModelMeta; selected: boo
   );
 }
 
-function ThinkingDots() {
-  return (
-    <span className="inline-flex items-center gap-0.5 ml-1">
-      {[0, 1, 2].map((i) => (
-        <span key={i} className="inline-block h-1.5 w-1.5 rounded-full animate-bounce"
-          style={{ backgroundColor: "var(--muted)", animationDelay: `${i * 180}ms`, animationDuration: "900ms" }} />
-      ))}
-    </span>
-  );
-}
 
-function SkeletonLines({ count = 5 }: { count?: number }) {
-  const widths = [85, 70, 92, 60, 78];
-  return (
-    <div className="space-y-2 pt-1">
-      {Array.from({ length: count }, (_, i) => (
-        <div key={i} className="h-2 rounded animate-pulse"
-          style={{ width: `${widths[i % widths.length]}%`, backgroundColor: "var(--pill)", animationDelay: `${i * 100}ms` }} />
-      ))}
-    </div>
-  );
-}
-
-// Extract structured sections from agent message for better display
-function parseAgentSections(text: string): Array<{ heading: string; body: string }> {
-  const sectionPattern = /^(\d+\.\s+[A-Z][A-Z\s&\/\-()]+)$/m;
-  const lines = text.split("\n");
-  const sections: Array<{ heading: string; body: string }> = [];
-  let current: { heading: string; lines: string[] } | null = null;
-
-  for (const line of lines) {
-    if (sectionPattern.test(line.trim())) {
-      if (current) sections.push({ heading: current.heading, body: current.lines.join("\n").trim() });
-      current = { heading: line.trim(), lines: [] };
-    } else if (current) {
-      current.lines.push(line);
-    }
-  }
-  if (current) sections.push({ heading: current.heading, body: current.lines.join("\n").trim() });
-  return sections.filter((s) => s.body.length > 10);
-}
-
-// Cognitive strategy labels per model (for display)
-const MODEL_STRATEGY_LABELS: Record<string, string> = {
-  "meta/llama-3.3-70b-instruct":                 "Bayesian differential",
-  "openai/gpt-oss-120b":                          "Worst-case · red flag hunter",
-  "meta/llama-4-maverick-17b-128e-instruct":      "Time-critical life-threat triage",
-  "qwen/qwen3-next-80b-a3b-instruct":             "Devil's advocate · rare diagnosis hunter",
-  "mistralai/ministral-14b-instruct-2512":        "Pathogen-first infectious reasoning",
-  "nvidia/nemotron-3-super-120b-a12b":            "Metabolic · systemic unifier",
-  "nvidia/nemotron-nano-12b-v2-vl":              "Occam's razor · parsimony first",
-};
-
-function AgentCard({ agent, meta, color, idx, phase, pending, compact }: {
-  agent?: AgentReply; meta?: ModelMeta | null; color: (typeof MODEL_COLORS)[0];
-  idx: number; phase: "r1" | "r2"; pending?: boolean; compact?: boolean;
-}) {
-  // W50 — collapse-on-compact previously lived in a useEffect, which trips
-  // React 19's react-hooks/set-state-in-effect rule. The official "adjusting
-  // state while rendering" pattern (https://react.dev/reference/react/useState#storing-information-from-previous-renders)
-  // achieves the same effect without queuing a follow-up render.
-  const [expanded, setExpanded] = useState(false);
-  const [prevCompact, setPrevCompact] = useState(compact);
-  if (compact !== prevCompact) {
-    setPrevCompact(compact);
-    if (compact) setExpanded(false);
-  }
-  const label = meta?.label ?? agent?.model ?? `Agent ${idx + 1}`;
-  const role = meta?.role ?? "";
-  const strategy = agent ? (MODEL_STRATEGY_LABELS[agent.model] ?? agent.reasoning) : "";
-  const sections = agent ? parseAgentSections(agent.message) : [];
-  const hasSections = sections.length >= 2;
-
-  return (
-    <div className="rounded-xl border flex flex-col transition-all duration-700"
-      style={{
-        borderColor: agent ? color.border : "var(--card-border)",
-        backgroundColor: agent ? color.bg : "var(--card)",
-        opacity: agent ? 1 : pending ? 0.45 : 1,
-        boxShadow: agent && !pending ? `0 0 12px ${color.glow}` : undefined,
-      }}>
-      {/* Header */}
-      <div className="flex items-start justify-between px-3 py-2.5 border-b gap-2"
-        style={{ borderColor: agent ? color.border : "var(--card-border)" }}>
-        <div className="flex items-start gap-2 min-w-0">
-          <span className="mt-0.5 h-2 w-2 rounded-full shrink-0"
-            style={{ backgroundColor: agent ? color.dot : "var(--muted)", boxShadow: agent ? `0 0 6px ${color.dot}` : undefined }} />
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-xs font-bold" style={{ color: "var(--text)" }}>{role || label}</span>
-              {role && (
-                <span className="text-[10px]" style={{ color: "var(--muted)" }}>{label}</span>
-              )}
-              {agent && (
-                <span className="text-[10px] rounded-full px-2 py-0.5"
-                  style={{ backgroundColor: "var(--card)", color: color.dot, border: `1px solid ${color.border}` }}>
-                  {phase === "r2" ? "refined" : "initial"}
-                </span>
-              )}
-            </div>
-            {strategy && agent && (
-              <p className="mt-0.5 text-[10px]" style={{ color: "var(--muted)" }}>
-                Lens: {strategy}
-              </p>
-            )}
-          </div>
-        </div>
-        {agent ? (
-          <button type="button" onClick={() => setExpanded((v) => !v)}
-            className="shrink-0 rounded-full px-2 py-0.5 text-[10px] transition mt-0.5"
-            style={{ backgroundColor: "var(--pill)", color: "var(--muted)" }}>
-            {expanded ? "Collapse ▲" : "Expand ▼"}
-          </button>
-        ) : (
-          <span className="text-[10px] shrink-0" style={{ color: "var(--muted)" }}>reasoning<ThinkingDots /></span>
-        )}
-      </div>
-
-      {/* Body */}
-      <div className="px-3 py-2.5 flex-1">
-        {agent ? (
-          expanded ? (
-            hasSections ? (
-              <div className="space-y-3">
-                {sections.map((sec, i) => (
-                  <div key={i}>
-                    <p className="text-[10px] font-bold uppercase tracking-wider mb-1"
-                      style={{ color: color.dot }}>{sec.heading}</p>
-                    <p className="text-xs leading-relaxed whitespace-pre-wrap"
-                      style={{ color: "var(--muted)" }}>{sec.body}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs leading-relaxed whitespace-pre-wrap"
-                style={{ color: "var(--muted)" }}>
-                {agent.message}
-              </p>
-            )
-          ) : (
-            <div className="space-y-1">
-              {hasSections ? (
-                sections.slice(0, 2).map((sec, i) => (
-                  <div key={i}>
-                    <p className="text-[10px] font-bold uppercase tracking-wider"
-                      style={{ color: color.dot }}>{sec.heading}</p>
-                    <p className="text-xs leading-relaxed line-clamp-3"
-                      style={{ color: "var(--muted)" }}>{sec.body}</p>
-                  </div>
-                ))
-              ) : (
-                <p className="text-xs leading-relaxed line-clamp-4"
-                  style={{ color: "var(--muted)" }}>
-                  {agent.message}
-                </p>
-              )}
-              {(hasSections ? sections.length > 2 : agent.message.length > 300) && (
-                <button type="button" onClick={() => setExpanded(true)}
-                  className="text-[10px] mt-1" style={{ color: color.dot }}>
-                  + Show full assessment ({hasSections ? `${sections.length - 2} more sections` : "more"})
-                </button>
-              )}
-            </div>
-          )
-        ) : <SkeletonLines />}
-      </div>
-
-      {agent && (
-        <div className="px-3 py-1.5 border-t flex items-center gap-1" style={{ borderColor: color.border }}>
-          {agent.reasoning.startsWith("fallback") ? (
-            <span className="text-[10px] truncate" style={{ color: "var(--warning, #f59e0b)" }}>
-              ⚠ API timeout — partial result shown
-            </span>
-          ) : (
-            <>
-              <span className="text-[10px]" style={{ color: color.dot }}>via</span>
-              <span className="text-[10px] truncate" style={{ color: "var(--muted)" }}>{agent.reasoning}</span>
-            </>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ── Main component ───────────────────────────────────────────────────────────
 
@@ -1324,13 +1018,15 @@ export default function QueryBox() {
                 style={{ color: liveRound2.length > 0 || debatePhase || synthesisPhase ? "var(--muted)" : "var(--accent)" }}>
                 Round 1 — Independent Analysis
               </p>
-              <div className={`grid gap-2 ${swarmSize === 1 ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2"}`}>
-                {Array.from({ length: swarmSize }, (_, idx) => (
-                  <AgentCard key={idx} agent={liveRound1[idx]} meta={liveRound1[idx] ? MODELS.find((m) => m.id === liveRound1[idx].model) : null}
-                    color={MODEL_COLORS[idx % MODEL_COLORS.length]} idx={idx} phase="r1" pending={!liveRound1[idx]}
-                    compact={liveRound2.length > 0 || debatePhase || synthesisPhase} />
-                ))}
-              </div>
+              <DebateGrid
+                agents={liveRound1}
+                swarmSize={swarmSize}
+                phase="r1"
+                isLive
+                liveRound2Length={liveRound2.length}
+                debatePhase={debatePhase}
+                synthesisPhase={synthesisPhase}
+              />
             </div>
           )}
 
@@ -1356,12 +1052,12 @@ export default function QueryBox() {
               <p className="text-[10px] uppercase tracking-widest font-bold mb-2" style={{ color: "#f472b6" }}>
                 Round 2 — Peer-Reviewed Refinement
               </p>
-              <div className={`grid gap-2 ${swarmSize === 1 ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2"}`}>
-                {Array.from({ length: swarmSize }, (_, idx) => (
-                  <AgentCard key={idx} agent={liveRound2[idx]} meta={liveRound2[idx] ? MODELS.find((m) => m.id === liveRound2[idx].model) : null}
-                    color={MODEL_COLORS[idx % MODEL_COLORS.length]} idx={idx} phase="r2" pending={!liveRound2[idx]} />
-                ))}
-              </div>
+              <DebateGrid
+                agents={liveRound2}
+                swarmSize={swarmSize}
+                phase="r2"
+                isLive
+              />
             </div>
           )}
 
@@ -1421,10 +1117,7 @@ export default function QueryBox() {
               </span>
               <div className="flex-1 h-px" style={{ backgroundColor: "var(--card-border)" }} />
             </div>
-            <div className="rounded-xl border p-4"
-              style={{ borderColor: "rgba(167,139,250,0.3)", background: "linear-gradient(135deg,rgba(167,139,250,0.04),var(--card))" }}>
-              <ReportView text={multiResult.synthesis} />
-            </div>
+            <ConsensusReport text={multiResult.synthesis} isMultiProvider />
             {multiResult.agents.length > 0 && (
               <details>
                 <summary className="cursor-pointer text-xs uppercase tracking-wide list-none flex items-center gap-2"
@@ -1476,12 +1169,7 @@ export default function QueryBox() {
                   <span className="hidden group-open:inline">Hide ▲</span>
                 </span>
               </summary>
-              <div className={`mt-3 grid gap-3 ${result.round1Agents.length <= 2 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3"}`}>
-                {result.round1Agents.map((agent, idx) => (
-                  <AgentCard key={idx} agent={agent} meta={MODELS.find((m) => m.id === agent.model)}
-                    color={MODEL_COLORS[idx % MODEL_COLORS.length]} idx={idx} phase="r1" compact />
-                ))}
-              </div>
+              <DebateGrid agents={result.round1Agents} phase="r1" compact />
             </details>
           )}
 
@@ -1520,12 +1208,7 @@ export default function QueryBox() {
                 {result.agents.length} model{result.agents.length !== 1 ? "s" : ""}
               </span>
             </div>
-            <div className={`grid gap-3 ${result.agents.length <= 2 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3"}`}>
-              {result.agents.map((agent, idx) => (
-                <AgentCard key={idx} agent={agent} meta={MODELS.find((m) => m.id === agent.model)}
-                  color={MODEL_COLORS[idx % MODEL_COLORS.length]} idx={idx} phase="r2" />
-              ))}
-            </div>
+            <DebateGrid agents={result.agents} phase="r2" />
           </div>
 
           {/* Synthesis divider */}
@@ -1538,74 +1221,17 @@ export default function QueryBox() {
           </div>
 
           {/* Report panel */}
-          <div className="rounded-xl border p-4"
-            style={{
-              borderColor: "rgba(74,222,128,0.3)",
-              background: "linear-gradient(135deg, rgba(74,222,128,0.04), var(--card))",
-              boxShadow: "0 0 24px rgba(74,222,128,0.08)",
-            }}>
-            <div className="flex items-center gap-2 mb-4">
-              <span className="inline-block h-2.5 w-2.5 rounded-full"
-                style={{ backgroundColor: "#4ade80", boxShadow: "0 0 6px #4ade80" }} />
-              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: "#4ade80" }}>
-                Clinical Assessment Report
-              </span>
-              <span className="text-[10px] rounded-full px-2 py-0.5"
-                style={{ backgroundColor: "var(--pill)", color: "var(--muted)" }}>
-                {result.agents.length} agents · {hasDebate ? "2 rounds + synthesis" : "1 round + synthesis"}
-              </span>
-              <div className="ml-auto flex items-center gap-2">
-                <button type="button" onClick={() => void handlePrint()} disabled={generatingPdf}
-                  className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50"
-                  style={{ backgroundColor: "rgba(13,148,136,0.12)", color: "#0d9488", border: "1px solid rgba(13,148,136,0.3)" }}>
-                  {generatingPdf ? <span className="animate-pulse">Generating…</span> : <span>Print PDF</span>}
-                </button>
-                <button type="button" onClick={() => void handleShare()} disabled={sharingPdf}
-                  className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50"
-                  style={{ backgroundColor: "rgba(26,52,96,0.12)", color: "#1a3460", border: "1px solid rgba(26,52,96,0.3)" }}>
-                  {sharingPdf ? <span className="animate-pulse">Preparing…</span> : <span>Share PDF</span>}
-                </button>
-              </div>
-            </div>
-            <ReportView text={result.answer} />
-            {((result.hospitalDepartments?.length ?? 0) > 0 || (result.pgSubjects?.length ?? 0) > 0) && (
-              <div className="mt-4 p-3 rounded-lg border flex flex-col gap-2 text-left"
-                style={{ borderColor: "rgba(74,222,128,0.2)", backgroundColor: "rgba(74,222,128,0.02)" }}>
-                {result.hospitalDepartments && result.hospitalDepartments.length > 0 && (
-                  <div className="flex items-center flex-wrap gap-2">
-                    <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: "var(--muted)" }}>Hospital Departments:</span>
-                    {result.hospitalDepartments.map((dept, i) => (
-                      <span key={i} className="text-[10px] rounded-full px-2 py-0.5 font-medium"
-                        style={{ backgroundColor: "rgba(59,130,246,0.1)", color: "#60a5fa", border: "1px solid rgba(59,130,246,0.2)" }}>
-                        {dept}
-                      </span>
-                    ))}
-                  </div>
-                )}
-                {result.pgSubjects && result.pgSubjects.length > 0 && (
-                  <div className="flex items-center flex-wrap gap-2">
-                    <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: "var(--muted)" }}>MBBS PG Subjects:</span>
-                    {result.pgSubjects.map((subj, i) => (
-                      <span key={i} className="text-[10px] rounded-full px-2 py-0.5 font-medium"
-                        style={{ backgroundColor: "rgba(168,85,247,0.1)", color: "#c084fc", border: "1px solid rgba(168,85,247,0.2)" }}>
-                        {subj}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-            <div className="mt-4 rounded-lg border px-3 py-2 flex flex-wrap gap-x-4 gap-y-1 text-left"
-              style={{ borderColor: "var(--card-border)", backgroundColor: "var(--pill)" }}>
-              <span className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: "var(--muted)" }}>Citation key:</span>
-              <span className="text-[10px]" style={{ color: "var(--muted)" }}>
-                <span style={{ color: "var(--accent)" }}>[S1], [S2]…</span> = Evidence snippet from your ingested knowledge base (PDF / URL / notes)
-              </span>
-              <span className="text-[10px]" style={{ color: "var(--muted)" }}>
-                <span style={{ color: "var(--accent)" }}>[PC1], [PC2]…</span> = Prior case from your session history used as contextual reference
-              </span>
-            </div>
-          </div>
+          <ConsensusReport
+            text={result.answer}
+            agentsCount={result.agents.length}
+            hasDebate={hasDebate}
+            generatingPdf={generatingPdf}
+            sharingPdf={sharingPdf}
+            handlePrint={handlePrint}
+            handleShare={handleShare}
+            hospitalDepartments={result.hospitalDepartments}
+            pgSubjects={result.pgSubjects}
+          />
 
           {/* Item 6: DDI banners */}
           {(result.ddiFlags?.length ?? 0) > 0 && (
@@ -1661,37 +1287,7 @@ export default function QueryBox() {
           )}
 
           {/* Citations */}
-          {result.matches?.length > 0 && (
-            <details>
-              <summary className="cursor-pointer text-xs uppercase tracking-wide list-none"
-                style={{ color: "var(--muted)" }}>
-                Evidence Citations ({result.matches.length}) ▼
-              </summary>
-              <div className="mt-2 space-y-2">
-                {result.matches.map((match, idx) => (
-                  <div key={`${match.sourceId}-${idx}`} className="rounded-lg border p-3"
-                    style={{ borderColor: "var(--card-border)", backgroundColor: "var(--card)" }}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex gap-2 text-[11px] font-semibold" style={{ color: "var(--text)" }}>
-                        <span>#{idx + 1}</span>
-                        {match.sourceType && <span className="uppercase" style={{ color: "var(--accent)" }}>{match.sourceType}</span>}
-                        {match.sourceTitle && <span>{match.sourceTitle}</span>}
-                      </div>
-                      <span className="text-[11px]" style={{ color: "var(--muted)" }}>score {match.score.toFixed(2)}</span>
-                    </div>
-                    <p className="mt-2 max-h-24 overflow-hidden text-[12px]" style={{ color: "var(--muted)" }}>{match.chunk}</p>
-                    {match.sourceUrl && (
-                      <a href={match.sourceUrl} className="text-[11px] hover:underline" style={{ color: "var(--accent)" }}
-                        target="_blank" rel="noreferrer">{match.sourceUrl}</a>
-                    )}
-                  </div>
-                ))}
-                {topCitation && (
-                  <p className="text-[11px] text-emerald-400">Top evidence from {topCitation.sourceTitle ?? "source"}</p>
-                )}
-              </div>
-            </details>
-          )}
+          <EvidenceSources matches={result.matches} />
         </div>
       )}
     </div>
