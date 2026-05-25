@@ -275,19 +275,35 @@ type PgVectorRow = {
 
 export async function searchByVector(queryEmbedding: number[], topK = 10): Promise<Match[]> {
   const vecStr = `[${queryEmbedding.join(",")}]`;
-  const { rows } = await corpusRetry(() =>
-    poolCorpus.query<PgVectorRow>(
-      `SELECT e.source_id, e.chunk, e.position,
-              s.title AS source_title, s.type AS source_type, s.url AS source_url,
-              (e.embedding <=> $1::vector) AS distance
-       FROM embeddings e
-       JOIN sources s ON s.id = e.source_id
-       WHERE e.embedding IS NOT NULL AND e.chunk IS NOT NULL
-       ORDER BY e.embedding <=> $1::vector
-       LIMIT $2`,
-      [vecStr, topK],
-    ),
-  );
+  // W12: hnsw.ef_search controls ANN recall/latency tradeoff. Default = 40.
+  // 100 gives ~99% recall at ~1.5ms median on ~1M rows. Must be ≥ topK.
+  // SET LOCAL scopes to this txn only — pool reuse is safe.
+  const { rows } = await corpusRetry(() => {
+    return poolCorpus.connect().then(async (client) => {
+      try {
+        await client.query("BEGIN");
+        await client.query("SET LOCAL hnsw.ef_search = 100");
+        const res = await client.query<PgVectorRow>(
+          `SELECT e.source_id, e.chunk, e.position,
+                  s.title AS source_title, s.type AS source_type, s.url AS source_url,
+                  (e.embedding <=> $1::vector) AS distance
+           FROM embeddings e
+           JOIN sources s ON s.id = e.source_id
+           WHERE e.embedding IS NOT NULL AND e.chunk IS NOT NULL
+           ORDER BY e.embedding <=> $1::vector
+           LIMIT $2`,
+          [vecStr, topK],
+        );
+        await client.query("COMMIT");
+        return res;
+      } catch (err) {
+        await client.query("ROLLBACK").catch(() => {});
+        throw err;
+      } finally {
+        client.release();
+      }
+    });
+  });
   return rows.map((r) => ({
     chunk: r.chunk,
     sourceId: r.source_id,
