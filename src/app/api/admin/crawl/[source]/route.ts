@@ -164,6 +164,7 @@ export async function POST(
   let ingested = 0;
   let skipped = 0;
   let errors = 0;
+  let lastErrMsg: string | null = null;
 
   for (const url of batch) {
     const article = await crawler.fetchArticle(url);
@@ -180,8 +181,10 @@ export async function POST(
         description: article.description ?? crawler.description,
       });
       ingested++;
-    } catch {
+    } catch (err) {
       errors++;
+      lastErrMsg = (err as Error).message ?? String(err);
+      console.error(`[crawl/${source}] persistSource failed for ${url}: ${lastErrMsg}`);
     }
   }
 
@@ -197,7 +200,9 @@ export async function POST(
         lastFetchedAt: new Date(),
         lastFetchCount: locked.lastFetchCount + ingested,
         errorCount: locked.errorCount + errors,
-        lastError: errors > 0 ? `${errors} article(s) failed in last batch` : null,
+        lastError: errors > 0
+          ? `${errors} article(s) failed in last batch — ${lastErrMsg ?? "unknown error"}`
+          : null,
       })
       .where(eq(sourceFeeds.id, feed.id));
   });

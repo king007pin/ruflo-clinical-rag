@@ -281,6 +281,31 @@ function intervalLabel(h: number): string {
   return `${h}h`;
 }
 
+// Bar fades to 0 over ~2s post-completion, then is replaced by a checkmark badge.
+// W50 — setState inside the effect is intentional: the phase transition is
+// scheduled by timers (not derivable in render), and the reset branch needs
+// to fire when `completed` flips back to false.
+/* eslint-disable react-hooks/set-state-in-effect */
+function useCompletionFade(completed: boolean) {
+  const [phase, setPhase] = useState<"active" | "badge">("active");
+  const [opacity, setOpacity] = useState(1);
+  useEffect(() => {
+    if (!completed) {
+      setPhase("active");
+      setOpacity(1);
+      return;
+    }
+    const t1 = setTimeout(() => setOpacity(0), 100);
+    const t2 = setTimeout(() => setPhase("badge"), 2500);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [completed]);
+  return { phase, opacity };
+}
+/* eslint-enable react-hooks/set-state-in-effect */
+
 // ── StatPearls Deep Crawl Panel ──────────────────────────────────────────────
 function StatpearlsCrawl() {
   const [status, setStatus] = useState<CrawlStatus | null>(null);
@@ -344,6 +369,8 @@ function StatpearlsCrawl() {
 
   const pct = totalUrls > 0 ? Math.round((currentOffset / totalUrls) * 100) : 0;
   const totalIngested = (status?.lastFetchCount ?? 0);
+  const completed = totalUrls > 0 && currentOffset >= totalUrls && !crawling;
+  const { phase: barPhase, opacity: barOpacity } = useCompletionFade(completed);
 
   return (
     <div
@@ -366,8 +393,8 @@ function StatpearlsCrawl() {
       </div>
 
       {/* Progress bar */}
-      {totalUrls > 0 && (
-        <div>
+      {totalUrls > 0 && barPhase === "active" && (
+        <div style={{ opacity: barOpacity, transition: "opacity 2s ease-out" }}>
           <div className="flex justify-between text-[11px] mb-1" style={{ color: "var(--muted)" }}>
             <span>{currentOffset} / {totalUrls} articles processed</span>
             <span>{pct}%</span>
@@ -378,6 +405,16 @@ function StatpearlsCrawl() {
               style={{ width: `${pct}%`, background: "linear-gradient(90deg, #818cf8, #4ade80)" }}
             />
           </div>
+        </div>
+      )}
+      {completed && barPhase === "badge" && (
+        <div className="flex justify-center">
+          <span
+            className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide"
+            style={{ backgroundColor: "rgba(74,222,128,0.15)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.3)" }}
+          >
+            ✓ Complete · {totalUrls} articles
+          </span>
         </div>
       )}
 
@@ -518,6 +555,8 @@ function GenericCrawlCard({ crawler }: { crawler: CrawlerMeta }) {
   const pct = totalUrls > 0 ? Math.round((currentOffset / totalUrls) * 100) : 0;
   const totalIngested = status?.lastFetchCount ?? 0;
   const catStyle = categoryStyle(crawler.category);
+  const completed = totalUrls > 0 && currentOffset >= totalUrls && !crawling;
+  const { phase: barPhase, opacity: barOpacity } = useCompletionFade(completed);
 
   return (
     <div
@@ -542,8 +581,8 @@ function GenericCrawlCard({ crawler }: { crawler: CrawlerMeta }) {
       </div>
 
       {/* Progress bar */}
-      {totalUrls > 0 && (
-        <div>
+      {totalUrls > 0 && barPhase === "active" && (
+        <div style={{ opacity: barOpacity, transition: "opacity 2s ease-out" }}>
           <div className="flex justify-between text-[11px] mb-1" style={{ color: "var(--muted)" }}>
             <span>{currentOffset} / {totalUrls} articles processed</span>
             <span>{pct}%</span>
@@ -554,6 +593,16 @@ function GenericCrawlCard({ crawler }: { crawler: CrawlerMeta }) {
               style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${catStyle.fg}, #4ade80)` }}
             />
           </div>
+        </div>
+      )}
+      {completed && barPhase === "badge" && (
+        <div>
+          <span
+            className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+            style={{ backgroundColor: "rgba(74,222,128,0.15)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.3)" }}
+          >
+            ✓ Complete · {totalUrls} articles
+          </span>
         </div>
       )}
 
@@ -686,7 +735,9 @@ export default function FeedPanel() {
   const [masterProgress, setMasterProgress] = useState(0);
   const [masterIngested, setMasterIngested] = useState(0);
   const [masterMsg, setMasterMsg] = useState<string | null>(null);
+  const [masterCompleted, setMasterCompleted] = useState(false);
   const masterStopRef = useRef(false);
+  const { phase: masterBarPhase, opacity: masterBarOpacity } = useCompletionFade(masterCompleted);
 
   const loadFeeds = useCallback(async () => {
     try {
@@ -763,6 +814,7 @@ export default function FeedPanel() {
   async function startMasterCrawl() {
     masterStopRef.current = false;
     setMasterCrawling(true);
+    setMasterCompleted(false);
     setMasterProgress(0);
     setMasterIngested(0);
     setMasterMsg("Initialising master crawl...");
@@ -814,6 +866,7 @@ export default function FeedPanel() {
         ? `Stopped — ${totalIngested} article(s) ingested from 23 sources.`
         : `Done — ${totalIngested} article(s) ingested from 23 sources.`
     );
+    if (!masterStopRef.current) setMasterCompleted(true);
     setMasterCrawling(false);
   }
 
@@ -864,8 +917,8 @@ export default function FeedPanel() {
         </div>
 
         {/* Progress bar */}
-        {(masterCrawling || masterProgress > 0) && (
-          <div className="space-y-1.5">
+        {(masterCrawling || masterProgress > 0) && masterBarPhase === "active" && (
+          <div className="space-y-1.5" style={{ opacity: masterBarOpacity, transition: "opacity 2s ease-out" }}>
             <div className="h-2 w-full rounded-full overflow-hidden" style={{ backgroundColor: "var(--card-border)" }}>
               <div
                 className="h-full rounded-full transition-all duration-500"
@@ -880,6 +933,16 @@ export default function FeedPanel() {
               <span>{masterProgress} / 23 sources</span>
               <span>{masterIngested} articles ingested</span>
             </div>
+          </div>
+        )}
+        {masterCompleted && masterBarPhase === "badge" && (
+          <div className="flex justify-center">
+            <span
+              className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide"
+              style={{ backgroundColor: "rgba(74,222,128,0.15)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.3)" }}
+            >
+              ✓ Complete · {masterIngested} articles · 23 sources
+            </span>
           </div>
         )}
 
