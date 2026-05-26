@@ -132,11 +132,19 @@ export type SafeFetchOptions = RequestInit & {
   maxRedirects?: number;
   maxBytes?: number;
   timeoutMs?: number;
+  // Retry on transient external rate-limit / overload statuses (429, 503).
+  // Set to 0 to opt out (e.g. SSRF probe routes that must not block on remote retries).
+  // Default 2 retries = up to 3 total attempts, with Retry-After honoured.
+  maxRetries?: number;
 };
 
-export async function safeFetch(input: string, opts: SafeFetchOptions = {}): Promise<Response> {
-  const { maxRedirects = 5, maxBytes = 25 * 1024 * 1024, timeoutMs = 20_000, ...rest } = opts;
-
+async function fetchOnce(
+  input: string,
+  rest: RequestInit,
+  maxRedirects: number,
+  maxBytes: number,
+  timeoutMs: number,
+): Promise<Response> {
   let currentUrl = input;
   for (let hop = 0; hop <= maxRedirects; hop++) {
     let parsed: URL;
@@ -159,9 +167,6 @@ export async function safeFetch(input: string, opts: SafeFetchOptions = {}): Pro
       clearTimeout(timer);
     }
 
-    // Enforce Content-Length cap when present. Streamed bodies must be
-    // counted by the caller as bytes are consumed (or used with .blob()
-    // / .arrayBuffer() then size-checked).
     const len = Number(res.headers.get("content-length") ?? 0);
     if (len > maxBytes) {
       throw new Error(`SSRF: response too large (${len} > ${maxBytes})`);
@@ -170,11 +175,35 @@ export async function safeFetch(input: string, opts: SafeFetchOptions = {}): Pro
     if (res.status >= 300 && res.status < 400) {
       const location = res.headers.get("location");
       if (!location) return res;
-      // Resolve relative redirects against the current URL.
       currentUrl = new URL(location, currentUrl).toString();
       continue;
     }
     return res;
   }
   throw new Error(`SSRF: too many redirects from ${input}`);
+}
+
+export async function safeFetch(input: string, opts: SafeFetchOptions = {}): Promise<Response> {
+  const { maxRedirects = 5, maxBytes = 25 * 1024 * 1024, timeoutMs = 20_000, maxRetries = 2, ...rest } = opts;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const res = await fetchOnce(input, rest, maxRedirects, maxBytes, timeoutMs);
+    // Retry only transient external rate-limit / overload signals.
+    // 429 = Too Many Requests, 503 = Service Unavailable.
+    if ((res.status === 429 || res.status === 503) && attempt < maxRetries) {
+      const retryAfterHdr = Number(res.headers.get("Retry-After"));
+      // Cap remote-driven sleeps to avoid one slow source stalling the whole crawl.
+      const fallback = Math.min(15, 2 ** (attempt + 1)); // 2s, 4s, 8s, cap 15s
+      const waitSec = Number.isFinite(retryAfterHdr) && retryAfterHdr > 0
+        ? Math.min(retryAfterHdr, 30)
+        : fallback;
+      await new Promise((r) => setTimeout(r, waitSec * 1000));
+      continue;
+    }
+    return res;
+  }
+  // Loop always returns inside (the final 429/503 attempt skips the retry branch
+  // because `attempt < maxRetries` is false). Throw as a safety net so a future
+  // edit can't introduce an undefined-return path.
+  throw new Error(`safeFetch: unreachable — exited retry loop without returning for ${input}`);
 }

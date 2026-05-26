@@ -207,7 +207,61 @@ type BatchResult = {
   done: boolean;
   progress: string;
   error?: string;
+  // Set by route when SKIP LOCKED returned no row (concurrent crawl holds the lock).
+  reason?: string;
 };
+
+// Sleep helper for backoff between batch retries.
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+// Calls `apiBase` (POST) with a JSON body. On 429, parses Retry-After (header or
+// body), waits, retries up to `maxAttempts`. On 409 (skipped: true), returns the
+// body so the caller can break out of its batch loop with a clear message.
+function errorResult(error: string, progress = "failed"): BatchResult {
+  return { ok: false, ingested: 0, skipped: 0, errors: 0, nextOffset: 0, totalUrls: 0, done: false, progress, error };
+}
+
+async function postBatchWithRetry(
+  apiBase: string,
+  body: object,
+  shouldStop: () => boolean,
+  maxAttempts = 4,
+): Promise<BatchResult> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    if (shouldStop()) return { ...errorResult("Stopped", "0 / 0"), done: true };
+    let res: Response;
+    try {
+      res = await fetch(apiBase, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    } catch (err) {
+      // Network failure (offline, dev server restart mid-batch). Retry once with
+      // a short backoff, then surface — don't crash the calling component.
+      if (attempt === maxAttempts) return errorResult(`Network error — ${(err as Error).message}`);
+      await sleep(1000);
+      continue;
+    }
+    if (res.status === 429) {
+      const retryAfterHdr = Number(res.headers.get("Retry-After"));
+      const fallback = Math.min(30, 2 ** attempt); // 2s, 4s, 8s, 16s, cap 30s
+      const waitSec = Number.isFinite(retryAfterHdr) && retryAfterHdr > 0 ? retryAfterHdr : fallback;
+      if (attempt === maxAttempts) return errorResult(`Rate-limited — please retry in ${waitSec}s`, "rate-limited");
+      await sleep(waitSec * 1000);
+      continue;
+    }
+    try {
+      return await (res.json() as Promise<BatchResult>);
+    } catch (err) {
+      // Server returned non-JSON (e.g. HTML error page from Next dev overlay).
+      return errorResult(`Bad response — ${(err as Error).message}`);
+    }
+  }
+  return errorResult("Exceeded retry attempts");
+}
 
 function nextFetchIn(feed: Feed): string {
   if (!feed.lastFetchedAt) return "pending";
@@ -237,7 +291,7 @@ function StatpearlsCrawl() {
   const stopRef = useRef(false);
 
   const loadStatus = useCallback(async () => {
-    const res = await fetch("/api/admin/crawl-statpearls");
+    const res = await fetch("/api/admin/crawl-statpearls", { cache: "no-store" });
     const data = (await res.json()) as CrawlStatus;
     setStatus(data);
     setCurrentOffset(data.offset);
@@ -247,15 +301,6 @@ function StatpearlsCrawl() {
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void loadStatus(); }, [loadStatus]);
 
-  async function runBatch(): Promise<BatchResult> {
-    const res = await fetch("/api/admin/crawl-statpearls", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ batchSize: 15 }),
-    });
-    return res.json() as Promise<BatchResult>;
-  }
-
   async function startCrawl() {
     stopRef.current = false;
     setCrawling(true);
@@ -263,7 +308,15 @@ function StatpearlsCrawl() {
 
     let sessionTotal = 0;
     while (!stopRef.current) {
-      const result = await runBatch();
+      const result = await postBatchWithRetry(
+        "/api/admin/crawl-statpearls",
+        { batchSize: 15 },
+        () => stopRef.current,
+      );
+      if (result.reason) {
+        setMsg(`Skipped — ${result.reason}`);
+        break;
+      }
       if (result.error) { setMsg(`Error: ${result.error}`); break; }
       sessionTotal += result.ingested;
       setCurrentOffset(result.nextOffset);
@@ -408,7 +461,7 @@ function GenericCrawlCard({ crawler }: { crawler: CrawlerMeta }) {
 
   const loadStatus = useCallback(async () => {
     try {
-      const res = await fetch(apiBase);
+      const res = await fetch(apiBase, { cache: "no-store" });
       const data = (await res.json()) as CrawlStatus;
       setStatus(data);
       setCurrentOffset(data.offset);
@@ -421,15 +474,6 @@ function GenericCrawlCard({ crawler }: { crawler: CrawlerMeta }) {
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void loadStatus(); }, [loadStatus]);
 
-  async function runBatch(): Promise<BatchResult> {
-    const res = await fetch(apiBase, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ batchSize: crawler.batchSize }),
-    });
-    return res.json() as Promise<BatchResult>;
-  }
-
   async function startCrawl() {
     stopRef.current = false;
     setCrawling(true);
@@ -438,7 +482,12 @@ function GenericCrawlCard({ crawler }: { crawler: CrawlerMeta }) {
 
     let sessionTotal = 0;
     while (!stopRef.current) {
-      const result = await runBatch();
+      const result = await postBatchWithRetry(
+        apiBase,
+        { batchSize: crawler.batchSize },
+        () => stopRef.current,
+      );
+      if (result.reason) { setMsg(`Skipped — ${result.reason}`); break; }
       if (result.error) { setMsg(`Error: ${result.error}`); break; }
       sessionTotal += result.ingested;
       setSessionIngested(sessionTotal);
@@ -724,13 +773,12 @@ export default function FeedPanel() {
     setMasterProgress(1);
     try {
       while (!masterStopRef.current) {
-        const res = await fetch("/api/admin/crawl-statpearls", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ batchSize: 15 }),
-        });
-        const data = (await res.json()) as { ingested?: number; done?: boolean; error?: string };
-        if (data.error) break;
+        const data = await postBatchWithRetry(
+          "/api/admin/crawl-statpearls",
+          { batchSize: 15 },
+          () => masterStopRef.current,
+        );
+        if (data.reason || data.error) break;
         totalIngested += data.ingested ?? 0;
         setMasterIngested(totalIngested);
         if (data.done) break;
@@ -747,13 +795,12 @@ export default function FeedPanel() {
       setMasterProgress(i + 2);
       try {
         while (!masterStopRef.current) {
-          const res = await fetch(`/api/admin/crawl/${crawler.id}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ batchSize: crawler.batchSize }),
-          });
-          const data = (await res.json()) as { ingested?: number; done?: boolean; error?: string };
-          if (data.error) break;
+          const data = await postBatchWithRetry(
+            `/api/admin/crawl/${crawler.id}`,
+            { batchSize: crawler.batchSize },
+            () => masterStopRef.current,
+          );
+          if (data.reason || data.error) break;
           totalIngested += data.ingested ?? 0;
           setMasterIngested(totalIngested);
           if (data.done) break;

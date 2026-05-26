@@ -50,14 +50,17 @@ export async function GET(
     .where(eq(sourceFeeds.name, crawler.name));
 
   const offset = Number(feed[0]?.query ?? "0");
-  return NextResponse.json({
-    exists: !!feed[0],
-    offset,
-    lastFetchedAt: feed[0]?.lastFetchedAt ?? null,
-    lastFetchCount: feed[0]?.lastFetchCount ?? 0,
-    errorCount: feed[0]?.errorCount ?? 0,
-    lastError: feed[0]?.lastError ?? null,
-  });
+  return NextResponse.json(
+    {
+      exists: !!feed[0],
+      offset,
+      lastFetchedAt: feed[0]?.lastFetchedAt ?? null,
+      lastFetchCount: feed[0]?.lastFetchCount ?? 0,
+      errorCount: feed[0]?.errorCount ?? 0,
+      lastError: feed[0]?.lastError ?? null,
+    },
+    { headers: { "Cache-Control": "no-store, max-age=0" } },
+  );
 }
 
 export async function POST(
@@ -66,12 +69,25 @@ export async function POST(
 ) {
   const auth = await requireRole(req, ["admin"]);
   if (auth instanceof NextResponse) return auth;
-  const rl = rateLimit(req, RL_CRAWL);
-  if (rl) return rl;
   const { source } = await params;
   const crawler = CRAWLERS[source];
   if (!crawler) {
     return NextResponse.json({ error: `Unknown crawler: ${source}` }, { status: 404 });
+  }
+  const rl = rateLimit(req, { ...RL_CRAWL, bucket: `crawl:${source}` });
+  if (rl) {
+    // Persist for status reload — frontend `lastError` red-text shows it after refresh.
+    // No-op if the feed row was never created (first-ever rate-limited request).
+    // Swallow + log on DB failure; the 429 response itself must always reach the client.
+    try {
+      await db
+        .update(sourceFeeds)
+        .set({ lastError: "Rate-limited — wait a few minutes before retrying." })
+        .where(eq(sourceFeeds.name, crawler.name));
+    } catch (err) {
+      console.warn(`[crawl/${source}] failed to persist rate-limit lastError:`, (err as Error).message);
+    }
+    return rl;
   }
 
   const body = await req.json().catch(() => ({})) as {
