@@ -1,4 +1,4 @@
-import { safeFetch } from "@/lib/safe-fetch";
+import { siteFetch } from "@/lib/site-fetch";
 import type { CrawlerDef, CrawlerArticle } from "./types";
 import { stripHtml } from "../utils/html";
 
@@ -30,7 +30,7 @@ function extractTag(html: string, tag: string, attr?: string): string {
 }
 
 async function fetchFromSitemap(): Promise<string[]> {
-  const res = await safeFetch("https://www.merckmanuals.com/sitemap.xml", {
+  const res = await siteFetch("https://www.merckmanuals.com/sitemap.xml", {
     headers: { "User-Agent": USER_AGENT },
     timeoutMs: 30000,
   });
@@ -58,7 +58,7 @@ async function fetchFromFallback(): Promise<string[]> {
 
   for (const indexUrl of FALLBACK_SPECIALTY_URLS) {
     try {
-      const res = await safeFetch(indexUrl, {
+      const res = await siteFetch(indexUrl, {
         headers: { "User-Agent": USER_AGENT },
         timeoutMs: 20000,
       });
@@ -103,7 +103,7 @@ export const merckManualCrawler: CrawlerDef = {
   async fetchArticle(url: string): Promise<CrawlerArticle | null> {
     try {
       await new Promise((r) => setTimeout(r, DELAY_MS));
-      const res = await safeFetch(url, {
+      const res = await siteFetch(url, {
         headers: { "User-Agent": USER_AGENT, Accept: "text/html" },
         timeoutMs: 25000,
       });

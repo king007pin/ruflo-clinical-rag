@@ -1,4 +1,4 @@
-import { safeFetch } from "@/lib/safe-fetch";
+import { siteFetch } from "@/lib/site-fetch";
 import type { CrawlerDef, CrawlerArticle } from "./types";
 import { stripHtml } from "../utils/html";
 
@@ -33,7 +33,7 @@ export const niceGuidelinesCrawler: CrawlerDef = {
       try {
         await new Promise((r) => setTimeout(r, 500));
         const pageUrl = `${NICE_BASE}/guidance/published?type=ng,cg&pagesize=60&page=${page}`;
-        const res = await safeFetch(pageUrl, {
+        const res = await siteFetch(pageUrl, {
           headers: {
             "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
             Accept: "text/html",
@@ -78,7 +78,7 @@ export const niceGuidelinesCrawler: CrawlerDef = {
       const recommendationsUrl = `${url}/chapter/recommendations`;
 
       try {
-        const recRes = await safeFetch(recommendationsUrl, {
+        const recRes = await siteFetch(recommendationsUrl, {
           headers: {
             "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
             Accept: "text/html",
@@ -94,7 +94,7 @@ export const niceGuidelinesCrawler: CrawlerDef = {
 
       // Fall back to base URL if recommendations chapter not available
       if (!html) {
-        const baseRes = await safeFetch(url, {
+        const baseRes = await siteFetch(url, {
           headers: {
             "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
             Accept: "text/html",

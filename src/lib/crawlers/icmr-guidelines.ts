@@ -1,4 +1,4 @@
-import { safeFetch } from "@/lib/safe-fetch";
+import { siteFetch } from "@/lib/site-fetch";
 import type { CrawlerDef, CrawlerArticle } from "./types";
 import { stripHtml } from "../utils/html";
 
@@ -29,7 +29,7 @@ export const icmrGuidelinesCrawler: CrawlerDef = {
     for (const seedUrl of seedPages) {
       try {
         await new Promise((r) => setTimeout(r, 700));
-        const res = await safeFetch(seedUrl, {
+        const res = await siteFetch(seedUrl, {
           headers: { "User-Agent": UA, Accept: "text/html" },
           timeoutMs: 25000,
         });
@@ -69,7 +69,7 @@ export const icmrGuidelinesCrawler: CrawlerDef = {
       await new Promise((r) => setTimeout(r, 700));
       if (url.endsWith(".pdf")) return null; // skip PDF direct links
 
-      const res = await safeFetch(url, {
+      const res = await siteFetch(url, {
         headers: { "User-Agent": UA, Accept: "text/html" },
         timeoutMs: 30000,
       });

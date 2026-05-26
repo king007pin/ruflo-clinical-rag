@@ -1,4 +1,4 @@
-import { safeFetch } from "@/lib/safe-fetch";
+import { siteFetch } from "@/lib/site-fetch";
 import type { CrawlerDef, CrawlerArticle } from "./types";
 
 const EUTILS = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils";
@@ -35,7 +35,7 @@ export const pubmedCentralCrawler: CrawlerDef = {
           retmode: "json",
           retmax: "200",
         });
-        const res = await safeFetch(`${EUTILS}/esearch.fcgi?${p}`, {
+        const res = await siteFetch(`${EUTILS}/esearch.fcgi?${p}`, {
           headers: { "User-Agent": UA },
           timeoutMs: 20000,
         });
@@ -66,7 +66,7 @@ export const pubmedCentralCrawler: CrawlerDef = {
         rettype: "abstract",
         retmode: "text",
       });
-      const res = await safeFetch(`${EUTILS}/efetch.fcgi?${p}`, {
+      const res = await siteFetch(`${EUTILS}/efetch.fcgi?${p}`, {
         headers: { "User-Agent": UA },
         timeoutMs: 25000,
       });

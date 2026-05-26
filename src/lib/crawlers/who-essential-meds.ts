@@ -1,4 +1,4 @@
-import { safeFetch } from "@/lib/safe-fetch";
+import { siteFetch } from "@/lib/site-fetch";
 import type { CrawlerDef, CrawlerArticle } from "./types";
 import { stripHtml } from "../utils/html";
 
@@ -66,7 +66,7 @@ export const whoEssentialMedsCrawler: CrawlerDef = {
     // Crawl WHO medicines pages for additional content
     try {
       await new Promise((r) => setTimeout(r, 600));
-      const res = await safeFetch(`${WHO_BASE}/tools/essential-medicines`, {
+      const res = await siteFetch(`${WHO_BASE}/tools/essential-medicines`, {
         headers: { "User-Agent": UA, Accept: "text/html" },
         timeoutMs: 25000,
       });
@@ -89,7 +89,7 @@ export const whoEssentialMedsCrawler: CrawlerDef = {
   async fetchArticle(url: string): Promise<CrawlerArticle | null> {
     try {
       await new Promise((r) => setTimeout(r, 600));
-      const res = await safeFetch(url, {
+      const res = await siteFetch(url, {
         headers: { "User-Agent": UA, Accept: "text/html" },
         timeoutMs: 30000,
       });

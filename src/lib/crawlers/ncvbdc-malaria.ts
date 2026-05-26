@@ -1,4 +1,4 @@
-import { safeFetch } from "@/lib/safe-fetch";
+import { siteFetch } from "@/lib/site-fetch";
 import type { CrawlerDef, CrawlerArticle } from "./types";
 import { textFromPdfBuffer } from "@/lib/pdf";
 
@@ -20,7 +20,7 @@ const INDEX_URLS = [
 
 async function extractPdfLinks(pageUrl: string): Promise<string[]> {
   try {
-    const res = await safeFetch(pageUrl, {
+    const res = await siteFetch(pageUrl, {
       headers: { "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)", Accept: "text/html" },
       timeoutMs: 20000,
     });
@@ -66,7 +66,7 @@ export const ncvbdcMalariaCrawler: CrawlerDef = {
   async fetchArticle(url: string): Promise<CrawlerArticle | null> {
     try {
       await new Promise((r) => setTimeout(r, DELAY_MS));
-      const res = await safeFetch(url, {
+      const res = await siteFetch(url, {
         headers: { "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)" },
         timeoutMs: 60000,
       });

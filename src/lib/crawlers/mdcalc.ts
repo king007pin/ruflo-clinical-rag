@@ -1,4 +1,4 @@
-import { safeFetch } from "@/lib/safe-fetch";
+import { siteFetch } from "@/lib/site-fetch";
 import type { CrawlerDef, CrawlerArticle } from "./types";
 import { stripHtml } from "../utils/html";
 
@@ -18,7 +18,7 @@ function extractTag(html: string, tag: string, attr?: string): string {
 async function fetchUrlsFromHomepage(): Promise<Set<string>> {
   const seen = new Set<string>();
   try {
-    const res = await safeFetch(`${MDCALC_BASE}/`, {
+    const res = await siteFetch(`${MDCALC_BASE}/`, {
       headers: {
         "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
         Accept: "text/html",
@@ -42,7 +42,7 @@ async function fetchUrlsFromHomepage(): Promise<Set<string>> {
 async function fetchUrlsFromSitemap(): Promise<Set<string>> {
   const seen = new Set<string>();
   try {
-    const res = await safeFetch(`${MDCALC_BASE}/sitemap.xml`, {
+    const res = await siteFetch(`${MDCALC_BASE}/sitemap.xml`, {
       headers: {
         "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
       },
@@ -83,7 +83,7 @@ export const mdcalcCrawler: CrawlerDef = {
   async fetchArticle(url: string): Promise<CrawlerArticle | null> {
     try {
       await new Promise((r) => setTimeout(r, DELAY_MS));
-      const res = await safeFetch(url, {
+      const res = await siteFetch(url, {
         headers: {
           "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
           Accept: "text/html",

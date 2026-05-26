@@ -1,4 +1,4 @@
-import { safeFetch } from "@/lib/safe-fetch";
+import { siteFetch } from "@/lib/site-fetch";
 import type { CrawlerDef, CrawlerArticle } from "./types";
 
 const DELAY_MS = 400;
@@ -57,7 +57,7 @@ export const dailymedCrawler: CrawlerDef = {
     for (let page = 1; page <= 50; page++) {
       try {
         await new Promise((r) => setTimeout(r, 200));
-        const res = await safeFetch(
+        const res = await siteFetch(
           `${API_BASE}/spls.json?pagesize=100&page=${page}`,
           {
             headers: { Accept: "application/json" },
@@ -93,7 +93,7 @@ export const dailymedCrawler: CrawlerDef = {
       const setid = setidMatch[1];
 
       // Fetch the JSON representation
-      const res = await safeFetch(`${API_BASE}/spls/${setid}.json`, {
+      const res = await siteFetch(`${API_BASE}/spls/${setid}.json`, {
         headers: { Accept: "application/json" },
         timeoutMs: 25000,
       });

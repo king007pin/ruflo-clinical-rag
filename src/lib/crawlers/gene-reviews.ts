@@ -1,4 +1,4 @@
-import { safeFetch } from "@/lib/safe-fetch";
+import { siteFetch } from "@/lib/site-fetch";
 import type { CrawlerDef, CrawlerArticle } from "./types";
 import { stripHtml } from "../utils/html";
 
@@ -26,7 +26,7 @@ export const geneReviewsCrawler: CrawlerDef = {
   delayMs: DELAY_MS,
 
   async fetchUrls(): Promise<string[]> {
-    const res = await safeFetch(GENE_REVIEWS_TOC, {
+    const res = await siteFetch(GENE_REVIEWS_TOC, {
       headers: {
         "User-Agent": "MediqRAG/1.0 (clinical research; NCBI Bookshelf; contact: admin@mediq.ai)",
         Accept: "text/html",
@@ -56,7 +56,7 @@ export const geneReviewsCrawler: CrawlerDef = {
   async fetchArticle(url: string): Promise<CrawlerArticle | null> {
     try {
       await new Promise((r) => setTimeout(r, DELAY_MS));
-      const res = await safeFetch(url, {
+      const res = await siteFetch(url, {
         headers: {
           "User-Agent": "MediqRAG/1.0 (clinical research; NCBI Bookshelf)",
           Accept: "text/html",

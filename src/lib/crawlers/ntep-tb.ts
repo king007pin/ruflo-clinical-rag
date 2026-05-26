@@ -1,4 +1,4 @@
-import { safeFetch } from "@/lib/safe-fetch";
+import { siteFetch } from "@/lib/site-fetch";
 import type { CrawlerDef, CrawlerArticle } from "./types";
 import { textFromPdfBuffer } from "@/lib/pdf";
 
@@ -14,7 +14,7 @@ async function parsePdfBuffer(arrayBuffer: ArrayBuffer): Promise<string> {
 
 async function extractPdfLinks(pageUrl: string): Promise<string[]> {
   try {
-    const res = await safeFetch(pageUrl, {
+    const res = await siteFetch(pageUrl, {
       headers: { "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)", Accept: "text/html" },
       timeoutMs: 20000,
     });
@@ -63,7 +63,7 @@ export const ntepTbCrawler: CrawlerDef = {
       await new Promise((r) => setTimeout(r, DELAY_MS));
       const isPdf = url.toLowerCase().endsWith(".pdf");
       if (isPdf) {
-        const res = await safeFetch(url, {
+        const res = await siteFetch(url, {
           headers: { "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)" },
           timeoutMs: 60000,
         });
@@ -73,7 +73,7 @@ export const ntepTbCrawler: CrawlerDef = {
         const filename = decodeURIComponent(url.split("/").pop() ?? "").replace(/\.pdf$/i, "").replace(/[-_]/g, " ").trim();
         return { url, title: filename || "NTEP TB Guideline", content: content.slice(0, 15_000), description: "India NTEP — National TB Elimination Programme official guideline" };
       }
-      const res = await safeFetch(url, {
+      const res = await siteFetch(url, {
         headers: { "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)", Accept: "text/html" },
         timeoutMs: 20000,
       });

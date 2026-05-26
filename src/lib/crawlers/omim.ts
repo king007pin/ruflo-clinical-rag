@@ -1,4 +1,4 @@
-import { safeFetch } from "@/lib/safe-fetch";
+import { siteFetch } from "@/lib/site-fetch";
 import type { CrawlerDef, CrawlerArticle } from "./types";
 
 const EUTILS = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils";
@@ -34,7 +34,7 @@ export const omimCrawler: CrawlerDef = {
           retmode: "json",
           retmax: "200",
         });
-        const res = await safeFetch(`${EUTILS}/esearch.fcgi?${p}`, {
+        const res = await siteFetch(`${EUTILS}/esearch.fcgi?${p}`, {
           headers: { "User-Agent": UA },
           timeoutMs: 20000,
         });
@@ -56,7 +56,7 @@ export const omimCrawler: CrawlerDef = {
   async fetchArticle(url: string): Promise<CrawlerArticle | null> {
     try {
       await new Promise((r) => setTimeout(r, 500));
-      const res = await safeFetch(url, {
+      const res = await siteFetch(url, {
         headers: { "User-Agent": UA },
         timeoutMs: 25000,
       });

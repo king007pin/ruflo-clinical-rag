@@ -1,4 +1,4 @@
-import { safeFetch } from "@/lib/safe-fetch";
+import { siteFetch } from "@/lib/site-fetch";
 import type { CrawlerDef, CrawlerArticle } from "./types";
 import { stripHtml } from "../utils/html";
 
@@ -37,7 +37,7 @@ export const orphadataCrawler: CrawlerDef = {
     let xml = "";
     for (const candidate of XML_CANDIDATES) {
       try {
-        const res = await safeFetch(candidate, {
+        const res = await siteFetch(candidate, {
           headers: {
             "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
             Accept: "application/xml, text/xml, */*",
@@ -58,7 +58,7 @@ export const orphadataCrawler: CrawlerDef = {
       for (let page = 1; page <= 50 && fallbackUrls.length < 3000; page++) {
         try {
           await new Promise((r) => setTimeout(r, 500));
-          const res = await safeFetch(
+          const res = await siteFetch(
             `${ORPHANET_BASE}/en/disease/search?name=&page=${page}`,
             {
               headers: {
@@ -105,7 +105,7 @@ export const orphadataCrawler: CrawlerDef = {
     try {
       await new Promise((r) => setTimeout(r, DELAY_MS));
 
-      const res = await safeFetch(url, {
+      const res = await siteFetch(url, {
         headers: {
           "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
           Accept: "text/html",
