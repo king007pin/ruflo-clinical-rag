@@ -1,4 +1,5 @@
 import { safeFetch } from "@/lib/safe-fetch";
+import { fetchHtml } from "@/lib/fetch-html";
 import type { CrawlerDef, CrawlerArticle } from "./types";
 import { stripHtml } from "../utils/html";
 import { textFromPdfBuffer } from "@/lib/pdf";
@@ -31,15 +32,12 @@ const INDEX_PAGES = [
 
 async function extractPdfLinksFromPage(pageUrl: string): Promise<string[]> {
   try {
-    const res = await safeFetch(pageUrl, {
-      headers: {
-        "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
-        Accept: "text/html",
-      },
+    const res = await fetchHtml(pageUrl, {
+      userAgent: "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
       timeoutMs: 20000,
     });
     if (!res.ok) return [];
-    const html = await res.text();
+    const html = res.html;
 
     const pdfs: string[] = [];
     const seen = new Set<string>();
@@ -127,16 +125,13 @@ export const indiaGovCrawler: CrawlerDef = {
           description: "India Government Clinical Guideline — MoHFW/ICMR/NTEP official protocol",
         };
       } else {
-        // HTML page
-        const res = await safeFetch(url, {
-          headers: {
-            "User-Agent": "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
-            Accept: "text/html",
-          },
+        // HTML page — scrapling-first via fetchHtml.
+        const res = await fetchHtml(url, {
+          userAgent: "MediqRAG/1.0 (clinical research; contact: admin@mediq.ai)",
           timeoutMs: 25000,
         });
         if (!res.ok) return null;
-        const html = await res.text();
+        const html = res.html;
 
         const h1 = extractTag(html, "h1");
         const titleTag = extractTag(html, "title");

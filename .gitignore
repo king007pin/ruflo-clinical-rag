@@ -32,3 +32,13 @@ npm-debug.log*
 # tsbuild incremental output
 *.tsbuildinfo
 
+# local agent/vector stores
+*.rvf
+*.rvf.lock
+ruvector.db
+
+# python sidecar bytecode
+__pycache__/
+*.pyc
+sidecar/.venv/
+

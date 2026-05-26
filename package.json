@@ -16,7 +16,9 @@
     "setup-secrets": "node scripts/setup-secrets.mjs",
     "db:add-source-feeds-unique": "node scripts/add-source-feeds-unique.mjs",
     "db:migrate-corpus": "node scripts/migrate-corpus-to-rivestack.mjs",
-    "db:create-hnsw-index": "node scripts/create-hnsw-index.mjs"
+    "db:create-hnsw-index": "node scripts/create-hnsw-index.mjs",
+    "scrapling:sidecar": "~/scrapling-env/bin/uvicorn sidecar.scrapling_sidecar:app --host 127.0.0.1 --port 8003",
+    "scrapling:health": "curl -s http://127.0.0.1:8003/health"
   },
   "dependencies": {
     "@extractus/article-extractor": "^8.1.0",

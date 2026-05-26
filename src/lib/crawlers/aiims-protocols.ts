@@ -1,4 +1,5 @@
 import { safeFetch } from "@/lib/safe-fetch";
+import { fetchHtml } from "@/lib/fetch-html";
 import type { CrawlerDef, CrawlerArticle } from "./types";
 import { stripHtml } from "../utils/html";
 import { textFromPdfBuffer } from "@/lib/pdf";
@@ -37,12 +38,9 @@ export const aiimProtocolsCrawler: CrawlerDef = {
     for (const seedUrl of seedPages) {
       try {
         await new Promise((r) => setTimeout(r, 800));
-        const res = await safeFetch(seedUrl, {
-          headers: { "User-Agent": UA, Accept: "text/html" },
-          timeoutMs: 25000,
-        });
+        const res = await fetchHtml(seedUrl, { userAgent: UA, timeoutMs: 25000 });
         if (!res.ok) continue;
-        const html = await res.text();
+        const html = res.html;
 
         for (const match of html.matchAll(/href="((?:https?:\/\/www\.aiims\.edu)?\/[^"#?]+)"/gi)) {
           const raw = match[1];
@@ -80,22 +78,20 @@ export const aiimProtocolsCrawler: CrawlerDef = {
 
       const isDirectPdf = url.toLowerCase().endsWith(".pdf");
 
-      const res = await safeFetch(url, {
-        headers: { "User-Agent": UA },
-        timeoutMs: 30000,
-      });
-      if (!res.ok) return null;
+      // PDFs: must stay on safeFetch — binary download path, scrapling
+      // sidecar returns HTML string only.
+      if (isDirectPdf) {
+        const res = await safeFetch(url, {
+          headers: { "User-Agent": UA },
+          timeoutMs: 30000,
+        });
+        if (!res.ok) return null;
 
-      const contentType = res.headers.get("content-type")?.toLowerCase() ?? "";
-      const isPdfResponse = contentType.includes("application/pdf") || isDirectPdf;
-
-      if (isPdfResponse) {
         const arrayBuffer = await res.arrayBuffer();
         const rawContent = await parsePdfBuffer(arrayBuffer);
         const content = sanitizeTextForPostgres(rawContent);
         if (content.length < 150) return null;
 
-        // Derive clean title from filename or URL
         const filename = decodeURIComponent(url.split("/").pop() ?? "")
           .replace(/\.pdf$/i, "")
           .replace(/[-_]/g, " ")
@@ -110,9 +106,11 @@ export const aiimProtocolsCrawler: CrawlerDef = {
         };
       }
 
-      // Handle as HTML
-      const html = await res.text();
-      
+      // HTML pages: scrapling-first via fetchHtml.
+      const htmlRes = await fetchHtml(url, { userAgent: UA, timeoutMs: 30000 });
+      if (!htmlRes.ok) return null;
+      const html = htmlRes.html;
+
       // Secondary check: Did we get a mislabeled PDF (e.g. starts with %PDF)?
       if (html.startsWith("%PDF-")) {
         // Convert the string representation of PDF to Buffer and parse it
