@@ -57,6 +57,8 @@ vi.mock("@/db", () => {
       }),
     },
     corpusRetry: vi.fn(async (fn) => fn()),
+    pool: { connect: vi.fn() },
+    poolCorpus: { connect: vi.fn() },
   };
 });
 
@@ -69,6 +71,9 @@ vi.mock("@/lib/rag", async () => {
     embedBatch: vi.fn().mockResolvedValue([[0.1, 0.2, 0.3]]),
     searchByVector: vi.fn().mockResolvedValue([
       { sourceId: 1, sourceTitle: "Test Article", sourceType: "pdf", chunk: "My clinical evidence text about cardiac pain.", score: 0.9 }
+    ]),
+    searchByVectors: vi.fn().mockResolvedValue([
+      [{ sourceId: 1, sourceTitle: "Test Article", sourceType: "pdf", chunk: "My clinical evidence text about cardiac pain.", score: 0.9 }],
     ]),
     searchPubMedLive: vi.fn().mockResolvedValue([]),
     assembleContext: vi.fn().mockReturnValue("Some assembled context"),

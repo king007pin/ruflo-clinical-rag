@@ -13,16 +13,16 @@ const globalForDb = globalThis as typeof globalThis & {
   __mediqCorpusPool?: Pool;
 };
 
-// Tuned for a low per-role connection cap with no external pooler under
-// Vercel serverless. Fluid Compute reuses warm instances, so this
-// module-scoped singleton pool multiplexes many requests over ONE
-// connection; cold-start bursts are absorbed by corpusRetry backoff.
+// Primary pool multiplexes up to 5 connections per warm Fluid Compute
+// instance — Neon's free-tier per-role cap is much higher than this, and
+// reusing warm instances keeps the footprint bounded. poolCorpus stays at
+// max: 1 because Rivestack has a hard per-role cap with no pooler.
 export const pool =
   globalForDb.__arenaNextJsPostgresqlPool ??
   new Pool({
     connectionString: databaseUrl,
-    max: 1,
-    idleTimeoutMillis: 1_500,
+    max: 5,
+    idleTimeoutMillis: 30_000,
     connectionTimeoutMillis: 8_000,
     allowExitOnIdle: true,
     keepAlive: true,

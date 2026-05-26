@@ -94,51 +94,34 @@ export async function getSimilarPastCases(
   queryEmbedding: number[],
   limit = 2,
 ): Promise<Array<{ query: string; consensusSnippet: string | null; sessionId: number }>> {
-  const recent = await db
-    .select({
-      id: querySessions.id,
-      query: querySessions.query,
-      queryEmbedding: querySessions.queryEmbedding,
-      consensusSnippet: querySessions.consensusSnippet,
-    })
-    .from(querySessions)
-    .where(eq(querySessions.hadGap, false))
-    .orderBy(desc(querySessions.createdAt))
-    .limit(200);
+  const vecStr = `[${queryEmbedding.join(",")}]`;
 
-  if (!recent.length) return [];
+  const result = await db.execute(sql`
+    SELECT id, query, consensus_snippet,
+           1 - (query_embedding <=> ${vecStr}::vector) AS score
+    FROM query_sessions
+    WHERE had_gap = false
+      AND consensus_snippet IS NOT NULL
+      AND query_embedding IS NOT NULL
+      AND 1 - (query_embedding <=> ${vecStr}::vector) >= 0.80
+    ORDER BY query_embedding <=> ${vecStr}::vector
+    LIMIT ${limit}
+  `);
 
-  function cosineSim(a: number[], b: number[]): number {
-    if (a.length !== b.length || !a.length) return 0;
-    let dot = 0, na = 0, nb = 0;
-    for (let i = 0; i < a.length; i++) {
-      dot += a[i] * b[i];
-      na += a[i] * a[i];
-      nb += b[i] * b[i];
-    }
-    const denom = Math.sqrt(na) * Math.sqrt(nb);
-    return denom === 0 ? 0 : dot / denom;
-  }
+  const rows = (result as unknown as { rows: Array<{ id: number; query: string; consensus_snippet: string | null; score: number }> }).rows
+    ?? (result as unknown as Array<{ id: number; query: string; consensus_snippet: string | null; score: number }>);
 
-  const scored = recent
-    .filter((r) => r.queryEmbedding && r.consensusSnippet)
-    .map((r) => ({
-      ...r,
-      score: cosineSim(queryEmbedding, r.queryEmbedding as number[]),
-    }))
-    .filter((r) => r.score > 0.80)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit);
+  if (!rows?.length) return [];
 
   // Strip obvious PHI from cross-session memory before it gets re-injected
   // into another patient's LLM context. (W33 — cross-patient leak vector.)
   // This is best-effort: free-text identifiers may still slip through. Real
   // safety requires either per-row PHI tagging at ingest time or storing
   // structured-only past-case summaries.
-  return scored.map((r) => ({
+  return rows.map((r) => ({
     query: scrubPhi(r.query),
-    consensusSnippet: r.consensusSnippet ? scrubPhi(r.consensusSnippet) : null,
-    sessionId: r.id,
+    consensusSnippet: r.consensus_snippet ? scrubPhi(r.consensus_snippet) : null,
+    sessionId: Number(r.id),
   }));
 }
 

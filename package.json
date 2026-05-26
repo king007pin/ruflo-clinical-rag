@@ -14,6 +14,7 @@
     "db:setup": "node scripts/enable-citext.mjs && npx drizzle-kit push",
     "db:seed-admin": "node scripts/seed-admin.mjs",
     "setup-secrets": "node scripts/setup-secrets.mjs",
+    "db:add-perf-indexes": "node scripts/add-perf-indexes.mjs",
     "db:add-source-feeds-unique": "node scripts/add-source-feeds-unique.mjs",
     "db:migrate-corpus": "node scripts/migrate-corpus-to-rivestack.mjs",
     "db:create-hnsw-index": "node scripts/create-hnsw-index.mjs",

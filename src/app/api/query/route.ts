@@ -1,4 +1,4 @@
-import { assembleContext, embedBatch, embedText, searchByVector, rewriteQueryForRetrieval, searchPubMedLive, type Match } from "@/lib/rag";
+import { assembleContext, embedBatch, embedText, searchByVectors, rewriteQueryForRetrieval, searchPubMedLive, type Match } from "@/lib/rag";
 import { getSimilarPastCases, logSession } from "@/lib/session-learning";
 import { runManagedSwarm, classifyMedical } from "@/lib/manager";
 import { precomputeSwarmRouting, verifyAndStripOrphanCitations } from "@/lib/swarm";
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
 
   // Parallelize local vector search with real-time PubMed E-utilities search for absolute 2026 currency
   const [allResults, liveMatches] = await Promise.all([
-    Promise.all(allEmbeddings.map((emb) => searchByVector(emb, topK))),
+    searchByVectors(allEmbeddings, topK),
     searchPubMedLive(question, 4).catch(() => []),
   ]);
 

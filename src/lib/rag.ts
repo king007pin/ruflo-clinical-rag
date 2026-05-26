@@ -273,29 +273,41 @@ type PgVectorRow = {
   distance: number;
 };
 
-export async function searchByVector(queryEmbedding: number[], topK = 10): Promise<Match[]> {
-  const vecStr = `[${queryEmbedding.join(",")}]`;
+export async function searchByVectors(queryEmbeddings: number[][], topK = 10): Promise<Match[][]> {
+  if (queryEmbeddings.length === 0) return [];
+  const vecStrs = queryEmbeddings.map((emb) => `[${emb.join(",")}]`);
   // W12: hnsw.ef_search controls ANN recall/latency tradeoff. Default = 40.
   // 100 gives ~99% recall at ~1.5ms median on ~1M rows. Must be ≥ topK.
   // SET LOCAL scopes to this txn only — pool reuse is safe.
-  const { rows } = await corpusRetry(() => {
+  // T1.x: batch N embeddings through ONE client + ONE txn + ONE SET LOCAL;
+  // SELECTs fan out via Promise.all but results are zipped by input index.
+  const resultRows = await corpusRetry(() => {
     return poolCorpus.connect().then(async (client) => {
       try {
         await client.query("BEGIN");
         await client.query("SET LOCAL hnsw.ef_search = 100");
-        const res = await client.query<PgVectorRow>(
-          `SELECT e.source_id, e.chunk, e.position,
-                  s.title AS source_title, s.type AS source_type, s.url AS source_url,
-                  (e.embedding <=> $1::vector) AS distance
-           FROM embeddings e
-           JOIN sources s ON s.id = e.source_id
-           WHERE e.embedding IS NOT NULL AND e.chunk IS NOT NULL
-           ORDER BY e.embedding <=> $1::vector
-           LIMIT $2`,
-          [vecStr, topK],
-        );
+        // pg.Client serializes queries on the wire; awaiting sequentially
+        // avoids the deprecated "client.query while executing" warning and
+        // matches what Promise.all was already doing at the protocol level.
+        // The savings come from one BEGIN/SET LOCAL/COMMIT for the whole batch,
+        // not from parallel queries.
+        const results: { rows: PgVectorRow[] }[] = [];
+        for (const vecStr of vecStrs) {
+          const r = await client.query<PgVectorRow>(
+            `SELECT e.source_id, e.chunk, e.position,
+                    s.title AS source_title, s.type AS source_type, s.url AS source_url,
+                    (e.embedding <=> $1::vector) AS distance
+             FROM embeddings e
+             JOIN sources s ON s.id = e.source_id
+             WHERE e.embedding IS NOT NULL AND e.chunk IS NOT NULL
+             ORDER BY e.embedding <=> $1::vector
+             LIMIT $2`,
+            [vecStr, topK],
+          );
+          results.push(r);
+        }
         await client.query("COMMIT");
-        return res;
+        return results.map((res) => res.rows);
       } catch (err) {
         await client.query("ROLLBACK").catch(() => {});
         throw err;
@@ -304,15 +316,21 @@ export async function searchByVector(queryEmbedding: number[], topK = 10): Promi
       }
     });
   });
-  return rows.map((r) => ({
-    chunk: r.chunk,
-    sourceId: r.source_id,
-    sourceTitle: r.source_title,
-    sourceType: r.source_type,
-    sourceUrl: r.source_url,
-    position: r.position,
-    score: 1 - r.distance,
-  }));
+  return resultRows.map((rows) =>
+    rows.map((r) => ({
+      chunk: r.chunk,
+      sourceId: r.source_id,
+      sourceTitle: r.source_title,
+      sourceType: r.source_type,
+      sourceUrl: r.source_url,
+      position: r.position,
+      score: 1 - r.distance,
+    })),
+  );
+}
+
+export async function searchByVector(queryEmbedding: number[], topK = 10): Promise<Match[]> {
+  return searchByVectors([queryEmbedding], topK).then((r) => r[0] ?? []);
 }
 
 export async function rewriteQueryForRetrieval(question: string): Promise<string[]> {

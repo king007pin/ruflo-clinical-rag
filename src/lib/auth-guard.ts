@@ -9,6 +9,42 @@ import { cookies } from "next/headers";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { LRUCache } from "lru-cache";
+
+type CachedUserRow = typeof users.$inferSelect;
+
+const USER_CACHE_MAX_ENTRIES = 1000;
+const USER_CACHE_TTL_MS = 30_000;
+
+const userCacheGlobal = globalThis as typeof globalThis & {
+  __mediqUserRowCache?: LRUCache<string, CachedUserRow>;
+};
+
+function userRowCache(): LRUCache<string, CachedUserRow> {
+  if (!userCacheGlobal.__mediqUserRowCache) {
+    userCacheGlobal.__mediqUserRowCache = new LRUCache<string, CachedUserRow>({
+      max: USER_CACHE_MAX_ENTRIES,
+      ttl: USER_CACHE_TTL_MS,
+    });
+  }
+  return userCacheGlobal.__mediqUserRowCache;
+}
+
+// Returns the same row db.select() would. Suspension (active=false) propagates
+// within USER_CACHE_TTL_MS; callers must still enforce active/role themselves.
+async function getCachedUserById(userId: string): Promise<CachedUserRow | null> {
+  const cache = userRowCache();
+  const hit = cache.get(userId);
+  if (hit) return hit;
+  const rows = await db.select().from(users).where(eq(users.id, userId));
+  const row = rows[0] ?? null;
+  if (row) cache.set(userId, row);
+  return row;
+}
+
+function invalidateUserCache(userId: string): void {
+  userRowCache().delete(userId);
+}
 
 /**
  * Constant-time string compare that survives length mismatches without throwing.
@@ -84,6 +120,7 @@ export async function requireAuth(
       const currentUaHash = await hashClientFingerprint(ua);
       if (!currentUaHash || currentUaHash !== session.uaHash) {
         await revokeSession(session.id);
+        invalidateUserCache(verified.userId);
         void logAudit({
           actorId: verified.userId,
           action: "session.verify.fail",
@@ -249,8 +286,7 @@ export async function getSessionUser(): Promise<{
       return null;
     }
 
-    const rows = await db.select().from(users).where(eq(users.id, verified.userId));
-    const user = rows[0] ?? null;
+    const user = await getCachedUserById(verified.userId);
     if (!user || !user.active) {
       return null;
     }
