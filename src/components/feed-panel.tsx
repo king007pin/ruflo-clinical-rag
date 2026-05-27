@@ -229,28 +229,57 @@ async function postBatchWithRetry(
   shouldStop: () => boolean,
   maxAttempts = 4,
 ): Promise<BatchResult> {
+  // Cancellable sleep: resolves early when shouldStop flips true. Polls every 250ms.
+  const cancellableSleep = async (ms: number): Promise<boolean> => {
+    const start = Date.now();
+    while (Date.now() - start < ms) {
+      if (shouldStop()) return true;
+      await sleep(Math.min(250, ms - (Date.now() - start)));
+    }
+    return shouldStop();
+  };
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     if (shouldStop()) return { ...errorResult("Stopped", "0 / 0"), done: true };
+    const ctrl = new AbortController();
+    const watchdog = setInterval(() => {
+      if (shouldStop()) ctrl.abort();
+    }, 250);
     let res: Response;
     try {
+      if (shouldStop()) {
+        ctrl.abort();
+        return { ...errorResult("Stopped", "0 / 0"), done: true };
+      }
       res = await fetch(apiBase, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
+        signal: ctrl.signal,
       });
+      if (shouldStop()) {
+        ctrl.abort();
+        return { ...errorResult("Stopped", "0 / 0"), done: true };
+      }
     } catch (err) {
+      const e = err as Error;
+      // AbortController fired from shouldStop — exit cleanly so outer loop stops.
+      if (e.name === "AbortError" || ctrl.signal.aborted) {
+        return { ...errorResult("Stopped", "0 / 0"), done: true };
+      }
       // Network failure (offline, dev server restart mid-batch). Retry once with
       // a short backoff, then surface — don't crash the calling component.
-      if (attempt === maxAttempts) return errorResult(`Network error — ${(err as Error).message}`);
-      await sleep(1000);
+      if (attempt === maxAttempts) return errorResult(`Network error — ${e.message}`);
+      if (await cancellableSleep(1000)) return { ...errorResult("Stopped", "0 / 0"), done: true };
       continue;
+    } finally {
+      clearInterval(watchdog);
     }
-    if (res.status === 429) {
+    if (res.status === 429 || res.status === 503) {
       const retryAfterHdr = Number(res.headers.get("Retry-After"));
       const fallback = Math.min(30, 2 ** attempt); // 2s, 4s, 8s, 16s, cap 30s
       const waitSec = Number.isFinite(retryAfterHdr) && retryAfterHdr > 0 ? retryAfterHdr : fallback;
       if (attempt === maxAttempts) return errorResult(`Rate-limited — please retry in ${waitSec}s`, "rate-limited");
-      await sleep(waitSec * 1000);
+      if (await cancellableSleep(waitSec * 1000)) return { ...errorResult("Stopped", "0 / 0"), done: true };
       continue;
     }
     try {
