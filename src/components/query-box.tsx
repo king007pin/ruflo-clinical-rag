@@ -240,30 +240,40 @@ async function generateClinicalPDF(reportText: string, query: string): Promise<B
       const totalH = hdrH + dataHs.reduce((s, h) => s + h, 0);
       // Don't checkY the whole table — draw row-by-row with per-row checkY
       y += 2;
-      const tableTopY = y;
-      let tableH = 0;
 
-      // Header row
-      checkY(hdrH);
-      fc(TEAL); doc.rect(ML, y, CW, hdrH, "F");
-      doc.setFont("times", "bold"); doc.setFontSize(CELL_FS); tc(WHITE);
-      hdrWrapped.forEach((wlines, ci) => {
-        wlines.forEach((wl, li) => {
-          doc.text(wl, ML + ci * colW + CELL_HPad, y + CELL_TPAD + li * CELL_LINE_H);
+      const drawTableHeader = (): number => {
+        fc(TEAL); doc.rect(ML, y, CW, hdrH, "F");
+        doc.setFont("times", "bold"); doc.setFontSize(CELL_FS); tc(WHITE);
+        hdrWrapped.forEach((wlines, ci) => {
+          wlines.forEach((wl, li) => {
+            doc.text(wl, ML + ci * colW + CELL_HPad, y + CELL_TPAD + li * CELL_LINE_H);
+          });
         });
-      });
-      // Vertical column dividers in header
-      for (let ci = 1; ci < nCols; ci++) {
-        dc(WHITE); doc.setLineWidth(0.2);
-        doc.line(ML + ci * colW, y, ML + ci * colW, y + hdrH);
-      }
-      tableH += hdrH;
-      y += hdrH;
+        for (let ci = 1; ci < nCols; ci++) {
+          dc(WHITE); doc.setLineWidth(0.2);
+          doc.line(ML + ci * colW, y, ML + ci * colW, y + hdrH);
+        }
+        return hdrH;
+      };
+
+      // Keep header + first data row together on the same page
+      const firstRowH = dataHs[0] ?? 0;
+      if (y + hdrH + firstRowH > PH - 25) newPage();
+
+      let segTopY = y;
+      y += drawTableHeader();
 
       // Data rows
       dataWrapped.forEach((rowWrapped, ri) => {
         const rH = dataHs[ri];
-        checkY(rH);
+        if (y + rH > PH - 25) {
+          // Close current segment's outer border on the page being left
+          dc(TEAL); doc.setLineWidth(0.4);
+          doc.rect(ML, segTopY, CW, y - segTopY, "S");
+          newPage();
+          segTopY = y;
+          y += drawTableHeader();
+        }
         if (ri % 2 === 0) { fc(TEAL_BG); doc.rect(ML, y, CW, rH, "F"); }
         doc.setFont("times", "normal"); doc.setFontSize(CELL_FS);
         rowWrapped.forEach((wlines, ci) => {
@@ -278,13 +288,12 @@ async function generateClinicalPDF(reportText: string, query: string): Promise<B
         for (let ci = 1; ci < nCols; ci++) {
           doc.line(ML + ci * colW, y, ML + ci * colW, y + rH);
         }
-        tableH += rH;
         y += rH;
       });
 
-      // Outer border
+      // Close final segment's outer border
       dc(TEAL); doc.setLineWidth(0.4);
-      doc.rect(ML, tableTopY, CW, tableH, "S");
+      doc.rect(ML, segTopY, CW, y - segTopY, "S");
       void totalH; // suppress unused warning
       y += 3;
       continue;
