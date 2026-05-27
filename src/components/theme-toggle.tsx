@@ -18,7 +18,13 @@ function subscribe(cb: () => void): () => void {
 
 function getSnapshot(): Theme {
   const stored = localStorage.getItem(STORAGE_KEY);
-  return stored === "dark" ? "dark" : "light";
+  if (stored === "dark" || stored === "light") return stored;
+  // No saved choice — match OS preference so first-time visitors see the
+  // theme they expect. Aligns with the inline script in layout.tsx.
+  if (typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches) {
+    return "dark";
+  }
+  return "light";
 }
 
 function getServerSnapshot(): Theme {

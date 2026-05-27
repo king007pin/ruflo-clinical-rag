@@ -20,9 +20,17 @@ export const metadata: Metadata = {
   },
 };
 
+// Sync the `dark` class on <html> before first paint to avoid FOUC and to
+// keep the toggle's localStorage state in agreement with the rendered theme.
+// Honors (in order): user's saved preference, OS `prefers-color-scheme`, light.
+const themeInitScript = `(function(){try{var s=localStorage.getItem('mediq-theme');var t=(s==='dark'||s==='light')?s:((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.classList.toggle('dark',t==='dark');}catch(e){}})();`;
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body className="min-h-screen antialiased" style={{ background: "var(--bg)", color: "var(--text)" }}>
         {children}
         {process.env.NODE_ENV === "development" && <Agentation />}
