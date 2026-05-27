@@ -26,25 +26,32 @@ export const NVIDIA_SWARM_MODELS = [
 
 export type NvidiaModel = (typeof NVIDIA_SWARM_MODELS)[number];
 
-async function nvidiaFetch(path: string, body: unknown, timeoutMs = 90_000): Promise<unknown> {
+async function nvidiaFetch(path: string, body: unknown, timeoutMs = 32_000): Promise<unknown> {
   const apiKey = process.env.NVIDIA_API_KEY;
   if (!apiKey) throw new Error("NVIDIA_API_KEY not configured");
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const res = await fetch(
-      `${NVIDIA_BASE}${path}`,
-      nvidiaFetchInit({
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify(body),
-        signal: ctrl.signal,
-      }) as RequestInit,
-    );
-    if (!res.ok) {
+    const start = Date.now();
+    let attempt = 0;
+    let res: Response;
+    const init = nvidiaFetchInit({
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(body),
+      signal: ctrl.signal,
+    }) as RequestInit;
+    while (true) {
+      res = await fetch(`${NVIDIA_BASE}${path}`, init);
+      if (res.ok) break;
+      if (res.status >= 500 && res.status < 600 && attempt < 1 && (Date.now() - start + 500) < timeoutMs) {
+        attempt++;
+        await new Promise((r) => setTimeout(r, 500));
+        continue;
+      }
       const text = await res.text().catch(() => "");
       throw new Error(`NVIDIA API ${path} failed (${res.status}): ${text.slice(0, 200)}`);
     }
