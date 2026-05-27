@@ -342,6 +342,9 @@ function StatpearlsCrawl() {
   const [totalUrls, setTotalUrls] = useState(0);
   const [currentOffset, setCurrentOffset] = useState(0);
   const [msg, setMsg] = useState<string | null>(null);
+  // Sticky completion flag — see GenericCrawlCard for rationale (server
+  // resets offset to 0 on `done`).
+  const [justFinished, setJustFinished] = useState(false);
   const stopRef = useRef(false);
 
   const loadStatus = useCallback(async () => {
@@ -358,6 +361,7 @@ function StatpearlsCrawl() {
   async function startCrawl() {
     stopRef.current = false;
     setCrawling(true);
+    setJustFinished(false);
     setMsg("Crawling StatPearls…");
 
     let sessionTotal = 0;
@@ -378,6 +382,7 @@ function StatpearlsCrawl() {
       setMsg(`${result.progress} articles processed · ${sessionTotal} ingested this session`);
       if (result.done) {
         setMsg(`Crawl complete — all ${result.totalUrls} StatPearls articles ingested! Auto-refreshes weekly.`);
+        setJustFinished(true);
         break;
       }
     }
@@ -392,13 +397,14 @@ function StatpearlsCrawl() {
       body: JSON.stringify({ reset: true }),
     });
     setCurrentOffset(0);
+    setJustFinished(false);
     setMsg("Crawl progress reset to beginning.");
     await loadStatus();
   }
 
   const pct = totalUrls > 0 ? Math.round((currentOffset / totalUrls) * 100) : 0;
   const totalIngested = (status?.lastFetchCount ?? 0);
-  const completed = totalUrls > 0 && currentOffset >= totalUrls && !crawling;
+  const completed = justFinished && !crawling;
   const { phase: barPhase, opacity: barOpacity } = useCompletionFade(completed);
 
   return (
@@ -521,6 +527,11 @@ function GenericCrawlCard({ crawler }: { crawler: CrawlerMeta }) {
   const [currentOffset, setCurrentOffset] = useState(0);
   const [sessionIngested, setSessionIngested] = useState(0);
   const [msg, setMsg] = useState<string | null>(null);
+  // Sticky flag set when the route reports `done:true`. Survives the
+  // server-side offset reset (route returns `nextOffset = 0` after done),
+  // which would otherwise make `currentOffset >= totalUrls` false and
+  // suppress the completion badge.
+  const [justFinished, setJustFinished] = useState(false);
   const stopRef = useRef(false);
 
   const apiBase = `/api/admin/crawl/${crawler.id}`;
@@ -543,6 +554,7 @@ function GenericCrawlCard({ crawler }: { crawler: CrawlerMeta }) {
   async function startCrawl() {
     stopRef.current = false;
     setCrawling(true);
+    setJustFinished(false);
     setSessionIngested(0);
     setMsg(`Crawling ${crawler.name}…`);
 
@@ -562,6 +574,7 @@ function GenericCrawlCard({ crawler }: { crawler: CrawlerMeta }) {
       setMsg(`${result.progress} processed · ${sessionTotal} ingested this session`);
       if (result.done) {
         setMsg(`Crawl complete — all ${result.totalUrls} articles ingested!`);
+        setJustFinished(true);
         break;
       }
     }
@@ -577,6 +590,7 @@ function GenericCrawlCard({ crawler }: { crawler: CrawlerMeta }) {
     });
     setCurrentOffset(0);
     setSessionIngested(0);
+    setJustFinished(false);
     setMsg("Crawl progress reset to beginning.");
     await loadStatus();
   }
@@ -584,7 +598,7 @@ function GenericCrawlCard({ crawler }: { crawler: CrawlerMeta }) {
   const pct = totalUrls > 0 ? Math.round((currentOffset / totalUrls) * 100) : 0;
   const totalIngested = status?.lastFetchCount ?? 0;
   const catStyle = categoryStyle(crawler.category);
-  const completed = totalUrls > 0 && currentOffset >= totalUrls && !crawling;
+  const completed = justFinished && !crawling;
   const { phase: barPhase, opacity: barOpacity } = useCompletionFade(completed);
 
   return (
