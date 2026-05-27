@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE } from "@/lib/auth-constants";
-import { rateLimit, RL_AUTH } from "@/lib/rate-limit";
+import { rateLimit, RL_AUTH, RateLimitConfig } from "@/lib/rate-limit";
 import { hashPassword, verifyPassword } from "@/lib/auth/passwords";
 import { signSessionToken } from "@/lib/auth/tokens";
 import { createSession, revokeSession } from "@/lib/auth/sessions";
@@ -10,6 +10,13 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { randomBytes, timingSafeEqual } from "crypto";
+
+// Tighter gate on the bypass-only (no-email) path: 5 attempts per 5 min per IP.
+const RL_AUTH_BYPASS: RateLimitConfig = {
+  windowMs: 300_000,
+  max: 5,
+  bucket: "auth-bypass",
+};
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs"; // Argon2 native bindings need Node runtime
@@ -80,20 +87,35 @@ export async function POST(req: NextRequest) {
     user = foundUser;
   } else {
     // 2. Dual-stack legacy flow: Single Password login
+    // Strict per-IP gate on this path before the secret comparison.
+    const bypassRl = rateLimit(req, RL_AUTH_BYPASS);
+    if (bypassRl) {
+      bypassRl.headers.set("Retry-After", "300");
+      return bypassRl;
+    }
+
     const appPassword = process.env.APP_PASSWORD;
     if (!appPassword) {
       return NextResponse.json({ error: "Auth not configured" }, { status: 500 });
     }
 
-    if (!safeEqual(password, appPassword)) {
-      const fp = extractClientFingerprint(req);
-      void logAudit({
-        action: "login.fail",
+    const fp = extractClientFingerprint(req);
+    const bypassMatch = safeEqual(password, appPassword);
+
+    if (bypassMatch) {
+      await logAudit({
+        action: "auth.legacy_bypass.success",
+        target: "legacy-admin",
+        success: true,
+        ...fp,
+      }).catch((e) => console.error("[audit] legacy_bypass.success log failed", e));
+    } else {
+      await logAudit({
+        action: "auth.legacy_bypass.failure",
         target: "legacy-admin",
         success: false,
         ...fp,
-        meta: { reason: "bad_password" },
-      });
+      }).catch((e) => console.error("[audit] legacy_bypass.failure log failed", e));
       return NextResponse.json({ error: "Invalid password" }, { status: 401 });
     }
 
