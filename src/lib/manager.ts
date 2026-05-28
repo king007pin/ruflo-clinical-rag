@@ -32,8 +32,8 @@ function scoreComplexity(query: string, isEmergency: boolean): Complexity {
 }
 
 const SWARM_SIZE_MAP: Record<Complexity, number> = {
-  simple:    2,
-  moderate:  3,
+  simple:    3,
+  moderate:  4,
   complex:   5,
   emergency: 10,
 };

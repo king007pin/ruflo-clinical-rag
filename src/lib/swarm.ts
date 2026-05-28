@@ -322,6 +322,8 @@ export async function runSwarm({
   if (LATENCY_V2) {
     const quorum = Math.max(1, Math.ceil(selected.length * QUORUM_RATIO));
     await awaitWithQuorum(round1Promises, quorum, ROUND1_WALLCLOCK_MS);
+    // Wait for all remaining background agents so round1Map is fully populated before Round 2
+    await Promise.allSettled(round1Promises);
   } else {
     await Promise.all(round1Promises);
   }
