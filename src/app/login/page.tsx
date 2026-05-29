@@ -3,6 +3,8 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { type FormEvent, Suspense, useState, useCallback } from "react";
 import Image from "next/image";
+import Link from "next/link";
+import ThemeToggle from "@/components/theme-toggle";
 
 type Mode = "login" | "signup";
 
@@ -258,9 +260,30 @@ function LoginForm() {
     }
   }
 
+  // Floating utility bar — admin entry + theme toggle, anchored top-right
+  // of the viewport on every state of the page.
+  const topBar = (
+    <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
+      <Link
+        href="/admin/users"
+        className="rounded-full border px-3 py-2 text-xs font-semibold hover:opacity-80 transition-opacity"
+        style={{
+          borderColor: "var(--card-border)",
+          color: "var(--text)",
+          backgroundColor: "var(--card)",
+        }}
+      >
+        Admin sign in
+      </Link>
+      <ThemeToggle />
+    </div>
+  );
+
   // ── Post-signup pending approval screen ──────────────────────────────────────
   if (signedUp) {
     return (
+      <>
+      {topBar}
       <main
         className="flex min-h-screen items-center justify-center px-4 relative overflow-hidden"
         style={{
@@ -308,6 +331,7 @@ function LoginForm() {
           </button>
         </div>
       </main>
+      </>
     );
   }
 
@@ -327,6 +351,8 @@ function LoginForm() {
     ) : null;
 
   return (
+    <>
+    {topBar}
     <main
       className="flex min-h-screen items-center justify-center px-4 relative overflow-hidden"
       style={{
@@ -766,6 +792,7 @@ function LoginForm() {
         </p>
       </div>
     </main>
+    </>
   );
 }
 
