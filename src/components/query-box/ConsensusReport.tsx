@@ -170,7 +170,7 @@ export function ConsensusReport({
         background: "linear-gradient(135deg, rgba(74,222,128,0.04), var(--card))",
         boxShadow: "0 0 24px rgba(74,222,128,0.08)",
       }}>
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex flex-wrap items-center gap-2 mb-4">
         <span className="inline-block h-2.5 w-2.5 rounded-full"
           style={{ backgroundColor: "#4ade80", boxShadow: "0 0 6px #4ade80" }} />
         <span className="text-xs font-bold uppercase tracking-wider" style={{ color: "#4ade80" }}>

@@ -55,8 +55,10 @@ button {
   font-size: max(1rem, 16px);
 }
 
-/* override for purely display text inside buttons/labels */
-.text-xs, .text-sm { font-size: revert; }
+/* Revert display-only text sizes — explicitly exclude form inputs/textareas/selects
+   so they keep ≥16px and don't trigger iOS Safari auto-zoom on focus */
+:not(input):not(textarea):not(select).text-xs,
+:not(input):not(textarea):not(select).text-sm { font-size: revert; }
 
 ::selection {
   background: color-mix(in srgb, var(--accent) 30%, transparent);

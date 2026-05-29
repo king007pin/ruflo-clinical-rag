@@ -86,13 +86,13 @@ export default async function HomePage() {
                 alt=""
                 width={96}
                 height={96}
-                className="h-24 w-24"
+                className="h-20 w-20 sm:h-24 sm:w-24"
                 style={{ filter: "drop-shadow(0 4px 20px rgba(13,148,136,0.4))" }}
                 priority
               />
               {/* Logotype text */}
               <span
-                className="text-6xl font-black tracking-[-0.03em] leading-none md:text-7xl"
+                className="text-5xl font-black tracking-[-0.03em] leading-none sm:text-6xl md:text-7xl"
                 style={{
                   color: "var(--text)",
                   textShadow: "0 2px 24px color-mix(in srgb, var(--accent) 20%, transparent)",
@@ -295,7 +295,7 @@ export default async function HomePage() {
           defaultOpen={true}
           preview={
             <div className="flex flex-col items-center gap-3 text-center mt-1">
-              <div className="grid grid-cols-4 gap-2 w-full max-w-lg mx-auto">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full max-w-lg mx-auto">
                 {[
                   { label: "MoHFW",          color: "#fb923c", desc: "India Govt" },
                   { label: "ICMR",           color: "#f472b6", desc: "Research"   },
