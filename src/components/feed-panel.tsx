@@ -409,7 +409,7 @@ function StatpearlsCrawl() {
 
   return (
     <div
-      className="rounded-2xl border p-3 sm:p-4 space-y-3"
+      className="min-w-0 rounded-2xl border p-3 sm:p-4 space-y-3 overflow-hidden"
       style={{ borderColor: "var(--accent)", backgroundColor: "color-mix(in srgb, var(--accent) 5%, var(--card))" }}
     >
       <div className="flex flex-col items-center text-center gap-2">
@@ -603,10 +603,10 @@ function GenericCrawlCard({ crawler }: { crawler: CrawlerMeta }) {
 
   return (
     <div
-      className="rounded-2xl border p-3 sm:p-4 space-y-3"
+      className="min-w-0 rounded-2xl border p-3 sm:p-4 space-y-3 overflow-hidden"
       style={{ borderColor: "var(--card-border)", backgroundColor: "var(--card)" }}
     >
-      <div className="flex flex-wrap items-start justify-between gap-2">
+      <div className="flex flex-wrap items-start justify-between gap-2 min-w-0">
         <div className="min-w-0 flex-1 basis-full sm:basis-auto">
           <p className="text-sm font-semibold truncate" style={{ color: "var(--text)" }}>
             {crawler.name}
@@ -738,7 +738,7 @@ function DeepCrawlsSection() {
           const totalSourcesCount = group.crawlers.length + (group.label === "Clinical Reference" ? 1 : 0);
           return (
             <div key={group.label}
-              className="rounded-2xl border p-3 sm:p-4 space-y-3"
+              className="min-w-0 rounded-2xl border p-3 sm:p-4 space-y-3 overflow-hidden"
               style={{ borderColor: `${group.style.fg}33`, backgroundColor: `${group.style.fg}08` }}>
               {/* Category header */}
               <div className="flex items-center gap-2 pb-2 border-b min-w-0" style={{ borderColor: `${group.style.fg}33` }}>
