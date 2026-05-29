@@ -409,7 +409,7 @@ function StatpearlsCrawl() {
 
   return (
     <div
-      className="rounded-2xl border p-4 space-y-3"
+      className="rounded-2xl border p-3 sm:p-4 space-y-3"
       style={{ borderColor: "var(--accent)", backgroundColor: "color-mix(in srgb, var(--accent) 5%, var(--card))" }}
     >
       <div className="flex flex-col items-center text-center gap-2">
@@ -603,11 +603,11 @@ function GenericCrawlCard({ crawler }: { crawler: CrawlerMeta }) {
 
   return (
     <div
-      className="rounded-2xl border p-4 space-y-3"
+      className="rounded-2xl border p-3 sm:p-4 space-y-3"
       style={{ borderColor: "var(--card-border)", backgroundColor: "var(--card)" }}
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 basis-full sm:basis-auto">
           <p className="text-sm font-semibold truncate" style={{ color: "var(--text)" }}>
             {crawler.name}
           </p>
@@ -616,7 +616,7 @@ function GenericCrawlCard({ crawler }: { crawler: CrawlerMeta }) {
           </p>
         </div>
         <span
-          className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase shrink-0"
+          className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase shrink-0 max-w-full truncate"
           style={{ backgroundColor: catStyle.bg, color: catStyle.fg }}
         >
           {crawler.category}
@@ -738,15 +738,15 @@ function DeepCrawlsSection() {
           const totalSourcesCount = group.crawlers.length + (group.label === "Clinical Reference" ? 1 : 0);
           return (
             <div key={group.label}
-              className="rounded-2xl border p-4 space-y-3"
+              className="rounded-2xl border p-3 sm:p-4 space-y-3"
               style={{ borderColor: `${group.style.fg}33`, backgroundColor: `${group.style.fg}08` }}>
               {/* Category header */}
-              <div className="flex items-center gap-2 pb-2 border-b" style={{ borderColor: `${group.style.fg}33` }}>
+              <div className="flex items-center gap-2 pb-2 border-b min-w-0" style={{ borderColor: `${group.style.fg}33` }}>
                 <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: group.style.fg }} />
-                <p className="text-xs font-bold uppercase tracking-wider" style={{ color: group.style.fg }}>
+                <p className="text-xs font-bold uppercase tracking-wider truncate min-w-0 flex-1" style={{ color: group.style.fg }}>
                   {group.label}
                 </p>
-                <span className="ml-auto text-[10px] rounded-full px-2 py-0.5"
+                <span className="text-[10px] rounded-full px-2 py-0.5 shrink-0 whitespace-nowrap"
                   style={{ backgroundColor: group.style.bg, color: group.style.fg }}>
                   {totalSourcesCount} source{totalSourcesCount !== 1 ? "s" : ""}
                 </span>

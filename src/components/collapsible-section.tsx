@@ -34,7 +34,7 @@ export default function CollapsibleSection({
     >
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full cursor-pointer flex-col gap-4 px-6 py-5 text-left transition hover:opacity-90"
+        className="flex w-full cursor-pointer flex-col gap-4 px-3 sm:px-6 py-4 sm:py-5 text-left transition hover:opacity-90"
         style={{
           backgroundColor: open
             ? "color-mix(in srgb, var(--accent) 5%, var(--card))"
@@ -104,7 +104,7 @@ export default function CollapsibleSection({
       </button>
 
       {open && (
-        <div className="px-6 pb-6 pt-2 space-y-5">
+        <div className="px-3 sm:px-6 pb-4 sm:pb-6 pt-2 space-y-5">
           {header}
           {children}
         </div>
