@@ -188,7 +188,7 @@ export default async function HomePage() {
               { sub: "Web", label: "Crawl URL" },
               { sub: "Auto", label: "Embed & Index" },
             ]}
-            defaultOpen={true}
+            defaultOpen={false}
           >
             <IngestForm />
           </CollapsibleSection>
@@ -219,7 +219,7 @@ export default async function HomePage() {
             { sub: "Vector", label: "Similarity Search" },
             { sub: "RAG", label: "Grounded Answers" },
           ]}
-          defaultOpen={true}
+          defaultOpen={false}
         >
           {latest.length === 0 ? (
             <p className="text-center text-sm" style={{ color: "var(--muted)" }}>
@@ -292,7 +292,7 @@ export default async function HomePage() {
             { sub: "Hourly", label: "Auto-refresh" },
             { sub: "RSS", label: "Live Feeds" },
           ]}
-          defaultOpen={true}
+          defaultOpen={false}
           preview={
             <div className="flex flex-col items-center gap-3 text-center mt-1">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full max-w-lg mx-auto">
