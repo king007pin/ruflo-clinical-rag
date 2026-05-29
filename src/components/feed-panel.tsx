@@ -780,6 +780,7 @@ export default function FeedPanel() {
   const [masterMsg, setMasterMsg] = useState<string | null>(null);
   const [masterCompleted, setMasterCompleted] = useState(false);
   const masterStopRef = useRef(false);
+  const autoRunRef = useRef(false);
   const { phase: masterBarPhase, opacity: masterBarOpacity } = useCompletionFade(masterCompleted);
 
   const loadFeeds = useCallback(async () => {
@@ -921,6 +922,37 @@ export default function FeedPanel() {
     });
     setFeeds((prev) => prev.map((f) => (f.id === id ? { ...f, enabled } : f)));
   }
+
+  // Auto-trigger feed refresh + master crawl on page load.
+  // Guards: StrictMode-safe useRef lock + 6h localStorage dedupe + silent
+  // 403 skip for non-admin users. Refresh runs first (auto-heals errored
+  // feeds via fetchWithRetry + re-enable pass in feed-refresh.ts). Master
+  // crawl then runs in the background — server-side SKIP LOCKED makes
+  // concurrent runs idempotent.
+  // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
+  useEffect(() => {
+    if (autoRunRef.current) return;
+    autoRunRef.current = true;
+    const KEY = "mediq-last-auto-crawl";
+    const SIX_HOURS = 6 * 3600 * 1000;
+    let last = 0;
+    try { last = Number(localStorage.getItem(KEY) ?? 0); } catch { /* storage blocked */ }
+    if (Number.isFinite(last) && Date.now() - last < SIX_HOURS) return;
+
+    void (async () => {
+      try {
+        const res = await fetch("/api/admin/refresh", { method: "POST" });
+        if (res.status === 401 || res.status === 403) return; // non-admin, skip silently
+      } catch { /* network blip, skip */ return; }
+      try { localStorage.setItem(KEY, String(Date.now())); } catch { /* ignore */ }
+      // Probe master-crawl endpoint admin gating before kicking off the long-running loop
+      try {
+        const probe = await fetch("/api/admin/crawl-statpearls", { cache: "no-store" });
+        if (probe.status === 401 || probe.status === 403) return;
+      } catch { return; }
+      void startMasterCrawl();
+    })();
+  }, []);
 
   const indiaFeeds = feeds.filter((f) =>
     f.name.startsWith("India") ||
