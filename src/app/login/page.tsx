@@ -345,7 +345,7 @@ function LoginForm() {
     backgroundColor: "rgba(0, 0, 0, 0.05)",
     color: "var(--text)",
   };
-  const FieldError = ({ name }: { name: string }) =>
+  const fieldError = (name: string) =>
     touched[name] && fieldErrors[name] ? (
       <p className="mt-1 text-xs text-red-400">{fieldErrors[name]}</p>
     ) : null;
@@ -447,7 +447,7 @@ function LoginForm() {
                   style={inputStyle}
                 />
               </label>
-              <FieldError name="fullName" />
+              {fieldError("fullName")}
             </div>
           )}
 
@@ -470,7 +470,7 @@ function LoginForm() {
                 style={inputStyle}
               />
             </label>
-            <FieldError name="email" />
+            {fieldError("email")}
           </div>
 
           {/* ── Institution (signup only) ── */}
@@ -493,7 +493,7 @@ function LoginForm() {
                   style={inputStyle}
                 />
               </label>
-              <FieldError name="institution" />
+              {fieldError("institution")}
             </div>
           )}
 
@@ -520,7 +520,7 @@ function LoginForm() {
                   ))}
                 </select>
               </label>
-              <FieldError name="designation" />
+              {fieldError("designation")}
             </div>
           )}
 
@@ -544,7 +544,7 @@ function LoginForm() {
                   style={inputStyle}
                 />
               </label>
-              <FieldError name="department" />
+              {fieldError("department")}
             </div>
           )}
 
@@ -568,7 +568,7 @@ function LoginForm() {
                   style={inputStyle}
                 />
               </label>
-              <FieldError name="phone" />
+              {fieldError("phone")}
             </div>
           )}
 
@@ -593,7 +593,7 @@ function LoginForm() {
                   style={{ ...inputStyle, resize: "vertical" as const, minHeight: "4.5rem" }}
                 />
               </label>
-              <FieldError name="address" />
+              {fieldError("address")}
             </div>
           )}
 
@@ -681,7 +681,7 @@ function LoginForm() {
                 {showPw ? "Hide" : "Show"}
               </button>
             </div>
-            <FieldError name="password" />
+            {fieldError("password")}
 
             {/* Password strength meter (signup only) */}
             {mode === "signup" && password.length > 0 && (
@@ -735,7 +735,7 @@ function LoginForm() {
                   {showConfirmPw ? "Hide" : "Show"}
                 </button>
               </div>
-              <FieldError name="confirmPassword" />
+              {fieldError("confirmPassword")}
             </div>
           )}
 
