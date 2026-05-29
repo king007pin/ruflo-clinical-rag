@@ -39,6 +39,10 @@ export async function POST(req: NextRequest) {
     fullName?:    string;
     institution?: string;
     designation?: string;
+    department?:  string;
+    phone?:       string;
+    address?:     string;
+    avatar?:      string;
   };
 
   const rawEmail    = (body.email       ?? "").trim().toLowerCase();
@@ -46,6 +50,10 @@ export async function POST(req: NextRequest) {
   const fullName    = (body.fullName    ?? "").trim().slice(0, 120);
   const institution = (body.institution ?? "").trim().slice(0, 200);
   const designation = (body.designation ?? "").trim();
+  const department  = (body.department  ?? "").trim().slice(0, 120);
+  const phone       = (body.phone       ?? "").trim().slice(0, 32);
+  const address     = (body.address     ?? "").trim().slice(0, 500);
+  const avatar      = (body.avatar      ?? "").trim();
 
   // ── Validate ──────────────────────────────────────────────────────────────
   if (!rawEmail || !EMAIL_RE.test(rawEmail)) {
@@ -65,6 +73,27 @@ export async function POST(req: NextRequest) {
   }
   if (!VALID_DESIGNATIONS.has(designation)) {
     return NextResponse.json({ error: "Please select a valid clinical role" }, { status: 400 });
+  }
+  if (department.length < 2) {
+    return NextResponse.json({ error: "Department is required" }, { status: 400 });
+  }
+  // E.164-ish: 7–15 digits, optional leading +, optional spaces/dashes ignored.
+  if (!/^\+?[0-9][0-9\s\-]{6,18}[0-9]$/.test(phone)) {
+    return NextResponse.json({ error: "Valid phone number required" }, { status: 400 });
+  }
+  if (address.length < 5) {
+    return NextResponse.json({ error: "Registered address is required" }, { status: 400 });
+  }
+  // Avatar is optional. When present, must be a data: URL for an image and
+  // <= 120KB raw bytes (~160KB base64). Larger payloads are rejected so a
+  // hostile client can't bloat the row.
+  if (avatar) {
+    if (!/^data:image\/(jpeg|png|webp);base64,/.test(avatar)) {
+      return NextResponse.json({ error: "Profile picture must be a JPEG, PNG, or WebP image" }, { status: 400 });
+    }
+    if (avatar.length > 220_000) {
+      return NextResponse.json({ error: "Profile picture too large — keep it under 150 KB" }, { status: 400 });
+    }
   }
 
   const fp = extractClientFingerprint(req);
@@ -97,6 +126,10 @@ export async function POST(req: NextRequest) {
         fullName,
         institution,
         designation,
+        department,
+        phone,
+        address,
+        avatar: avatar || null,
         // Public signups are viewer-only. Admins promote to clinician after
         // verifying the institution and designation fields collected above.
         role: "viewer",

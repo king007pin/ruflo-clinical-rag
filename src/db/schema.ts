@@ -221,6 +221,12 @@ export const users = pgTable("users", {
   fullName: text("full_name"),
   institution: text("institution"),
   designation: text("designation"),
+  department: text("department"),
+  phone: text("phone"),
+  address: text("address"),
+  // Base64 JPEG data URL, client-side resized to <= ~80KB.
+  // Migrate to object storage URL when blob infra is added.
+  avatar: text("avatar"),
   createdAt: timestamp("created_at", { withTimezone: false }).defaultNow().notNull(),
   lastLoginAt: timestamp("last_login_at", { withTimezone: false }),
 });

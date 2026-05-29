@@ -51,6 +51,14 @@ function validateField(
       return value.trim().length < 2 ? "Please enter your institution" : "";
     case "designation":
       return value === "" ? "Please select your role" : "";
+    case "department":
+      return value.trim().length < 2 ? "Please enter your department" : "";
+    case "phone":
+      return !/^\+?[0-9][0-9\s\-]{6,18}[0-9]$/.test(value.trim())
+        ? "Enter a valid phone number"
+        : "";
+    case "address":
+      return value.trim().length < 5 ? "Please enter your registered address" : "";
     case "password":
       return value.length < 8 ? "Password must be at least 8 characters" : "";
     case "confirmPassword":
@@ -58,6 +66,35 @@ function validateField(
     default:
       return "";
   }
+}
+
+// Resize + JPEG-compress an image File on the client before upload, so a
+// 5 MB phone photo doesn't bloat a text column. Output: data URL, target
+// max edge 256 px, quality 0.82, ~40–80 KB typical.
+async function fileToCompressedDataUrl(file: File): Promise<string> {
+  const MAX_EDGE = 256;
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result as string);
+    r.onerror = () => reject(new Error("Could not read file"));
+    r.readAsDataURL(file);
+  });
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const i = new window.Image();
+    i.onload = () => resolve(i);
+    i.onerror = () => reject(new Error("Invalid image"));
+    i.src = dataUrl;
+  });
+  const scale = Math.min(1, MAX_EDGE / Math.max(img.width, img.height));
+  const w = Math.round(img.width * scale);
+  const h = Math.round(img.height * scale);
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas not supported");
+  ctx.drawImage(img, 0, 0, w, h);
+  return canvas.toDataURL("image/jpeg", 0.82);
 }
 
 function LoginForm() {
@@ -72,6 +109,11 @@ function LoginForm() {
   const [fullName,        setFullName]        = useState("");
   const [institution,     setInstitution]     = useState("");
   const [designation,     setDesignation]     = useState("");
+  const [department,      setDepartment]      = useState("");
+  const [phone,           setPhone]           = useState("");
+  const [address,         setAddress]         = useState("");
+  const [avatar,          setAvatar]          = useState("");      // data URL
+  const [avatarError,     setAvatarError]     = useState<string | null>(null);
 
   // ui state
   const [showPw,        setShowPw]        = useState(false);
@@ -108,8 +150,33 @@ function LoginForm() {
     setFullName("");
     setInstitution("");
     setDesignation("");
+    setDepartment("");
+    setPhone("");
+    setAddress("");
+    setAvatar("");
+    setAvatarError(null);
     setShowPw(false);
     setShowConfirmPw(false);
+  }
+
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setAvatarError(null);
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
+      setAvatarError("Please choose a JPEG, PNG, or WebP image");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setAvatarError("Image too large (max 8 MB)");
+      return;
+    }
+    try {
+      const compressed = await fileToCompressedDataUrl(file);
+      setAvatar(compressed);
+    } catch (err) {
+      setAvatarError((err as Error).message);
+    }
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -123,13 +190,17 @@ function LoginForm() {
         email:           validateField("email",           email),
         institution:     validateField("institution",     institution),
         designation:     validateField("designation",     designation),
+        department:      validateField("department",      department),
+        phone:           validateField("phone",           phone),
+        address:         validateField("address",         address),
         password:        validateField("password",        password),
         confirmPassword: validateField("confirmPassword", confirmPassword, { password }),
       };
       setFieldErrors(errs);
       setTouched({
         fullName: true, email: true, institution: true,
-        designation: true, password: true, confirmPassword: true,
+        designation: true, department: true, phone: true,
+        address: true, password: true, confirmPassword: true,
       });
       if (Object.values(errs).some(Boolean)) return;
     }
@@ -146,6 +217,10 @@ function LoginForm() {
             fullName:    fullName.trim(),
             institution: institution.trim(),
             designation,
+            department:  department.trim(),
+            phone:       phone.trim(),
+            address:     address.trim(),
+            avatar,
           }),
         });
         if (!res.ok) {
@@ -420,6 +495,131 @@ function LoginForm() {
                 </select>
               </label>
               <FieldError name="designation" />
+            </div>
+          )}
+
+          {/* ── Department (signup only) ── */}
+          {mode === "signup" && (
+            <div>
+              <label
+                className="block text-xs font-bold uppercase tracking-wider mb-1.5"
+                style={{ color: "var(--text)" }}
+              >
+                Department
+                <input
+                  type="text"
+                  value={department}
+                  onChange={(e) => setDepartment(e.target.value)}
+                  onBlur={(e) => handleBlur("department", e.target.value)}
+                  required
+                  placeholder="e.g. Internal Medicine"
+                  autoComplete="off"
+                  className={inputCls("department")}
+                  style={inputStyle}
+                />
+              </label>
+              <FieldError name="department" />
+            </div>
+          )}
+
+          {/* ── Phone (signup only) ── */}
+          {mode === "signup" && (
+            <div>
+              <label
+                className="block text-xs font-bold uppercase tracking-wider mb-1.5"
+                style={{ color: "var(--text)" }}
+              >
+                Phone number
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  onBlur={(e) => handleBlur("phone", e.target.value)}
+                  required
+                  placeholder="+91 98765 43210"
+                  autoComplete="tel"
+                  className={inputCls("phone")}
+                  style={inputStyle}
+                />
+              </label>
+              <FieldError name="phone" />
+            </div>
+          )}
+
+          {/* ── Registered address (signup only) ── */}
+          {mode === "signup" && (
+            <div>
+              <label
+                className="block text-xs font-bold uppercase tracking-wider mb-1.5"
+                style={{ color: "var(--text)" }}
+              >
+                Registered address
+                <textarea
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  onBlur={(e) => handleBlur("address", e.target.value)}
+                  required
+                  rows={2}
+                  maxLength={500}
+                  placeholder="Street, city, state, postal code"
+                  autoComplete="street-address"
+                  className={inputCls("address")}
+                  style={{ ...inputStyle, resize: "vertical" as const, minHeight: "4.5rem" }}
+                />
+              </label>
+              <FieldError name="address" />
+            </div>
+          )}
+
+          {/* ── Profile picture (signup only, optional) ── */}
+          {mode === "signup" && (
+            <div>
+              <label
+                className="block text-xs font-bold uppercase tracking-wider mb-1.5"
+                style={{ color: "var(--text)" }}
+              >
+                Profile picture <span className="text-[10px] font-medium normal-case" style={{ color: "var(--muted)" }}>(optional)</span>
+              </label>
+              <div className="flex items-center gap-3">
+                <div
+                  className="h-16 w-16 rounded-full border overflow-hidden flex items-center justify-center shrink-0"
+                  style={{
+                    borderColor: "var(--card-border)",
+                    backgroundColor: "rgba(0,0,0,0.05)",
+                  }}
+                >
+                  {avatar ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={avatar} alt="Profile preview" className="h-full w-full object-cover" />
+                  ) : (
+                    <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} style={{ color: "var(--muted)" }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 20.25a7.5 7.5 0 0115 0v.75H4.5v-.75z" />
+                    </svg>
+                  )}
+                </div>
+                <div className="flex-1 space-y-1">
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handleAvatarChange}
+                    className="block w-full text-xs file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-500/15 file:px-3 file:py-1.5 file:text-[11px] file:font-semibold file:text-indigo-300 file:cursor-pointer cursor-pointer"
+                    style={{ color: "var(--muted)" }}
+                  />
+                  {avatar && (
+                    <button
+                      type="button"
+                      onClick={() => setAvatar("")}
+                      className="text-[10px] underline underline-offset-2"
+                      style={{ color: "var(--muted)" }}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              </div>
+              {avatarError && (
+                <p className="mt-1 text-xs text-red-400">{avatarError}</p>
+              )}
             </div>
           )}
 
