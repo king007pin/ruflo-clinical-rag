@@ -18,7 +18,7 @@ const RL_SIGNUP: RateLimitConfig = {
 };
 
 const EMAIL_RE = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
-const PASSWORD_MIN = 12;
+const PASSWORD_MIN = 8;
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

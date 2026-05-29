@@ -22,7 +22,7 @@ function LoginForm() {
     setError(null);
     try {
       if (mode === "signup") {
-        if (password.length < 12) throw new Error("Password must be at least 12 characters");
+        if (password.length < 8) throw new Error("Password must be at least 8 characters");
         if (password !== confirmPassword) throw new Error("Passwords do not match");
         const res = await fetch("/api/auth/signup", {
           method: "POST",
@@ -161,14 +161,14 @@ function LoginForm() {
 
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: "var(--text)" }}>
-              {mode === "signup" ? "Create Password (12+ chars)" : mode === "bypass" ? "Bypass Secret" : "Clinician Password"}
+              {mode === "signup" ? "Create Password (8+ chars)" : mode === "bypass" ? "Bypass Secret" : "Clinician Password"}
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 autoFocus
-                minLength={mode === "signup" ? 12 : undefined}
+                minLength={mode === "signup" ? 8 : undefined}
                 autoComplete={mode === "signup" ? "new-password" : "current-password"}
                 placeholder="••••••••"
                 className="mt-1.5 w-full rounded-xl border px-3.5 py-2.5 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
