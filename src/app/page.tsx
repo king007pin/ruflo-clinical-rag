@@ -353,7 +353,7 @@ export default async function HomePage() {
             { sub: "Track", label: "Escalations" },
           ]}
           preview={<ManagerPreview />}
-          defaultOpen={true}
+          defaultOpen={false}
         >
           <ManagerPanel />
         </CollapsibleSection>
