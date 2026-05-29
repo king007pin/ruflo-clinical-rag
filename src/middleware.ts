@@ -4,7 +4,7 @@ import { verifySessionToken } from "./lib/auth/tokens";
 import { checkCsrf } from "./lib/csrf";
 
 // Paths reachable without a session cookie.
-const PUBLIC_EXACT = new Set<string>(["/login", "/api/auth", "/api/health"]);
+const PUBLIC_EXACT = new Set<string>(["/login", "/api/auth", "/api/auth/signup", "/api/health"]);
 const PUBLIC_PREFIX = ["/api/cron"];
 
 function isPublic(pathname: string): boolean {

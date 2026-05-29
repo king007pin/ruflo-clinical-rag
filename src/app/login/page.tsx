@@ -4,12 +4,15 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { type FormEvent, Suspense, useState } from "react";
 import Image from "next/image";
 
+type Mode = "login" | "bypass" | "signup";
+
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [useEmail, setUseEmail] = useState(true);
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [mode, setMode] = useState<Mode>("login");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -18,22 +21,32 @@ function LoginForm() {
     setLoading(true);
     setError(null);
     try {
-      const payload: Record<string, string> = { password };
-      if (useEmail && email.trim()) {
-        payload.email = email.trim();
+      if (mode === "signup") {
+        if (password.length < 12) throw new Error("Password must be at least 12 characters");
+        if (password !== confirmPassword) throw new Error("Passwords do not match");
+        const res = await fetch("/api/auth/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email.trim(), password }),
+        });
+        if (!res.ok) {
+          const data = (await res.json()) as { error?: string };
+          throw new Error(data.error ?? "Sign up failed");
+        }
+      } else {
+        const payload: Record<string, string> = { password };
+        if (mode === "login" && email.trim()) payload.email = email.trim();
+        const res = await fetch("/api/auth", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+          const data = (await res.json()) as { error?: string };
+          throw new Error(data.error ?? "Login failed");
+        }
       }
 
-      const res = await fetch("/api/auth", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const data = (await res.json()) as { error?: string };
-        throw new Error(data.error ?? "Login failed");
-      }
-      
       router.push(params.get("from") ?? "/");
       router.refresh();
     } catch (err) {
@@ -41,6 +54,12 @@ function LoginForm() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function switchMode(next: Mode) {
+    setMode(next);
+    setError(null);
+    setConfirmPassword("");
   }
 
   return (
@@ -88,57 +107,48 @@ function LoginForm() {
         </div>
 
         {/* Tab Selector */}
-        <div 
-          className="flex p-1 mb-6 rounded-xl border transition-all duration-300"
+        <div
+          className="flex p-1 mb-6 rounded-xl border transition-all duration-300 gap-0.5"
           style={{ backgroundColor: "rgba(0, 0, 0, 0.05)", borderColor: "var(--card-border)" }}
         >
-          <button
-            type="button"
-            onClick={() => {
-              setUseEmail(true);
-              setError(null);
-            }}
-            className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition-all duration-300 ${
-              useEmail
-                ? "shadow-sm text-[color:var(--text)] bg-[color:var(--card)]"
-                : "text-[color:var(--muted)] hover:text-[color:var(--text)]"
-            }`}
-          >
-            Clinician Login
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setUseEmail(false);
-              setError(null);
-            }}
-            className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition-all duration-300 ${
-              !useEmail
-                ? "shadow-sm text-[color:var(--text)] bg-[color:var(--card)]"
-                : "text-[color:var(--muted)] hover:text-[color:var(--text)]"
-            }`}
-          >
-            Legacy Bypass
-          </button>
+          {([
+            { id: "login", label: "Sign In" },
+            { id: "signup", label: "Sign Up" },
+            { id: "bypass", label: "Bypass" },
+          ] as const).map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => switchMode(tab.id)}
+              className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition-all duration-300 ${
+                mode === tab.id
+                  ? "shadow-sm text-[color:var(--text)] bg-[color:var(--card)]"
+                  : "text-[color:var(--muted)] hover:text-[color:var(--text)]"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Email Address with slide/fade container */}
-          <div 
+          {/* Email Address — visible for login + signup, hidden for bypass */}
+          <div
             className={`transition-all duration-500 ease-in-out ${
-              useEmail 
-                ? 'max-h-28 opacity-100 translate-y-0 scale-100 mb-4' 
+              mode !== "bypass"
+                ? 'max-h-28 opacity-100 translate-y-0 scale-100 mb-4'
                 : 'max-h-0 opacity-0 -translate-y-4 scale-95 pointer-events-none mb-0'
             } overflow-hidden`}
           >
             <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: "var(--text)" }}>
-              Clinical Email Address
+              {mode === "signup" ? "Your Email Address" : "Clinical Email Address"}
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                required={useEmail}
+                required={mode !== "bypass"}
                 placeholder="name@mediq.ai"
+                autoComplete={mode === "signup" ? "email" : "username"}
                 className="mt-1.5 w-full rounded-xl border px-3.5 py-2.5 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 style={{
                   borderColor: "var(--card-border)",
@@ -151,13 +161,42 @@ function LoginForm() {
 
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: "var(--text)" }}>
-              {useEmail ? "Clinician Password" : "Bypass Secret"}
+              {mode === "signup" ? "Create Password (12+ chars)" : mode === "bypass" ? "Bypass Secret" : "Clinician Password"}
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 autoFocus
+                minLength={mode === "signup" ? 12 : undefined}
+                autoComplete={mode === "signup" ? "new-password" : "current-password"}
+                placeholder="••••••••"
+                className="mt-1.5 w-full rounded-xl border px-3.5 py-2.5 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                style={{
+                  borderColor: "var(--card-border)",
+                  backgroundColor: "rgba(0, 0, 0, 0.05)",
+                  color: "var(--text)",
+                }}
+              />
+            </label>
+          </div>
+
+          {/* Confirm password — only for signup */}
+          <div
+            className={`transition-all duration-500 ease-in-out ${
+              mode === "signup"
+                ? 'max-h-28 opacity-100 translate-y-0 scale-100'
+                : 'max-h-0 opacity-0 -translate-y-4 scale-95 pointer-events-none'
+            } overflow-hidden`}
+          >
+            <label className="block text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: "var(--text)" }}>
+              Confirm Password
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required={mode === "signup"}
+                autoComplete="new-password"
                 placeholder="••••••••"
                 className="mt-1.5 w-full rounded-xl border px-3.5 py-2.5 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 style={{
@@ -189,8 +228,10 @@ function LoginForm() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
-                Verifying Credentials...
+                {mode === "signup" ? "Creating Account..." : "Verifying Credentials..."}
               </span>
+            ) : mode === "signup" ? (
+              "Create Account & Enter"
             ) : (
               "Enter Swarm Ecosystem"
             )}
