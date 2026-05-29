@@ -386,7 +386,7 @@ function LoginForm() {
                   onChange={(e) => setInstitution(e.target.value)}
                   onBlur={(e) => handleBlur("institution", e.target.value)}
                   required
-                  placeholder="AIIMS New Delhi / City General Hospital"
+                  placeholder="e.g. City General Hospital"
                   autoComplete="organization"
                   className={inputCls("institution")}
                   style={inputStyle}
@@ -449,7 +449,7 @@ function LoginForm() {
                 type="button"
                 onClick={() => setShowPw((v) => !v)}
                 className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[11px] font-semibold transition-colors"
-                style={{ color: "var(--muted)", marginTop: "0.75rem" }}
+                style={{ color: "var(--muted)" }}
                 aria-label={showPw ? "Hide password" : "Show password"}
               >
                 {showPw ? "Hide" : "Show"}
@@ -503,7 +503,7 @@ function LoginForm() {
                   type="button"
                   onClick={() => setShowConfirmPw((v) => !v)}
                   className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[11px] font-semibold transition-colors"
-                  style={{ color: "var(--muted)", marginTop: "0.75rem" }}
+                  style={{ color: "var(--muted)" }}
                   aria-label={showConfirmPw ? "Hide password" : "Show password"}
                 >
                   {showConfirmPw ? "Hide" : "Show"}
