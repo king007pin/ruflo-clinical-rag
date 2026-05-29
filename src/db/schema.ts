@@ -217,6 +217,10 @@ export const users = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   role: userRoleEnum("role").default("clinician").notNull(),
   active: boolean("active").default(true).notNull(),
+  // Collected at signup — used by admins to verify and promote accounts
+  fullName: text("full_name"),
+  institution: text("institution"),
+  designation: text("designation"),
   createdAt: timestamp("created_at", { withTimezone: false }).defaultNow().notNull(),
   lastLoginAt: timestamp("last_login_at", { withTimezone: false }),
 });
