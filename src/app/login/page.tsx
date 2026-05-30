@@ -463,6 +463,27 @@ function LoginForm() {
             ))}
           </div>
 
+          {/* Admin alert banner */}
+          {params.get("from") === "/admin" && mode === "login" && (
+            <div
+              className="mb-6 rounded-2xl border p-4 space-y-1 shadow-md text-left transition-all duration-500 animate-pulse animate-duration-1000"
+              style={{
+                borderColor: "var(--accent)",
+                backgroundColor: "color-mix(in srgb, var(--accent) 8%, transparent)",
+              }}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-base" aria-hidden>🔐</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--accent)" }}>
+                  Administrative Access Required
+                </span>
+              </div>
+              <p className="text-xs opacity-90" style={{ color: "var(--text)" }}>
+                Please sign in with your administrator credentials to open the Clinical Mission Control dashboard.
+              </p>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
 
             {/* ── Full name (signup only) ── */}
