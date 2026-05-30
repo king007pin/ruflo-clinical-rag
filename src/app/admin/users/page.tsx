@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import ThemeToggle from "@/components/theme-toggle";
 
 type UserRow = {
   id: string;
@@ -105,15 +107,39 @@ export default function AdminUsersPage() {
         className="min-h-screen"
         style={{ background: "var(--bg)", color: "var(--text)" }}
       >
-        <div className="mx-auto max-w-3xl px-4 py-16 text-center">
+        <div className="mx-auto max-w-3xl px-4 py-16 text-center space-y-6">
           <div
-            className="rounded-2xl border p-6"
+            className="rounded-2xl border p-8 space-y-4"
             style={{ backgroundColor: "var(--card)", borderColor: "var(--card-border)" }}
           >
             <h1 className="text-xl font-semibold mb-2">Admin access required</h1>
             <p className="text-sm" style={{ color: "var(--muted)" }}>
               You must be signed in as an administrator to manage users.
             </p>
+            <div className="pt-2 flex justify-center gap-4">
+              <Link
+                href="/login"
+                className="rounded-full border px-4 py-2 text-xs font-semibold hover:opacity-80 transition-opacity"
+                style={{
+                  borderColor: "var(--card-border)",
+                  color: "var(--text)",
+                  backgroundColor: "var(--card)",
+                }}
+              >
+                Go to Sign In
+              </Link>
+              <Link
+                href="/"
+                className="rounded-full border px-4 py-2 text-xs font-semibold hover:opacity-80 transition-opacity"
+                style={{
+                  borderColor: "var(--card-border)",
+                  color: "var(--text)",
+                  backgroundColor: "var(--card)",
+                }}
+              >
+                Go to Home
+              </Link>
+            </div>
           </div>
         </div>
       </main>
@@ -125,7 +151,21 @@ export default function AdminUsersPage() {
       className="min-h-screen"
       style={{ background: "var(--bg)", color: "var(--text)" }}
     >
-      <div className="mx-auto max-w-5xl px-4 py-10 space-y-6 sm:px-6">
+      <div className="mx-auto max-w-5xl px-4 py-6 space-y-6 sm:px-6 sm:py-10">
+        <div className="flex w-full items-center justify-between gap-4">
+          <Link
+            href="/"
+            className="rounded-full border px-4 py-2 text-xs font-semibold hover:opacity-80 transition-opacity"
+            style={{
+              borderColor: "var(--card-border)",
+              color: "var(--text)",
+              backgroundColor: "var(--card)",
+            }}
+          >
+            ← Back to Dashboard
+          </Link>
+          <ThemeToggle />
+        </div>
         <header className="space-y-1">
           <p
             className="text-[11px] uppercase tracking-[0.28em]"

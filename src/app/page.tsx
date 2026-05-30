@@ -14,6 +14,7 @@ import { embeddings, sources } from "@/db/schema";
 import { desc, sql } from "drizzle-orm";
 import { Suspense } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { getSessionUser } from "@/lib/auth-guard";
 
 const HTML_ENTITIES: Record<string, string> = {
@@ -54,7 +55,21 @@ export default async function HomePage() {
     <main className="min-h-screen" style={{ background: "var(--bg)", color: "var(--text)" }}>
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-6 px-4 py-6 text-center sm:gap-10 sm:px-6 sm:py-12">
         <div className="flex w-full items-center justify-between gap-4">
-          <div className="flex-1" />
+          <div className="flex-1 text-left">
+            {user?.role === "admin" && (
+              <Link
+                href="/admin/users"
+                className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold hover:bg-neutral-500/5 dark:hover:bg-neutral-500/10 transition-all active:scale-[0.98]"
+                style={{
+                  borderColor: "var(--card-border)",
+                  color: "var(--text)",
+                  backgroundColor: "var(--card)",
+                }}
+              >
+                👥 Manage Users
+              </Link>
+            )}
+          </div>
           <div className="flex items-center gap-4">
             <ThemeToggle />
             <LogoutButton />
