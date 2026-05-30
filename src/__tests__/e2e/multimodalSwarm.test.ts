@@ -322,4 +322,73 @@ REFERENCES
     expect(data.text).toContain("Doctor's Prescription Notes");
     expect(data.panel.criticals).toHaveLength(2);
   });
+
+  it("successfully runs the clinical swarm assessment when question is empty but labText is provided", async () => {
+    let callCount = 0;
+    global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      callCount++;
+
+      // Intercept routing / debate / synthesis calls
+      if (url.includes("/chat/completions")) {
+        if (callCount >= 6) {
+          const encoder = new TextEncoder();
+          const stream = new ReadableStream({
+            start(controller) {
+              const text = `CLINICAL ASSESSMENT REPORT\nCLINICAL INTERPRETATION\nReport verified.`;
+              const parsedJson = { choices: [{ delta: { content: text } }] };
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(parsedJson)}\n\n`));
+              controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
+              controller.close();
+            },
+          });
+          return new Response(stream, {
+            status: 200,
+            headers: { "Content-Type": "text/event-stream" },
+          });
+        }
+        return new Response(JSON.stringify({
+          choices: [{ message: { content: "Reviewed findings. Suggest monitoring." } }]
+        }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+      return new Response(JSON.stringify({}), { status: 200 });
+    }) as typeof fetch;
+
+    const queryReq = new NextRequest("http://localhost/api/query", {
+      method: "POST",
+      body: JSON.stringify({
+        question: "",
+        labText: "Patient CBC: WBC 14.5, Hb 11.2, Platelets 450k",
+        swarmSize: 3,
+      }),
+    });
+
+    const queryRes = await queryPOST(queryReq);
+    expect(queryRes.status).toBe(200);
+
+    const reader = queryRes.body!.getReader();
+    const decoder = new TextDecoder();
+    let done = false;
+    let accumulatedText = "";
+
+    while (!done) {
+      const { value, done: isDone } = await reader.read();
+      done = isDone;
+      if (value) {
+        accumulatedText += decoder.decode(value);
+      }
+    }
+
+    const sseLines = accumulatedText
+      .split("\n\n")
+      .filter((line) => line.trim().startsWith("data: "))
+      .map((line) => JSON.parse(line.replace("data: ", "")));
+
+    const doneEvent = sseLines.find((e) => e.type === "done");
+    expect(doneEvent).toBeDefined();
+    expect(doneEvent.answer).toContain("Report verified.");
+  });
 });

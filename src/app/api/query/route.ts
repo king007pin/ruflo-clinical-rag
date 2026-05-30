@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 const bodySchema = z.object({
-  question: z.string().min(4),
+  question: z.string().optional(),
   model: z.string().optional(),
   swarmSize: z.number().int().min(1).max(10).optional(),
   topK: z.number().int().min(1).max(20).optional(),
@@ -35,11 +35,28 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid payload", issues: parsed.error.issues }, { status: 400 });
   }
 
-  const { question, model, swarmSize, topK = 10, patientContext, labText } = parsed.data;
+  let { question, model, swarmSize, topK = 10, patientContext, labText } = parsed.data;
+
+  const hasClinicalPayload = !!(labText?.trim() || patientContext?.trim());
+  const hasQuestion = !!(question?.trim());
+
+  if (!hasClinicalPayload && !hasQuestion) {
+    return NextResponse.json(
+      { error: "Please enter a clinical question or upload a medical document / report." },
+      { status: 400 },
+    );
+  }
+
+  // Fallback default query if user just uploaded document/patientContext but left question empty
+  if (!hasQuestion && hasClinicalPayload) {
+    question = "Analyze the uploaded clinical findings and provide a comprehensive diagnostic evaluation and management plan.";
+  } else if (!question) {
+    question = "";
+  }
 
   // W18: Early off-topic gate — reject non-medical queries before embedding
-  // to avoid burning NVIDIA quota on irrelevant content.
-  if (!classifyMedical(question)) {
+  // to avoid burning NVIDIA quota on irrelevant content. Bypassed if we have a clinical payload.
+  if (!hasClinicalPayload && !classifyMedical(question)) {
     return NextResponse.json(
       { error: "This query does not appear to be medical or clinical in nature. Mediq is a clinical decision support tool — please rephrase your question with relevant medical context." },
       { status: 422 },

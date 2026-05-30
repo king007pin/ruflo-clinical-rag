@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 const bodySchema = z.object({
-  query: z.string().min(5).max(4000),
+  query: z.string().max(4000).optional(),
   context: z.string().max(8000).optional(),
 });
 
@@ -57,7 +57,10 @@ export async function POST(req: NextRequest) {
   const parsed = bodySchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
 
-  const { query, context } = parsed.data;
+  let { query, context } = parsed.data;
+  if (!query?.trim()) {
+    query = "Analyze the uploaded clinical findings and provide a comprehensive diagnostic evaluation and management plan.";
+  }
 
   // Get active swarm config
   const [activeConfig] = await db

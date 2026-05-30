@@ -724,10 +724,10 @@ export default function QueryBox() {
       <form onSubmit={ask} className="space-y-3">
         <label className="block text-sm" style={{ color: "var(--text)" }}>
           Question
-          <textarea value={question} onChange={(e) => setQuestion(e.target.value)} required rows={4}
+          <textarea value={question} onChange={(e) => setQuestion(e.target.value)} required={!labText && labFiles.length === 0} rows={4}
             className="mt-1 w-full rounded-xl border px-4 py-3 text-base focus:outline-none resize-none leading-relaxed"
             style={{ borderColor: "var(--card-border)", backgroundColor: "var(--bg)", color: "var(--text)" }}
-            placeholder="Describe the clinical scenario — patient age, symptoms, duration, relevant history…" />
+            placeholder="Describe the clinical scenario or upload medical reports / images below..." />
         </label>
 
         {/* ── Patient Details ── */}
