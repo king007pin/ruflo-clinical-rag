@@ -63,7 +63,8 @@ function cleanAndParseJSON(text: string) {
 export async function routeQueryAndAllocateSwarm(
   question: string,
   patientContext?: string,
-  labText?: string
+  labText?: string,
+  targetSwarmSize?: number,
 ): Promise<{
   hospitalDepartments: string[];
   pgSubjects: string[];
@@ -83,6 +84,8 @@ Analyze the user's clinical presentation, map it to relevant Hospital Specialtie
 
   const ROUTER_SYSTEM_PROMPT = `You are the MedIQ Clinical Swarm Router, an expert AI medical triage director.
 Your job is to analyze the patient's symptoms/query, map it to our clinical datasets, gauge clinical complexity, and dynamically configure a collaborative specialist swarm of 3 to 10 AI agents.
+
+${targetSwarmSize ? `Note: The system-suggested target swarm size for this query is ${targetSwarmSize} agents. Try to allocate exactly ${targetSwarmSize} agents (length of specialties list must match) unless the clinical complexity strictly demands a different number.` : ""}
 
 DATASET 1: HOSPITAL SPECIALTIES / DEPARTMENTS
 1. System Entryway (Triage & Intake)
@@ -143,7 +146,8 @@ JSON SCHEMA:
 
   const hospitalDepartments = Array.isArray(parsed.hospitalDepartments) ? parsed.hospitalDepartments : [];
   const pgSubjects = Array.isArray(parsed.pgSubjects) ? parsed.pgSubjects : [];
-  let swarmSize = typeof parsed.swarmSize === "number" ? parsed.swarmSize : 5;
+  let swarmSize = typeof parsed.swarmSize === "number" ? parsed.swarmSize : (typeof parsed.swarmSize === "string" ? parseInt(parsed.swarmSize, 10) : 5);
+  if (isNaN(swarmSize)) swarmSize = 5;
   swarmSize = Math.max(3, Math.min(10, swarmSize));
 
   let specialtiesList: string[] = Array.isArray(parsed.specialties) ? parsed.specialties : [];
@@ -254,7 +258,7 @@ export async function precomputeSwarmRouting(
   fallbackSwarmSize = 10,
 ): Promise<SwarmRouting> {
   try {
-    return await routeQueryAndAllocateSwarm(question, patientContext, labText);
+    return await routeQueryAndAllocateSwarm(question, patientContext, labText, fallbackSwarmSize);
   } catch (err) {
     logger.error("[AI Swarm Router] Router failed, falling back to static keyword allocation", err);
     return getFallbackAllocation(question, fallbackSwarmSize);

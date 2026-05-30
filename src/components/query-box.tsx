@@ -846,6 +846,26 @@ export default function QueryBox() {
                   </>
                 )}
               </div>
+              {labUploading && (
+                <div className="space-y-1 pt-1">
+                  <div className="relative h-1 w-full overflow-hidden rounded-full bg-zinc-800/80">
+                    <div className="absolute inset-y-0 rounded-full"
+                      style={{
+                        width: "40%",
+                        background: "linear-gradient(90deg, #818cf8, #f472b6)",
+                        boxShadow: "0 0 8px rgba(129,140,248,0.4)",
+                        animation: "pulse-progress 1.8s ease-in-out infinite"
+                      }} />
+                  </div>
+                  <style>{`
+                    @keyframes pulse-progress {
+                      0% { width: 10%; left: -10%; }
+                      50% { width: 40%; left: 30%; }
+                      100% { width: 10%; left: 100%; }
+                    }
+                  `}</style>
+                </div>
+              )}
               {labError && <p style={{ color: "#f87171" }}>{labError}</p>}
               {labText && !labUploading && (
                 <p className="mt-1 leading-relaxed line-clamp-2" style={{ color: "var(--muted)" }}>
@@ -1037,14 +1057,21 @@ export default function QueryBox() {
             </span>
           </div>
 
-          {/* Routing beam */}
-          {(routingPhase || synthesisPhase) && (
-            <div className="relative h-px w-full overflow-hidden rounded-full" style={{ backgroundColor: "var(--card-border)" }}>
-              <div className="absolute inset-y-0 w-1/3 rounded-full"
-                style={{ background: `linear-gradient(90deg, transparent, ${phaseColor}, transparent)`, animation: "beam 1.4s ease-in-out infinite" }} />
-              <style>{`@keyframes beam{0%{left:-33%}100%{left:133%}}`}</style>
+          {/* Swarm progress bar */}
+          <div className="space-y-1">
+            <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-zinc-900 border border-zinc-800/50">
+              <div className="absolute inset-y-0 rounded-full transition-all duration-500 ease-out"
+                style={{
+                  width: `${synthesisPhase ? 95 : Math.max(10, Math.min(90, (totalLive / (totalExpected || 1)) * 100))}%`,
+                  background: "linear-gradient(90deg, #818cf8, #3b82f6, #f472b6)",
+                  boxShadow: "0 0 12px rgba(129,140,248,0.6)",
+                }} />
             </div>
-          )}
+            <div className="flex justify-between text-[10px]" style={{ color: "var(--muted)" }}>
+              <span>Swarm Analysis Progress</span>
+              <span>{synthesisPhase ? "95%" : `${Math.round((totalLive / (totalExpected || 1)) * 100)}%`}</span>
+            </div>
+          </div>
 
           {/* Status text */}
           <p className="text-xs" style={{ color: "var(--muted)" }}>
