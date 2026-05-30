@@ -191,3 +191,69 @@ export async function nvidiaChatStream(
     },
   });
 }
+
+export async function extractTextFromImage(buffer: Buffer, mimeType: string): Promise<string> {
+  const apiKey = process.env.NVIDIA_API_KEY;
+  if (!apiKey) {
+    throw new Error("NVIDIA_API_KEY is not configured. Vision OCR requires an API key.");
+  }
+
+  const base64Image = buffer.toString("base64");
+  const dataUrl = `data:${mimeType};base64,${base64Image}`;
+
+  const models = [
+    "meta/llama-3.2-11b-vision-instruct",
+    "meta/llama-3.2-90b-vision-instruct",
+    "nvidia/neva-22b"
+  ];
+
+  let lastError: Error | null = null;
+
+  for (const model of models) {
+    try {
+      const res = await fetch(`${NVIDIA_BASE}/chat/completions`, nvidiaFetchInit({
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "text",
+                  text: "You are an expert clinical document transcriptionist. Transcribe all text, handwritten notes, prescriptions, and lab values from this medical image. Keep all formatting, structural layouts, and key-values exactly as written. Return ONLY the transcribed text. Do not add any greetings, conversational filler, or commentary.",
+                },
+                {
+                  type: "image_url",
+                  image_url: {
+                    url: dataUrl,
+                  },
+                },
+              ],
+            },
+          ],
+          max_tokens: 2048,
+          temperature: 0.1,
+        }),
+      }) as RequestInit);
+
+      if (!res.ok) {
+        const errorText = await res.text().catch(() => "");
+        throw new Error(`NVIDIA Vision OCR (${model}) failed with status ${res.status}: ${errorText}`);
+      }
+
+      const data = await res.json() as { choices: Array<{ message: { content: string } }> };
+      const content = data.choices[0]?.message?.content;
+      if (content) return content;
+    } catch (err) {
+      lastError = err as Error;
+      console.warn(`Vision model ${model} failed, trying next... Error:`, err);
+    }
+  }
+
+  throw new Error(`All Vision OCR models failed to transcribe the image. Last error: ${lastError?.message || "unknown"}`);
+}

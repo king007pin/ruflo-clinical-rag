@@ -17,7 +17,7 @@ export type Match = {
   score: number;
 };
 export type DDIFlag = { drug: string; warning: string; severity: "BLACK_BOX" | "SERIOUS" | "MODERATE" };
-export type LabCritical = { name: string; value: number; unit: string };
+export type LabCritical = { name: string; value: number | string; unit: string };
 export type ResponseShape = {
   answer: string;
   agents: AgentReply[];
@@ -774,7 +774,7 @@ export default function QueryBox() {
         <div className="rounded-xl border px-4 py-3 space-y-2" style={{ borderColor: "var(--card-border)" }}>
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium" style={{ color: "var(--text)" }}>
-              Lab report <span className="text-xs font-normal" style={{ color: "var(--muted)" }}>(optional — PDF or .txt)</span>
+              Clinical report / Image <span className="text-xs font-normal" style={{ color: "var(--muted)" }}>(optional — PDF, Image, .txt)</span>
             </span>
             {labFile && (
               <button type="button" onClick={() => { setLabFile(null); setLabText(""); setLabCriticals([]); setLabError(null); }}
@@ -788,8 +788,8 @@ export default function QueryBox() {
             <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed px-4 py-3 transition"
               style={{ borderColor: "var(--card-border)", backgroundColor: "var(--bg)" }}>
               <span className="text-xs" style={{ color: "var(--accent)" }}>Upload file</span>
-              <span className="text-xs" style={{ color: "var(--muted)" }}>CBC, LFT, RFT, CXR report, discharge summary…</span>
-              <input type="file" accept=".pdf,.txt,.csv" className="hidden" onChange={handleLabFile} />
+              <span className="text-xs" style={{ color: "var(--muted)" }}>CBC, LFT, RFT, CXR, discharge summary, note, prescription…</span>
+              <input type="file" accept=".pdf,.txt,.csv,.png,.jpg,.jpeg,.webp" className="hidden" onChange={handleLabFile} />
             </label>
           ) : (
             <div className="rounded-xl border px-3 py-2 text-xs space-y-1"

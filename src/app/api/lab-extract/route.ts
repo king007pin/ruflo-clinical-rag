@@ -2,6 +2,7 @@ import { textFromPdfBuffer } from "@/lib/rag";
 import { parseLabText } from "@/lib/lab-parser";
 import { requireAuth } from "@/lib/auth-guard";
 import { scrubPhi } from "@/lib/phi-scrubber";
+import { extractTextFromImage } from "@/lib/nvidia";
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -37,11 +38,17 @@ export async function POST(req: NextRequest) {
     } catch (err) {
       return NextResponse.json({ error: `PDF extraction failed: ${(err as Error).message}` }, { status: 422 });
     }
+  } else if (file.type.startsWith("image/") || file.name.match(/\.(png|jpe?g|webp|gif)$/i)) {
+    try {
+      rawText = (await extractTextFromImage(buffer, file.type || "image/jpeg")).slice(0, MAX_CHARS);
+    } catch (err) {
+      return NextResponse.json({ error: `Image transcription failed: ${(err as Error).message}` }, { status: 422 });
+    }
   } else if (file.type.startsWith("text/") || file.name.match(/\.(txt|csv|md)$/i)) {
     rawText = buffer.toString("utf-8").slice(0, MAX_CHARS);
   } else {
     return NextResponse.json(
-      { error: "Unsupported file type. Upload PDF or plain text (.txt, .csv) lab reports." },
+      { error: "Unsupported file type. Upload PDF, Image (PNG, JPEG, WebP), or plain text (.txt, .csv) reports." },
       { status: 415 },
     );
   }

@@ -158,3 +158,67 @@ describe("parseLabText — robustness", () => {
     expect(r.values[0].status).toBe("NORMAL");
   });
 });
+
+describe("parseLabText — CBC, LFT, RFT additions", () => {
+  it("parses and normalizes Direct Bilirubin and ast/alt", () => {
+    const r = parseLabText("Direct Bil 2.5 mg/dL, AST 600 U/L");
+    const bilirubin = r.values.find((v) => v.name === "direct bilirubin");
+    const ast = r.values.find((v) => v.name === "ast");
+    expect(bilirubin?.status).toBe("CRITICAL");
+    expect(ast?.status).toBe("CRITICAL");
+  });
+
+  it("parses and normalizes BUN and Albumin", () => {
+    const r = parseLabText("BUN: 90 mg/dL\nAlbumin: 1.2 g/dL");
+    const bun = r.values.find((v) => v.name === "bun");
+    const albumin = r.values.find((v) => v.name === "albumin");
+    expect(bun?.status).toBe("CRITICAL");
+    expect(albumin?.status).toBe("CRITICAL");
+  });
+
+  it("parses and normalizes HCT/PCV and RBC", () => {
+    const r = parseLabText("PCV: 18 %\nRBC: 2.5");
+    const hct = r.values.find((v) => v.name === "hematocrit");
+    const rbc = r.values.find((v) => v.name === "rbc");
+    expect(hct?.status).toBe("CRITICAL");
+    expect(rbc?.status).toBe("CRITICAL");
+  });
+});
+
+describe("parseLabText — CXR and Discharge Summary NLP findings", () => {
+  it("extracts pneumothorax from CXR report as CRITICAL", () => {
+    const r = parseLabText("Chest X-ray shows left-sided tension pneumothorax.");
+    const finding = r.values.find((v) => v.name === "CXR Finding: Pneumothorax");
+    expect(finding).toBeDefined();
+    expect(finding?.value).toBe("DETECTED");
+    expect(finding?.status).toBe("CRITICAL");
+    expect(r.criticals).toContain(finding);
+  });
+
+  it("extracts pulmonary consolidation as HIGH", () => {
+    const r = parseLabText("CXR indicates a right lower lobe consolidation with air bronchograms.");
+    const finding = r.values.find((v) => v.name === "CXR Finding: Pulmonary Consolidation");
+    expect(finding).toBeDefined();
+    expect(finding?.value).toBe("DETECTED");
+    expect(finding?.status).toBe("HIGH");
+  });
+
+  it("extracts STEMI and Sepsis from Discharge Summary as CRITICAL", () => {
+    const r = parseLabText("Discharge Diagnosis: Sepsis and acute STEMI on admission.");
+    const sepsis = r.values.find((v) => v.name === "Discharge Dx: Sepsis / Septic Shock");
+    const stemi = r.values.find((v) => v.name === "Discharge Dx: Myocardial Infarction");
+    expect(sepsis?.status).toBe("CRITICAL");
+    expect(stemi?.status).toBe("CRITICAL");
+  });
+});
+
+describe("parseLabText — Negation Heuristics", () => {
+  it("ignores findings when preceded by 'no' or 'without'", () => {
+    const r1 = parseLabText("Chest X-ray: No pneumothorax. Lungs are clear.");
+    expect(r1.values.find((v) => v.name === "CXR Finding: Pneumothorax")).toBeUndefined();
+
+    const r2 = parseLabText("Discharge Summary: Patient was discharged without sepsis or active bleeding.");
+    expect(r2.values.find((v) => v.name === "Discharge Dx: Sepsis / Septic Shock")).toBeUndefined();
+    expect(r2.values.find((v) => v.name === "Discharge Dx: Gastrointestinal Bleed")).toBeUndefined();
+  });
+});
