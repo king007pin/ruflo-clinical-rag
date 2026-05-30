@@ -2,6 +2,7 @@ import QueryBox from "@/components/query-box";
 import IngestForm from "@/components/ingest-form";
 import CaseList from "@/components/case-list";
 import ThemeToggle from "@/components/theme-toggle";
+import LogoutButton from "@/components/logout-button";
 import FeedPanel from "@/components/feed-panel";
 import InsightsPanel from "@/components/insights-panel";
 import ManagerPanel, { ManagerPreview } from "@/components/manager-panel";
@@ -56,6 +57,7 @@ export default async function HomePage() {
           <div className="flex-1" />
           <div className="flex items-center gap-4">
             <ThemeToggle />
+            <LogoutButton />
           </div>
         </div>
 
