@@ -47,6 +47,12 @@ import { nlem2022Crawler } from "./crawlers/nlem-2022";
 import { nfiCrawler } from "./crawlers/nfi";
 import { cdscoAlertsCrawler } from "./crawlers/cdsco-alerts";
 import { pvpiAlertsCrawler } from "./crawlers/pvpi-alerts";
+// 5 New clinical knowledge bases
+import { nmcCbmeCrawler } from "./crawlers/nmc-cbme";
+import { pmjayPackagesCrawler } from "./crawlers/pmjay-packages";
+import { apiIndiaCrawler } from "./crawlers/api-india";
+import { ipMonographsCrawler } from "./crawlers/ip-monographs";
+import { whoIcd11Crawler } from "./crawlers/who-icd11";
 
 export const CRAWLERS: Record<string, CrawlerDef> = {
   [geneReviewsCrawler.id]: geneReviewsCrawler,
@@ -97,4 +103,10 @@ export const CRAWLERS: Record<string, CrawlerDef> = {
   [ginaAsthmaCrawler.id]: ginaAsthmaCrawler,
   [statpearlsCrawler.id]: statpearlsCrawler,
   [wsesGuidelinesCrawler.id]: wsesGuidelinesCrawler,
+  // 5 New clinical knowledge bases
+  [nmcCbmeCrawler.id]: nmcCbmeCrawler,
+  [pmjayPackagesCrawler.id]: pmjayPackagesCrawler,
+  [apiIndiaCrawler.id]: apiIndiaCrawler,
+  [ipMonographsCrawler.id]: ipMonographsCrawler,
+  [whoIcd11Crawler.id]: whoIcd11Crawler,
 };
