@@ -28,6 +28,9 @@ async function main() {
     console.log("Sources by type:");
     console.table(sourceTypes.rows);
 
+    const embeddingCount = await pool.query("SELECT COUNT(*) AS count FROM embeddings;");
+    console.log("Embeddings (Chunks) count:", embeddingCount.rows[0].count);
+
     const sourceFeeds = await pool.query("SELECT name, enabled, last_fetch_count, error_count FROM source_feeds;");
     console.log("\nSource Feeds:");
     console.table(sourceFeeds.rows);
