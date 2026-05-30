@@ -446,18 +446,22 @@ export default function QueryBox() {
     return parts.join(" | ");
   }
 
-  async function handleLabFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const selectedFiles = Array.from(e.target.files ?? []);
-    if (selectedFiles.length === 0) return;
-    const combinedFiles = [...labFiles, ...selectedFiles];
-    setLabFiles(combinedFiles);
+  async function runLabExtraction(files: File[]) {
+    if (files.length === 0) {
+      setLabFiles([]);
+      setLabText("");
+      setLabCriticals([]);
+      setLabError(null);
+      return;
+    }
+    setLabFiles(files);
     setLabText("");
     setLabCriticals([]);
     setLabError(null);
     setLabUploading(true);
     try {
       const fd = new FormData();
-      combinedFiles.forEach((file) => {
+      files.forEach((file) => {
         fd.append("files", file);
       });
       const res = await fetch("/api/lab-extract", { method: "POST", body: fd });
@@ -479,6 +483,18 @@ export default function QueryBox() {
     } finally {
       setLabUploading(false);
     }
+  }
+
+  async function handleLabFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const selectedFiles = Array.from(e.target.files ?? []);
+    if (selectedFiles.length === 0) return;
+    const combinedFiles = [...labFiles, ...selectedFiles];
+    await runLabExtraction(combinedFiles);
+  }
+
+  async function removeLabFile(idxToRemove: number) {
+    const updatedFiles = labFiles.filter((_, i) => i !== idxToRemove);
+    await runLabExtraction(updatedFiles);
   }
 
   async function handlePrint() {
@@ -798,14 +814,22 @@ export default function QueryBox() {
               style={{ borderColor: "var(--card-border)", backgroundColor: "var(--card)" }}>
               <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
                 {labFiles.map((file, idx) => (
-                  <div key={idx} className="flex items-center justify-between border-b pb-1 last:border-0 last:pb-0" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
-                    <div className="flex items-center gap-2 truncate">
+                  <div key={idx} className="flex items-center justify-between border-b pb-1 last:border-0 last:pb-0 py-0.5" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+                    <div className="flex items-center gap-2 truncate pr-2">
                       <span style={{ color: "var(--accent)" }}>
                         {file.type.startsWith("image/") ? "🖼️" : file.type === "application/pdf" ? "📕" : "📄"}
                       </span>
                       <span className="font-medium truncate" style={{ color: "var(--text)" }}>{file.name}</span>
                     </div>
-                    <span className="shrink-0 text-[10px]" style={{ color: "var(--muted)" }}>({(file.size / 1024).toFixed(1)} KB)</span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-[10px]" style={{ color: "var(--muted)" }}>({(file.size / 1024).toFixed(1)} KB)</span>
+                      <button type="button" onClick={() => void removeLabFile(idx)}
+                        className="text-[11px] px-1 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors active:scale-95"
+                        style={{ color: "var(--muted)" }}
+                        title="Remove file">
+                        ✕
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
