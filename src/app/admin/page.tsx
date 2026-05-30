@@ -62,9 +62,12 @@ export default function AdminDashboardPage() {
     }
   }, []);
 
+  // W50 — fetch-on-mount; setState inside loadData is network-driven.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     void loadData();
   }, [loadData]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   async function handleInviteSubmit(e: React.FormEvent) {
     e.preventDefault();
