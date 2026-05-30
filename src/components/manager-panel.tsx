@@ -225,8 +225,12 @@ export function ManagerPreview() {
 
   useEffect(() => {
     fetch("/api/admin/manager")
-      .then((r) => r.json())
-      .then((d) => setStats(d as ManagerStats))
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d && typeof d === "object" && (d as ManagerStats).complexityBreakdown) {
+          setStats(d as ManagerStats);
+        }
+      })
       .catch(() => null);
   }, []);
 
@@ -272,7 +276,15 @@ export default function ManagerPanel() {
   const load = useCallback(async () => {
     try {
       const res = await fetch("/api/admin/manager");
+      // Non-2xx (e.g. 401/403 for non-admins) returns an `{ error }` body, not
+      // stats. Storing that makes `stats` truthy while `stats.complexityBreakdown`
+      // is undefined, which crashes the render below. Drop it.
+      if (!res.ok) { setStats(null); return; }
       const data = (await res.json()) as ManagerStats;
+      if (!data || typeof data !== "object" || !data.complexityBreakdown) {
+        setStats(null);
+        return;
+      }
       setStats(data);
       setLastUpdated(new Date());
     } finally {
@@ -353,7 +365,7 @@ export default function ManagerPanel() {
             </p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               {complexities.map((c) => {
-                const count = stats.complexityBreakdown[c] ?? 0;
+                const count = stats.complexityBreakdown?.[c] ?? 0;
                 const total = stats.totalQueries || 1;
                 const pct = Math.round((count / total) * 100);
                 const cs = complexityStyle(c);

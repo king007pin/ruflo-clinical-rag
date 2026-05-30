@@ -92,12 +92,13 @@ async function main() {
     ]);
     if (check.rows[0]) {
       console.log(
-        `Admin user with email ${adminEmail} already exists. Ensuring admin role...`,
+        `Admin user with email ${adminEmail} already exists. Ensuring admin role, active state, and updating password hash...`,
       );
-      await client.query("UPDATE users SET role = 'admin' WHERE email = $1", [
-        adminEmail,
-      ]);
-      console.log("Admin user role ensured successfully!");
+      await client.query(
+        "UPDATE users SET role = 'admin', password_hash = $2, active = true WHERE email = $1",
+        [adminEmail, passwordHash],
+      );
+      console.log("Admin user credentials and role ensured successfully!");
       return;
     }
 
