@@ -33,7 +33,7 @@ describe("extractTextFromImage — Vision OCR Integration", () => {
     expect(callUrl).toBe("https://integrate.api.nvidia.com/v1/chat/completions");
     
     const body = JSON.parse(callInit?.body as string);
-    expect(body.model).toBe("meta/llama-3.2-11b-vision-instruct");
+    expect(body.model).toBe("nvidia/nemo-retriever-ocr-v1");
     expect(body.messages[0].content[0].type).toBe("text");
     expect(body.messages[0].content[1].type).toBe("image_url");
     expect(body.messages[0].content[1].image_url.url).toContain("data:image/png;base64,");
@@ -71,8 +71,8 @@ describe("extractTextFromImage — Vision OCR Integration", () => {
     const firstModel = JSON.parse(fetchSpy.mock.calls[0][1]?.body as string).model;
     const secondModel = JSON.parse(fetchSpy.mock.calls[1][1]?.body as string).model;
 
-    expect(firstModel).toBe("meta/llama-3.2-11b-vision-instruct");
-    expect(secondModel).toBe("meta/llama-3.2-90b-vision-instruct");
+    expect(firstModel).toBe("nvidia/nemo-retriever-ocr-v1");
+    expect(secondModel).toBe("meta/llama-3.2-11b-vision-instruct");
   });
 
   it("throws an error if all vision models fail", async () => {

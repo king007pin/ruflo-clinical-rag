@@ -202,6 +202,7 @@ export async function extractTextFromImage(buffer: Buffer, mimeType: string): Pr
   const dataUrl = `data:${mimeType};base64,${base64Image}`;
 
   const models = [
+    "nvidia/nemo-retriever-ocr-v1",
     "meta/llama-3.2-11b-vision-instruct",
     "meta/llama-3.2-90b-vision-instruct",
     "nvidia/neva-22b"
