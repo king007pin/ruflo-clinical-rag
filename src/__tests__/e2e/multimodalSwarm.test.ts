@@ -124,7 +124,11 @@ describe("Multimodal Image OCR & Swarm Query E2E Integration", () => {
       callCount++;
 
       // 1. Intercept Vision OCR completion call
-      if (url.includes("/chat/completions") && init?.body && JSON.parse(init.body as string).model.includes("vision")) {
+      const isOcrOrVision = url.includes("/chat/completions") && init?.body && (
+        JSON.parse(init.body as string).model.includes("vision") ||
+        JSON.parse(init.body as string).model.includes("nemo-retriever-ocr")
+      );
+      if (isOcrOrVision) {
         return new Response(JSON.stringify({
           choices: [{
             message: {

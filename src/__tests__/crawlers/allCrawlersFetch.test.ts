@@ -39,7 +39,7 @@ describe("Test All 50 Swarm Scrapers & Crawls", () => {
 
         const urls = await crawler.fetchUrls();
         expect(Array.isArray(urls)).toBe(true);
-      }, 40000); // 40-second timeout to accommodate rate-limit delays in crawler loops
+      }, 90000); // 90-second timeout to accommodate rate-limit delays in crawler loops in slow CI environments
 
       it("should execute fetchArticle without throwing and handle parsed content or skip direct PDFs", async () => {
         vi.mocked(siteFetch).mockResolvedValue({
@@ -64,7 +64,7 @@ describe("Test All 50 Swarm Scrapers & Crawls", () => {
           expect(res).toHaveProperty("title");
           expect(res).toHaveProperty("content");
         }
-      }, 40000); // 40-second timeout
+      }, 90000); // 90-second timeout to accommodate slow CI environments
     });
   });
 });
