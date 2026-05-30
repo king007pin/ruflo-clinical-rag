@@ -58,7 +58,7 @@ export default async function HomePage() {
           <div className="flex-1 text-left">
             {user?.role === "admin" && (
               <Link
-                href="/admin/users"
+                href="/admin"
                 className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold hover:bg-neutral-500/5 dark:hover:bg-neutral-500/10 transition-all active:scale-[0.98]"
                 style={{
                   borderColor: "var(--card-border)",
@@ -66,7 +66,7 @@ export default async function HomePage() {
                   backgroundColor: "var(--card)",
                 }}
               >
-                👥 Manage Users
+                ⚙️ Admin Dashboard
               </Link>
             )}
           </div>
