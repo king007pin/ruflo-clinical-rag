@@ -21,6 +21,26 @@ const DESIGNATIONS = [
   { value: "other",        label: "Other Licensed Clinician" },
 ];
 
+const STATS = [
+  { n: "45", label: "Clinical sources" },
+  { n: "21", label: "Specialties" },
+  { n: "10", label: "AI models" },
+];
+
+const FEATURES = [
+  { icon: "🧠", title: "21-specialty swarm",  desc: "3–10 agents selected and debated per query",            color: "#6366f1", bg: "rgba(99,102,241,0.07)"  },
+  { icon: "📚", title: "45 crawled sources",  desc: "NICE, WHO, ICMR, AIIMS, StatPearls — hourly refresh",   color: "#14b8a6", bg: "rgba(20,184,166,0.07)"  },
+  { icon: "🔬", title: "PDF & lab ingest",    desc: "Upload PDFs, paste URLs or YouTube lecture transcripts", color: "#f59e0b", bg: "rgba(245,158,11,0.07)"  },
+  { icon: "🔒", title: "PHI vault",           desc: "AES-256-GCM — patient data never stored in plain text",  color: "#ef4444", bg: "rgba(239,68,68,0.07)"   },
+];
+
+const COMPLIANCE = [
+  { icon: "🔐", label: "AES-256-GCM"  },
+  { icon: "🧹", label: "PHI scrubbed" },
+  { icon: "📋", label: "Audit logged" },
+  { icon: "🛡️", label: "SSRF gated"  },
+];
+
 // ── Password strength scorer ──────────────────────────────────────────────────
 function scorePassword(pw: string): { score: number; label: string; color: string } {
   if (pw.length === 0) return { score: 0, label: "", color: "transparent" };
@@ -354,7 +374,7 @@ function LoginForm() {
     <>
     {topBar}
     <main
-      className="flex min-h-screen items-center justify-center px-4 relative overflow-hidden"
+      className="flex min-h-screen items-center justify-center py-12 px-4 relative overflow-hidden"
       style={{
         background:
           "radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.1) 0%, transparent 40%), radial-gradient(circle at 90% 80%, rgba(20, 184, 166, 0.1) 0%, transparent 40%), var(--bg)",
@@ -364,15 +384,11 @@ function LoginForm() {
       <div className="absolute top-1/4 left-1/3 -z-10 h-72 w-72 rounded-full bg-indigo-500/10 blur-[120px] animate-pulse duration-10000" />
       <div className="absolute bottom-1/4 right-1/3 -z-10 h-72 w-72 rounded-full bg-teal-500/10 blur-[120px] animate-pulse duration-7000" />
 
-      <div
-        className="w-full max-w-md rounded-3xl border p-8 shadow-2xl backdrop-blur-xl transition-all duration-500 hover:shadow-[0_20px_50px_rgba(99,102,241,0.15)] hover:scale-[1.01]"
-        style={{
-          backgroundColor: "color-mix(in srgb, var(--card) 45%, transparent)",
-          borderColor: "var(--card-border)",
-        }}
-      >
-        {/* Header */}
-        <div className="mb-6 text-center">
+      {/* Main Container */}
+      <div className="w-full max-w-md z-10 flex flex-col space-y-6">
+        
+        {/* ── HERO ── */}
+        <div className="text-center">
           <div className="inline-block relative mb-4">
             <Image
               src="/brain-icon.png"
@@ -399,397 +415,479 @@ function LoginForm() {
           <p className="mt-1 text-xs" style={{ color: "var(--muted)" }}>
             Licensed Clinical Portal
           </p>
+
+          {/* Trust pills */}
+          <div className="flex justify-center gap-1.5 flex-wrap mt-3">
+            {[
+              { label: "AES-256 encrypted",   bg: "#dcfce7", col: "#15803d" },
+              { label: "PHI vault protected",  bg: "#dbeafe", col: "#1d4ed8" },
+              { label: "21 specialties",       bg: "#ede9fe", col: "#6d28d9" },
+            ].map((p) => (
+              <span key={p.label} style={{
+                fontSize: 10, fontWeight: 700, padding: "4px 11px", borderRadius: 20,
+                background: p.bg, color: p.col, letterSpacing: "0.04em",
+              }}>{p.label}</span>
+            ))}
+          </div>
         </div>
 
-        {/* Tabs — Bypass tab removed from production */}
+        {/* ── GLASS CARD ── */}
         <div
-          className="flex p-1 mb-6 rounded-xl border transition-all duration-300 gap-0.5"
-          style={{ backgroundColor: "rgba(0, 0, 0, 0.05)", borderColor: "var(--card-border)" }}
+          className="w-full rounded-3xl border p-8 shadow-2xl backdrop-blur-xl transition-all duration-500 hover:shadow-[0_20px_50px_rgba(99,102,241,0.15)] hover:scale-[1.01]"
+          style={{
+            backgroundColor: "color-mix(in srgb, var(--card) 45%, transparent)",
+            borderColor: "var(--card-border)",
+          }}
         >
-          {([
-            { id: "login",  label: "Sign In"  },
-            { id: "signup", label: "Sign Up"  },
-          ] as const).map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => switchMode(tab.id)}
-              className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition-all duration-300 ${
-                mode === tab.id
-                  ? "shadow-sm text-[color:var(--text)] bg-[color:var(--card)]"
-                  : "text-[color:var(--muted)] hover:text-[color:var(--text)]"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-
-          {/* ── Full name (signup only) ── */}
-          {mode === "signup" && (
-            <div>
-              <label
-                className="block text-xs font-bold uppercase tracking-wider mb-1.5"
-                style={{ color: "var(--text)" }}
+          {/* Tabs — Bypass tab removed from production */}
+          <div
+            className="flex p-1 mb-6 rounded-xl border transition-all duration-300 gap-0.5"
+            style={{ backgroundColor: "rgba(0, 0, 0, 0.05)", borderColor: "var(--card-border)" }}
+          >
+            {([
+              { id: "login",  label: "Sign In"  },
+              { id: "signup", label: "Sign Up"  },
+            ] as const).map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => switchMode(tab.id)}
+                className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition-all duration-300 ${
+                  mode === tab.id
+                    ? "shadow-sm text-[color:var(--text)] bg-[color:var(--card)]"
+                    : "text-[color:var(--muted)] hover:text-[color:var(--text)]"
+                }`}
               >
-                Full name
-                <input
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  onBlur={(e) => handleBlur("fullName", e.target.value)}
-                  required
-                  placeholder="Dr. Aisha Kapoor"
-                  autoComplete="name"
-                  className={inputCls("fullName")}
-                  style={inputStyle}
-                />
-              </label>
-              {fieldError("fullName")}
-            </div>
-          )}
-
-          {/* ── Email ── */}
-          <div>
-            <label
-              className="block text-xs font-bold uppercase tracking-wider mb-1.5"
-              style={{ color: "var(--text)" }}
-            >
-              {mode === "signup" ? "Email address" : "Clinical email address"}
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                onBlur={(e) => handleBlur("email", e.target.value)}
-                required
-                placeholder="doctor@hospital.com"
-                autoComplete={mode === "signup" ? "email" : "username"}
-                className={inputCls("email")}
-                style={inputStyle}
-              />
-            </label>
-            {fieldError("email")}
+                {tab.label}
+              </button>
+            ))}
           </div>
 
-          {/* ── Institution (signup only) ── */}
-          {mode === "signup" && (
-            <div>
-              <label
-                className="block text-xs font-bold uppercase tracking-wider mb-1.5"
-                style={{ color: "var(--text)" }}
-              >
-                Hospital / institution
-                <input
-                  type="text"
-                  value={institution}
-                  onChange={(e) => setInstitution(e.target.value)}
-                  onBlur={(e) => handleBlur("institution", e.target.value)}
-                  required
-                  placeholder="e.g. City General Hospital"
-                  autoComplete="organization"
-                  className={inputCls("institution")}
-                  style={inputStyle}
-                />
-              </label>
-              {fieldError("institution")}
-            </div>
-          )}
+          <form onSubmit={handleSubmit} className="space-y-4">
 
-          {/* ── Clinical role (signup only) ── */}
-          {mode === "signup" && (
-            <div>
-              <label
-                className="block text-xs font-bold uppercase tracking-wider mb-1.5"
-                style={{ color: "var(--text)" }}
-              >
-                Clinical role
-                <select
-                  value={designation}
-                  onChange={(e) => setDesignation(e.target.value)}
-                  onBlur={(e) => handleBlur("designation", e.target.value)}
-                  required
-                  className={inputCls("designation")}
-                  style={{ ...inputStyle, appearance: "none" as const }}
+            {/* ── Full name (signup only) ── */}
+            {mode === "signup" && (
+              <div>
+                <label
+                  className="block text-xs font-bold uppercase tracking-wider mb-1.5"
+                  style={{ color: "var(--text)" }}
                 >
-                  {DESIGNATIONS.map((d) => (
-                    <option key={d.value} value={d.value} disabled={d.value === ""}>
-                      {d.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {fieldError("designation")}
-            </div>
-          )}
-
-          {/* ── Department (signup only) ── */}
-          {mode === "signup" && (
-            <div>
-              <label
-                className="block text-xs font-bold uppercase tracking-wider mb-1.5"
-                style={{ color: "var(--text)" }}
-              >
-                Department
-                <input
-                  type="text"
-                  value={department}
-                  onChange={(e) => setDepartment(e.target.value)}
-                  onBlur={(e) => handleBlur("department", e.target.value)}
-                  required
-                  placeholder="e.g. Internal Medicine"
-                  autoComplete="off"
-                  className={inputCls("department")}
-                  style={inputStyle}
-                />
-              </label>
-              {fieldError("department")}
-            </div>
-          )}
-
-          {/* ── Phone (signup only) ── */}
-          {mode === "signup" && (
-            <div>
-              <label
-                className="block text-xs font-bold uppercase tracking-wider mb-1.5"
-                style={{ color: "var(--text)" }}
-              >
-                Phone number
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  onBlur={(e) => handleBlur("phone", e.target.value)}
-                  required
-                  placeholder="+91 98765 43210"
-                  autoComplete="tel"
-                  className={inputCls("phone")}
-                  style={inputStyle}
-                />
-              </label>
-              {fieldError("phone")}
-            </div>
-          )}
-
-          {/* ── Registered address (signup only) ── */}
-          {mode === "signup" && (
-            <div>
-              <label
-                className="block text-xs font-bold uppercase tracking-wider mb-1.5"
-                style={{ color: "var(--text)" }}
-              >
-                Registered address
-                <textarea
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  onBlur={(e) => handleBlur("address", e.target.value)}
-                  required
-                  rows={2}
-                  maxLength={500}
-                  placeholder="Street, city, state, postal code"
-                  autoComplete="street-address"
-                  className={inputCls("address")}
-                  style={{ ...inputStyle, resize: "vertical" as const, minHeight: "4.5rem" }}
-                />
-              </label>
-              {fieldError("address")}
-            </div>
-          )}
-
-          {/* ── Profile picture (signup only, optional) ── */}
-          {mode === "signup" && (
-            <div>
-              <label
-                className="block text-xs font-bold uppercase tracking-wider mb-1.5"
-                style={{ color: "var(--text)" }}
-              >
-                Profile picture <span className="text-[10px] font-medium normal-case" style={{ color: "var(--muted)" }}>(optional)</span>
-              </label>
-              <div className="flex items-center gap-3">
-                <div
-                  className="h-16 w-16 rounded-full border overflow-hidden flex items-center justify-center shrink-0"
-                  style={{
-                    borderColor: "var(--card-border)",
-                    backgroundColor: "rgba(0,0,0,0.05)",
-                  }}
-                >
-                  {avatar ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={avatar} alt="Profile preview" className="h-full w-full object-cover" />
-                  ) : (
-                    <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} style={{ color: "var(--muted)" }}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 20.25a7.5 7.5 0 0115 0v.75H4.5v-.75z" />
-                    </svg>
-                  )}
-                </div>
-                <div className="flex-1 space-y-1">
+                  Full name
                   <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={handleAvatarChange}
-                    className="block w-full text-xs file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-500/15 file:px-3 file:py-1.5 file:text-[11px] file:font-semibold file:text-indigo-300 file:cursor-pointer cursor-pointer"
-                    style={{ color: "var(--muted)" }}
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    onBlur={(e) => handleBlur("fullName", e.target.value)}
+                    required
+                    placeholder="Dr. Aisha Kapoor"
+                    autoComplete="name"
+                    className={inputCls("fullName")}
+                    style={inputStyle}
                   />
-                  {avatar && (
-                    <button
-                      type="button"
-                      onClick={() => setAvatar("")}
-                      className="text-[10px] underline underline-offset-2"
-                      style={{ color: "var(--muted)" }}
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
-              </div>
-              {avatarError && (
-                <p className="mt-1 text-xs text-red-400">{avatarError}</p>
-              )}
-            </div>
-          )}
-
-          {/* ── Password ── */}
-          <div>
-            <label
-              className="block text-xs font-bold uppercase tracking-wider mb-1.5"
-              style={{ color: "var(--text)" }}
-            >
-              {mode === "signup" ? "Create password" : "Clinician password"}
-            </label>
-            <div className="relative">
-              <input
-                type={showPw ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onBlur={(e) => handleBlur("password", e.target.value)}
-                required
-                autoFocus
-                minLength={mode === "signup" ? 8 : undefined}
-                autoComplete={mode === "signup" ? "new-password" : "current-password"}
-                placeholder="••••••••"
-                className={inputCls("password")}
-                style={{ ...inputStyle, paddingRight: "3.5rem" }}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPw((v) => !v)}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[11px] font-semibold transition-colors"
-                style={{ color: "var(--muted)" }}
-                aria-label={showPw ? "Hide password" : "Show password"}
-              >
-                {showPw ? "Hide" : "Show"}
-              </button>
-            </div>
-            {fieldError("password")}
-
-            {/* Password strength meter (signup only) */}
-            {mode === "signup" && password.length > 0 && (
-              <div className="mt-2">
-                <div className="flex gap-1 mb-1">
-                  {[1, 2, 3, 4].map((i) => (
-                    <div
-                      key={i}
-                      className="h-1 flex-1 rounded-full transition-all duration-300"
-                      style={{
-                        backgroundColor: strength.score >= i ? strength.color : "rgba(0,0,0,0.1)",
-                      }}
-                    />
-                  ))}
-                </div>
-                <p className="text-[10px] font-semibold" style={{ color: strength.color }}>
-                  {strength.label}
-                </p>
+                </label>
+                {fieldError("fullName")}
               </div>
             )}
-          </div>
 
-          {/* ── Confirm password (signup only) ── */}
-          {mode === "signup" && (
+            {/* ── Email ── */}
             <div>
               <label
                 className="block text-xs font-bold uppercase tracking-wider mb-1.5"
                 style={{ color: "var(--text)" }}
               >
-                Confirm password
+                {mode === "signup" ? "Email address" : "Clinical email address"}
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  onBlur={(e) => handleBlur("email", e.target.value)}
+                  required
+                  placeholder="doctor@hospital.com"
+                  autoComplete={mode === "signup" ? "email" : "username"}
+                  className={inputCls("email")}
+                  style={inputStyle}
+                />
+              </label>
+              {fieldError("email")}
+            </div>
+
+            {/* ── Institution (signup only) ── */}
+            {mode === "signup" && (
+              <div>
+                <label
+                  className="block text-xs font-bold uppercase tracking-wider mb-1.5"
+                  style={{ color: "var(--text)" }}
+                >
+                  Hospital / institution
+                  <input
+                    type="text"
+                    value={institution}
+                    onChange={(e) => setInstitution(e.target.value)}
+                    onBlur={(e) => handleBlur("institution", e.target.value)}
+                    required
+                    placeholder="e.g. City General Hospital"
+                    autoComplete="organization"
+                    className={inputCls("institution")}
+                    style={inputStyle}
+                  />
+                </label>
+                {fieldError("institution")}
+              </div>
+            )}
+
+            {/* ── Clinical role (signup only) ── */}
+            {mode === "signup" && (
+              <div>
+                <label
+                  className="block text-xs font-bold uppercase tracking-wider mb-1.5"
+                  style={{ color: "var(--text)" }}
+                >
+                  Clinical role
+                  <select
+                    value={designation}
+                    onChange={(e) => setDesignation(e.target.value)}
+                    onBlur={(e) => handleBlur("designation", e.target.value)}
+                    required
+                    className={inputCls("designation")}
+                    style={{ ...inputStyle, appearance: "none" as const }}
+                  >
+                    {DESIGNATIONS.map((d) => (
+                      <option key={d.value} value={d.value} disabled={d.value === ""}>
+                        {d.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {fieldError("designation")}
+              </div>
+            )}
+
+            {/* ── Department (signup only) ── */}
+            {mode === "signup" && (
+              <div>
+                <label
+                  className="block text-xs font-bold uppercase tracking-wider mb-1.5"
+                  style={{ color: "var(--text)" }}
+                >
+                  Department
+                  <input
+                    type="text"
+                    value={department}
+                    onChange={(e) => setDepartment(e.target.value)}
+                    onBlur={(e) => handleBlur("department", e.target.value)}
+                    required
+                    placeholder="e.g. Internal Medicine"
+                    autoComplete="off"
+                    className={inputCls("department")}
+                    style={inputStyle}
+                  />
+                </label>
+                {fieldError("department")}
+              </div>
+            )}
+
+            {/* ── Phone (signup only) ── */}
+            {mode === "signup" && (
+              <div>
+                <label
+                  className="block text-xs font-bold uppercase tracking-wider mb-1.5"
+                  style={{ color: "var(--text)" }}
+                >
+                  Phone number
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    onBlur={(e) => handleBlur("phone", e.target.value)}
+                    required
+                    placeholder="+91 98765 43210"
+                    autoComplete="tel"
+                    className={inputCls("phone")}
+                    style={inputStyle}
+                  />
+                </label>
+                {fieldError("phone")}
+              </div>
+            )}
+
+            {/* ── Registered address (signup only) ── */}
+            {mode === "signup" && (
+              <div>
+                <label
+                  className="block text-xs font-bold uppercase tracking-wider mb-1.5"
+                  style={{ color: "var(--text)" }}
+                >
+                  Registered address
+                  <textarea
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    onBlur={(e) => handleBlur("address", e.target.value)}
+                    required
+                    rows={2}
+                    maxLength={500}
+                    placeholder="Street, city, state, postal code"
+                    autoComplete="street-address"
+                    className={inputCls("address")}
+                    style={{ ...inputStyle, resize: "vertical" as const, minHeight: "4.5rem" }}
+                  />
+                </label>
+                {fieldError("address")}
+              </div>
+            )}
+
+            {/* ── Profile picture (signup only, optional) ── */}
+            {mode === "signup" && (
+              <div>
+                <label
+                  className="block text-xs font-bold uppercase tracking-wider mb-1.5"
+                  style={{ color: "var(--text)" }}
+                >
+                  Profile picture <span className="text-[10px] font-medium normal-case" style={{ color: "var(--muted)" }}>(optional)</span>
+                </label>
+                <div className="flex items-center gap-3">
+                  <div
+                    className="h-16 w-16 rounded-full border overflow-hidden flex items-center justify-center shrink-0"
+                    style={{
+                      borderColor: "var(--card-border)",
+                      backgroundColor: "rgba(0,0,0,0.05)",
+                    }}
+                  >
+                    {avatar ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={avatar} alt="Profile preview" className="h-full w-full object-cover" />
+                    ) : (
+                      <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} style={{ color: "var(--muted)" }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 20.25a7.5 7.5 0 0115 0v.75H4.5v-.75z" />
+                      </svg>
+                    )}
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={handleAvatarChange}
+                      className="block w-full text-xs file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-500/15 file:px-3 file:py-1.5 file:text-[11px] file:font-semibold file:text-indigo-300 file:cursor-pointer cursor-pointer"
+                      style={{ color: "var(--muted)" }}
+                    />
+                    {avatar && (
+                      <button
+                        type="button"
+                        onClick={() => setAvatar("")}
+                        className="text-[10px] underline underline-offset-2"
+                        style={{ color: "var(--muted)" }}
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {avatarError && (
+                  <p className="mt-1 text-xs text-red-400">{avatarError}</p>
+                )}
+              </div>
+            )}
+
+            {/* ── Password ── */}
+            <div>
+              <label
+                className="block text-xs font-bold uppercase tracking-wider mb-1.5"
+                style={{ color: "var(--text)" }}
+              >
+                {mode === "signup" ? "Create password" : "Clinician password"}
               </label>
               <div className="relative">
                 <input
-                  type={showConfirmPw ? "text" : "password"}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  onBlur={(e) => handleBlur("confirmPassword", e.target.value)}
+                  type={showPw ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onBlur={(e) => handleBlur("password", e.target.value)}
                   required
-                  autoComplete="new-password"
+                  autoFocus
+                  minLength={mode === "signup" ? 8 : undefined}
+                  autoComplete={mode === "signup" ? "new-password" : "current-password"}
                   placeholder="••••••••"
-                  className={inputCls("confirmPassword")}
+                  className={inputCls("password")}
                   style={{ ...inputStyle, paddingRight: "3.5rem" }}
                 />
                 <button
                   type="button"
-                  onClick={() => setShowConfirmPw((v) => !v)}
+                  onClick={() => setShowPw((v) => !v)}
                   className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[11px] font-semibold transition-colors"
                   style={{ color: "var(--muted)" }}
-                  aria-label={showConfirmPw ? "Hide password" : "Show password"}
+                  aria-label={showPw ? "Hide password" : "Show password"}
                 >
-                  {showConfirmPw ? "Hide" : "Show"}
+                  {showPw ? "Hide" : "Show"}
                 </button>
               </div>
-              {fieldError("confirmPassword")}
-            </div>
-          )}
+              {fieldError("password")}
 
-          {/* Global API error */}
-          {error && (
-            <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-3.5 py-2.5 text-xs text-red-400 font-medium leading-relaxed">
-              ⚠️ {error}
+              {/* Password strength meter (signup only) */}
+              {mode === "signup" && password.length > 0 && (
+                <div className="mt-2">
+                  <div className="flex gap-1 mb-1">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div
+                        key={i}
+                        className="h-1 flex-1 rounded-full transition-all duration-300"
+                        style={{
+                          backgroundColor: strength.score >= i ? strength.color : "rgba(0,0,0,0.1)",
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-[10px] font-semibold" style={{ color: strength.color }}>
+                    {strength.label}
+                  </p>
+                </div>
+              )}
             </div>
-          )}
 
-          {/* Submit */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full relative overflow-hidden rounded-2xl py-3 text-sm font-bold text-white shadow-lg shadow-indigo-500/20 transition-all duration-300 hover:shadow-indigo-500/40 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] disabled:opacity-60 disabled:pointer-events-none"
-            style={{ background: "linear-gradient(135deg, #6366f1, #14b8a6)" }}
-          >
-            {loading ? (
-              <span className="flex items-center justify-center gap-2">
-                <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                {mode === "signup" ? "Creating account…" : "Verifying credentials…"}
-              </span>
-            ) : mode === "signup" ? (
-              "Create Account & Enter"
-            ) : (
-              "Enter Swarm Ecosystem"
+            {/* ── Confirm password (signup only) ── */}
+            {mode === "signup" && (
+              <div>
+                <label
+                  className="block text-xs font-bold uppercase tracking-wider mb-1.5"
+                  style={{ color: "var(--text)" }}
+                >
+                  Confirm password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showConfirmPw ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    onBlur={(e) => handleBlur("confirmPassword", e.target.value)}
+                    required
+                    autoComplete="new-password"
+                    placeholder="••••••••"
+                    className={inputCls("confirmPassword")}
+                    style={{ ...inputStyle, paddingRight: "3.5rem" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPw((v) => !v)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[11px] font-semibold transition-colors"
+                    style={{ color: "var(--muted)" }}
+                    aria-label={showConfirmPw ? "Hide password" : "Show password"}
+                  >
+                    {showConfirmPw ? "Hide" : "Show"}
+                  </button>
+                </div>
+                {fieldError("confirmPassword")}
+              </div>
             )}
-          </button>
 
-          {/* Terms — signup only */}
-          {mode === "signup" && (
-            <p className="text-center text-[10px]" style={{ color: "var(--muted)" }}>
-              By signing up you agree to our{" "}
-              <a href="/terms" className="underline underline-offset-2" style={{ color: "var(--accent)" }}>
-                Terms of Use
-              </a>{" "}
-              and{" "}
-              <a href="/privacy" className="underline underline-offset-2" style={{ color: "var(--accent)" }}>
-                Privacy Policy
-              </a>
-              .
-            </p>
-          )}
-        </form>
+            {/* Global API error */}
+            {error && (
+              <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-3.5 py-2.5 text-xs text-red-400 font-medium leading-relaxed">
+                ⚠️ {error}
+              </div>
+            )}
 
-        <p
-          className="mt-6 text-center text-[10px] font-semibold uppercase tracking-wider"
-          style={{ color: "var(--muted)" }}
-        >
-          CONFIDENTIAL · DISCRETION ADVISED
+            {/* Submit */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full relative overflow-hidden rounded-2xl py-3 text-sm font-bold text-white shadow-lg shadow-indigo-500/20 transition-all duration-300 hover:shadow-indigo-500/40 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] disabled:opacity-60 disabled:pointer-events-none"
+              style={{ background: "linear-gradient(135deg, #6366f1, #14b8a6)" }}
+            >
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  {mode === "signup" ? "Creating account…" : "Verifying credentials…"}
+                </span>
+              ) : mode === "signup" ? (
+                "Create Account & Enter"
+              ) : (
+                "Enter Swarm Ecosystem"
+              )}
+            </button>
+
+            {/* Terms — signup only */}
+            {mode === "signup" && (
+              <p className="text-center text-[10px]" style={{ color: "var(--muted)" }}>
+                By signing up you agree to our{" "}
+                <a href="/terms" className="underline underline-offset-2" style={{ color: "var(--accent)" }}>
+                  Terms of Use
+                </a>{" "}
+                and{" "}
+                <a href="/privacy" className="underline underline-offset-2" style={{ color: "var(--accent)" }}>
+                  Privacy Policy
+                </a>
+                .
+              </p>
+            )}
+          </form>
+
+          <p
+            className="mt-6 text-center text-[10px] font-semibold uppercase tracking-wider"
+            style={{ color: "var(--muted)" }}
+          >
+            CONFIDENTIAL · DISCRETION ADVISED
+          </p>
+        </div>
+
+        {/* ── STATS STRIP ── */}
+        <div className="grid grid-cols-3 gap-2">
+          {STATS.map(({ n, label }) => (
+            <div key={label} className="border rounded-2xl py-3 px-1.5 text-center shadow-sm backdrop-blur-md"
+              style={{
+                backgroundColor: "color-mix(in srgb, var(--card) 75%, transparent)",
+                borderColor: "rgba(99,102,241,0.13)",
+              }}>
+              <div className="text-2xl font-extrabold leading-none" style={{ color: "var(--text)" }}>{n}</div>
+              <div className="text-[9px] uppercase tracking-wider mt-1.5 font-bold" style={{ color: "var(--muted)" }}>{label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* ── FEATURE GRID ── */}
+        <div>
+          <p className="text-[9px] font-bold tracking-widest uppercase mb-2.5" style={{ color: "var(--accent)" }}>
+            What you get
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {FEATURES.map((f) => (
+              <div key={f.title} className="border rounded-2xl p-3.5 flex flex-col items-start"
+                style={{
+                  backgroundColor: f.bg,
+                  borderColor: `${f.color}28`,
+                }}>
+                <span className="text-2xl mb-1.5">{f.icon}</span>
+                <p className="text-xs font-bold mb-1" style={{ color: f.color }}>{f.title}</p>
+                <p className="text-[11px] leading-relaxed" style={{ color: "var(--muted)" }}>{f.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── COMPLIANCE BADGES ── */}
+        <div>
+          <p className="text-[9px] font-bold tracking-widest uppercase mb-2.5" style={{ color: "var(--accent)" }}>
+            Security &amp; compliance
+          </p>
+          <div className="flex gap-1.5 flex-wrap">
+            {COMPLIANCE.map(({ icon, label }) => (
+              <div key={label} className="flex items-center gap-1.5 border rounded-lg py-1.5 px-3 text-[11px] font-semibold shadow-sm backdrop-blur-md"
+                style={{
+                  backgroundColor: "color-mix(in srgb, var(--card) 75%, transparent)",
+                  borderColor: "var(--card-border)",
+                  color: "var(--text)",
+                }}>
+                <span>{icon}</span><span>{label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── FOOTER ── */}
+        <p className="text-center text-[8px] font-bold uppercase tracking-[0.18em]" style={{ color: "var(--muted)" }}>
+          CONFIDENTIAL · FOR LICENSED CLINICIANS ONLY
         </p>
+
       </div>
     </main>
     </>
