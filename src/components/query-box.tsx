@@ -449,14 +449,15 @@ export default function QueryBox() {
   async function handleLabFile(e: React.ChangeEvent<HTMLInputElement>) {
     const selectedFiles = Array.from(e.target.files ?? []);
     if (selectedFiles.length === 0) return;
-    setLabFiles(selectedFiles);
+    const combinedFiles = [...labFiles, ...selectedFiles];
+    setLabFiles(combinedFiles);
     setLabText("");
     setLabCriticals([]);
     setLabError(null);
     setLabUploading(true);
     try {
       const fd = new FormData();
-      selectedFiles.forEach((file) => {
+      combinedFiles.forEach((file) => {
         fd.append("files", file);
       });
       const res = await fetch("/api/lab-extract", { method: "POST", body: fd });
@@ -778,27 +779,21 @@ export default function QueryBox() {
         </div>
 
         {/* ── Lab Report Upload ── */}
-        <div className="rounded-xl border px-4 py-3 space-y-2" style={{ borderColor: "var(--card-border)" }}>
+        <div className="rounded-xl border px-4 py-3 space-y-2.5" style={{ borderColor: "var(--card-border)" }}>
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium" style={{ color: "var(--text)" }}>
               Clinical reports / Images <span className="text-xs font-normal" style={{ color: "var(--muted)" }}>(optional — PDF, Image, .txt)</span>
             </span>
             {labFiles.length > 0 && (
               <button type="button" onClick={() => { setLabFiles([]); setLabText(""); setLabCriticals([]); setLabError(null); }}
-                className="text-xs px-2 py-0.5 rounded-full"
+                className="text-xs px-2 py-0.5 rounded-full hover:brightness-110 active:scale-95 transition"
                 style={{ backgroundColor: "rgba(239,68,68,0.15)", color: "#f87171" }}>
                 Remove All ({labFiles.length})
               </button>
             )}
           </div>
-          {labFiles.length === 0 ? (
-            <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed px-4 py-3 transition"
-              style={{ borderColor: "var(--card-border)", backgroundColor: "var(--bg)" }}>
-              <span className="text-xs" style={{ color: "var(--accent)" }}>Upload files</span>
-              <span className="text-xs" style={{ color: "var(--muted)" }}>Upload multiple CBC, LFT, RFT, CXRs, notes, prescriptions…</span>
-              <input type="file" multiple accept=".pdf,.txt,.csv,.png,.jpg,.jpeg,.webp" className="hidden" onChange={handleLabFile} />
-            </label>
-          ) : (
+
+          {labFiles.length > 0 && (
             <div className="rounded-xl border px-3 py-2.5 text-xs space-y-2"
               style={{ borderColor: "var(--card-border)", backgroundColor: "var(--card)" }}>
               <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
@@ -835,6 +830,17 @@ export default function QueryBox() {
               )}
             </div>
           )}
+
+          <label className="flex cursor-pointer items-center justify-center gap-2.5 rounded-xl border border-dashed px-4 py-3 transition hover:border-indigo-400 hover:bg-indigo-500/5"
+            style={{ borderColor: "var(--card-border)", backgroundColor: "var(--bg)" }}>
+            <span className="text-xs font-semibold" style={{ color: "var(--accent)" }}>
+              {labFiles.length > 0 ? "➕ Add more files" : "📤 Upload files / images"}
+            </span>
+            <span className="text-[11px]" style={{ color: "var(--muted)" }}>
+              {labFiles.length > 0 ? "Select more medical reports or images to append" : "Upload multiple CBC, LFT, RFT, CXRs, prescriptions…"}
+            </span>
+            <input type="file" multiple accept=".pdf,.txt,.csv,.png,.jpg,.jpeg,.webp" className="hidden" onChange={handleLabFile} />
+          </label>
         </div>
 
         {/* Item 4: Critical lab value banner */}
