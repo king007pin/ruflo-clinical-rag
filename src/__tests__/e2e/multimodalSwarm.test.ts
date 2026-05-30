@@ -275,4 +275,51 @@ REFERENCES
     expect(doneEvent.answer).toContain("CLINICAL ASSESSMENT REPORT");
     expect(doneEvent.answer).toContain("Acute coronary syndrome");
   });
+
+  it("successfully parses multiple file uploads in parallel and aggregates their extracted data", async () => {
+    global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+
+      // Intercept OCR completion calls
+      if (url.includes("/chat/completions")) {
+        return new Response(JSON.stringify({
+          choices: [{
+            message: {
+              content: "Doctor's Prescription Notes:\ntroponin 0.5 ng/mL\npotassium 7.2 mEq/L"
+            }
+          }]
+        }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+      return new Response(JSON.stringify({}), { status: 200 });
+    }) as typeof fetch;
+
+    const file1 = new File([Buffer.from("Doctor's note: Under observation. Condition is stable.")], "note.txt", { type: "text/plain" });
+    const file2 = new File([Buffer.from("fake-png-image-bytes")], "image.png", { type: "image/png" });
+
+    const formData = new FormData();
+    formData.append("files", file1);
+    formData.append("files", file2);
+
+    const req = new NextRequest("http://localhost/api/lab-extract", {
+      method: "POST",
+      body: formData,
+    });
+
+    const res = await extractPOST(req);
+    expect(res.status).toBe(200);
+
+    const data = await res.json() as {
+      text: string;
+      panel: { structuredText: string; criticals: Array<{ name: string; value: number | string }> };
+    };
+
+    expect(data.text).toContain("--- FILE: note.txt ---");
+    expect(data.text).toContain("--- FILE: image.png ---");
+    expect(data.text).toContain("Condition is stable.");
+    expect(data.text).toContain("Doctor's Prescription Notes");
+    expect(data.panel.criticals).toHaveLength(2);
+  });
 });

@@ -20,40 +20,53 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Expected multipart/form-data" }, { status: 400 });
   }
 
-  const file = formData.get("file") as File | null;
-  if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 });
-  // W14: cap upload size before buffering. Cloud Run instance is 2 GiB;
-  // an unchecked PDF upload could OOM the process.
-  if (file.size > MAX_LAB_BYTES) {
-    return NextResponse.json({ error: "Lab file too large (limit 10 MB)" }, { status: 413 });
+  const files = [
+    ...(formData.getAll("file") as File[]),
+    ...(formData.getAll("files") as File[])
+  ].filter(Boolean);
+
+  if (files.length === 0) {
+    return NextResponse.json({ error: "No files provided" }, { status: 400 });
   }
 
-  const buffer = Buffer.from(await file.arrayBuffer());
+  const combinedTextParts: string[] = [];
 
-  let rawText: string;
+  for (const file of files) {
+    // W14: cap upload size before buffering. Cloud Run instance is 2 GiB;
+    // an unchecked PDF/Image upload could OOM the process.
+    if (file.size > MAX_LAB_BYTES) {
+      return NextResponse.json({ error: `File ${file.name} is too large (limit 10 MB)` }, { status: 413 });
+    }
 
-  if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
-    try {
-      rawText = (await textFromPdfBuffer(buffer)).slice(0, MAX_CHARS);
-    } catch (err) {
-      return NextResponse.json({ error: `PDF extraction failed: ${(err as Error).message}` }, { status: 422 });
+    const buffer = Buffer.from(await file.arrayBuffer());
+    let rawText = "";
+
+    if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
+      try {
+        rawText = (await textFromPdfBuffer(buffer)).slice(0, MAX_CHARS);
+      } catch (err) {
+        return NextResponse.json({ error: `PDF extraction failed on ${file.name}: ${(err as Error).message}` }, { status: 422 });
+      }
+    } else if (file.type.startsWith("image/") || file.name.match(/\.(png|jpe?g|webp|gif)$/i)) {
+      try {
+        rawText = (await extractTextFromImage(buffer, file.type || "image/jpeg")).slice(0, MAX_CHARS);
+      } catch (err) {
+        return NextResponse.json({ error: `Image transcription failed on ${file.name}: ${(err as Error).message}` }, { status: 422 });
+      }
+    } else if (file.type.startsWith("text/") || file.name.match(/\.(txt|csv|md)$/i)) {
+      rawText = buffer.toString("utf-8").slice(0, MAX_CHARS);
+    } else {
+      return NextResponse.json(
+        { error: `Unsupported file type for ${file.name}. Upload PDF, Image (PNG, JPEG, WebP), or plain text (.txt, .csv) reports.` },
+        { status: 415 },
+      );
     }
-  } else if (file.type.startsWith("image/") || file.name.match(/\.(png|jpe?g|webp|gif)$/i)) {
-    try {
-      rawText = (await extractTextFromImage(buffer, file.type || "image/jpeg")).slice(0, MAX_CHARS);
-    } catch (err) {
-      return NextResponse.json({ error: `Image transcription failed: ${(err as Error).message}` }, { status: 422 });
-    }
-  } else if (file.type.startsWith("text/") || file.name.match(/\.(txt|csv|md)$/i)) {
-    rawText = buffer.toString("utf-8").slice(0, MAX_CHARS);
-  } else {
-    return NextResponse.json(
-      { error: "Unsupported file type. Upload PDF, Image (PNG, JPEG, WebP), or plain text (.txt, .csv) reports." },
-      { status: 415 },
-    );
+
+    combinedTextParts.push(`--- FILE: ${file.name} ---\n${rawText}`);
   }
 
-  const panel = parseLabText(rawText);
+  const combinedText = combinedTextParts.join("\n\n");
+  const panel = parseLabText(combinedText);
 
   // W84 — Lab reports almost always include patient name, MRN, DOB, ordering
   // physician, and clinic-letterhead identifiers around the structured lab
@@ -63,7 +76,8 @@ export async function POST(req: NextRequest) {
   // DB layer. Scrub regex-detectable identifiers from the text echo before
   // serialising. Structured `panel` values are numeric ranges and analyte
   // names with no free-text PHI surface, so they pass through untouched.
-  const scrubbedText = scrubPhi(rawText);
+  const scrubbedText = scrubPhi(combinedText);
+
   return NextResponse.json({
     text: scrubbedText,
     chars: scrubbedText.length,

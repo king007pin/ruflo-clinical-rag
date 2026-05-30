@@ -402,7 +402,7 @@ export default function QueryBox() {
 
   const [showPatientInfo, setShowPatientInfo] = useState(false);
   const [patientInfo, setPatientInfo] = useState<PatientInfo>({ name: "", age: "", gender: "", phone: "", address: "" });
-  const [labFile, setLabFile] = useState<File | null>(null);
+  const [labFiles, setLabFiles] = useState<File[]>([]);
   const [labText, setLabText] = useState<string>("");
   const [labCriticals, setLabCriticals] = useState<LabCritical[]>([]);
   const [labUploading, setLabUploading] = useState(false);
@@ -447,30 +447,37 @@ export default function QueryBox() {
   }
 
   async function handleLabFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setLabFile(file);
+    const selectedFiles = Array.from(e.target.files ?? []);
+    if (selectedFiles.length === 0) return;
+    setLabFiles(selectedFiles);
     setLabText("");
     setLabCriticals([]);
     setLabError(null);
     setLabUploading(true);
     try {
       const fd = new FormData();
-      fd.append("file", file);
+      selectedFiles.forEach((file) => {
+        fd.append("files", file);
+      });
       const res = await fetch("/api/lab-extract", { method: "POST", body: fd });
       const data = await res.json() as {
         text?: string;
         panel?: { structuredText: string; criticals: LabCritical[] };
         error?: string;
       };
-      if (!res.ok || data.error) { setLabError(data.error ?? "Extraction failed"); setLabFile(null); }
-      else {
-        // Item 4: use structured text (includes CRITICAL VALUES header) for better LLM context
+      if (!res.ok || data.error) {
+        setLabError(data.error ?? "Extraction failed");
+        setLabFiles([]);
+      } else {
         setLabText(data.panel?.structuredText ?? data.text ?? "");
         setLabCriticals(data.panel?.criticals ?? []);
       }
-    } catch { setLabError("Upload failed — check file format."); setLabFile(null); }
-    finally { setLabUploading(false); }
+    } catch {
+      setLabError("Upload failed — check file format.");
+      setLabFiles([]);
+    } finally {
+      setLabUploading(false);
+    }
   }
 
   async function handlePrint() {
@@ -774,32 +781,51 @@ export default function QueryBox() {
         <div className="rounded-xl border px-4 py-3 space-y-2" style={{ borderColor: "var(--card-border)" }}>
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium" style={{ color: "var(--text)" }}>
-              Clinical report / Image <span className="text-xs font-normal" style={{ color: "var(--muted)" }}>(optional — PDF, Image, .txt)</span>
+              Clinical reports / Images <span className="text-xs font-normal" style={{ color: "var(--muted)" }}>(optional — PDF, Image, .txt)</span>
             </span>
-            {labFile && (
-              <button type="button" onClick={() => { setLabFile(null); setLabText(""); setLabCriticals([]); setLabError(null); }}
+            {labFiles.length > 0 && (
+              <button type="button" onClick={() => { setLabFiles([]); setLabText(""); setLabCriticals([]); setLabError(null); }}
                 className="text-xs px-2 py-0.5 rounded-full"
                 style={{ backgroundColor: "rgba(239,68,68,0.15)", color: "#f87171" }}>
-                Remove
+                Remove All ({labFiles.length})
               </button>
             )}
           </div>
-          {!labFile ? (
+          {labFiles.length === 0 ? (
             <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed px-4 py-3 transition"
               style={{ borderColor: "var(--card-border)", backgroundColor: "var(--bg)" }}>
-              <span className="text-xs" style={{ color: "var(--accent)" }}>Upload file</span>
-              <span className="text-xs" style={{ color: "var(--muted)" }}>CBC, LFT, RFT, CXR, discharge summary, note, prescription…</span>
-              <input type="file" accept=".pdf,.txt,.csv,.png,.jpg,.jpeg,.webp" className="hidden" onChange={handleLabFile} />
+              <span className="text-xs" style={{ color: "var(--accent)" }}>Upload files</span>
+              <span className="text-xs" style={{ color: "var(--muted)" }}>Upload multiple CBC, LFT, RFT, CXRs, notes, prescriptions…</span>
+              <input type="file" multiple accept=".pdf,.txt,.csv,.png,.jpg,.jpeg,.webp" className="hidden" onChange={handleLabFile} />
             </label>
           ) : (
-            <div className="rounded-xl border px-3 py-2 text-xs space-y-1"
+            <div className="rounded-xl border px-3 py-2.5 text-xs space-y-2"
               style={{ borderColor: "var(--card-border)", backgroundColor: "var(--card)" }}>
-              <div className="flex items-center gap-2">
-                <span style={{ color: "var(--accent)" }}>📄</span>
-                <span className="font-medium" style={{ color: "var(--text)" }}>{labFile.name}</span>
-                <span style={{ color: "var(--muted)" }}>({(labFile.size / 1024).toFixed(1)} KB)</span>
-                {labUploading && <span style={{ color: "var(--muted)" }}>Extracting…</span>}
-                {labText && !labUploading && <span style={{ color: "#4ade80" }}>✓ {labText.length.toLocaleString()} chars extracted</span>}
+              <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                {labFiles.map((file, idx) => (
+                  <div key={idx} className="flex items-center justify-between border-b pb-1 last:border-0 last:pb-0" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+                    <div className="flex items-center gap-2 truncate">
+                      <span style={{ color: "var(--accent)" }}>
+                        {file.type.startsWith("image/") ? "🖼️" : file.type === "application/pdf" ? "📕" : "📄"}
+                      </span>
+                      <span className="font-medium truncate" style={{ color: "var(--text)" }}>{file.name}</span>
+                    </div>
+                    <span className="shrink-0 text-[10px]" style={{ color: "var(--muted)" }}>({(file.size / 1024).toFixed(1)} KB)</span>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center justify-between border-t pt-1.5 text-[11px]" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
+                {labUploading ? (
+                  <span style={{ color: "var(--muted)" }}>Extracting texts from {labFiles.length} files…</span>
+                ) : (
+                  <>
+                    {labText && <span style={{ color: "#4ade80" }}>✓ {labText.length.toLocaleString()} total chars extracted</span>}
+                    <button type="button" onClick={() => { setLabFiles([]); setLabText(""); setLabCriticals([]); setLabError(null); }}
+                      className="text-[10px] hover:underline" style={{ color: "#f87171" }}>
+                      Clear
+                    </button>
+                  </>
+                )}
               </div>
               {labError && <p style={{ color: "#f87171" }}>{labError}</p>}
               {labText && !labUploading && (
