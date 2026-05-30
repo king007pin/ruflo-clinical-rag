@@ -21,6 +21,7 @@
 | P5 | Build hardening | W10, W23-full, W28-full | — (parallel) | executor (worktrees) ×3 |
 | P6 | Resilience + tests | W29 | P5 | executor → nyquist-auditor |
 | P7 | Verify + ship | — | all above | verifier + security-auditor |
+| P8 | Admin dashboard expansion | — | P7 | researcher → planner → executor → verifier |
 
 ## Parallelism Map
 - Wave 1 (now, parallel): researchers (W3, W4, W19) running.
@@ -28,6 +29,7 @@
 - Wave 3: P3 (after P2 merged).
 - Wave 4: P6 (after P5 merged).
 - Wave 5: P7.
+- Wave 6: P8 (Admin dashboard unified console & controls).
 
 ## Phase Artifact Layout
 ```
