@@ -835,7 +835,7 @@ export default function QueryBox() {
               </div>
               <div className="flex items-center justify-between border-t pt-1.5 text-[11px]" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
                 {labUploading ? (
-                  <span style={{ color: "var(--muted)" }}>Extracting texts from {labFiles.length} files…</span>
+                  <span className="text-xs sm:text-sm font-medium" style={{ color: "var(--muted)" }}>Extracting texts from {labFiles.length} files…</span>
                 ) : (
                   <>
                     {labText && <span style={{ color: "#4ade80" }}>✓ {labText.length.toLocaleString()} total chars extracted</span>}
