@@ -147,6 +147,8 @@ export async function nvidiaEmbed(
 // Per-model NIM constraints — wrong values cause 400/410
 const MODEL_CONFIGS: Record<string, { maxTokens: number; temperature: number }> = {
   "meta/llama-3.3-70b-instruct":                 { maxTokens: 4096, temperature: 0.3 },
+  "meta/llama-3.1-70b-instruct":                 { maxTokens: 4096, temperature: 0.3 },
+  "meta/llama-3.1-8b-instruct":                  { maxTokens: 4096, temperature: 0.3 },
   "openai/gpt-oss-120b":                          { maxTokens: 4096, temperature: 0.3 },
   "meta/llama-4-maverick-17b-128e-instruct":      { maxTokens: 4096, temperature: 0.4 },
   "qwen/qwen3-next-80b-a3b-instruct":             { maxTokens: 4096, temperature: 0.4 },
@@ -160,16 +162,24 @@ const MODEL_CONFIGS: Record<string, { maxTokens: number; temperature: number }> 
 export function mapUnstableModel(model: string): string {
   // Map obsolete, experimental, or custom models to active, high-performance SOTA models on build.nvidia.com
   const mappings: Record<string, string> = {
-    "nvidia/nemotron-3-super-120b-a12b":       "meta/llama-3.3-70b-instruct",
-    "nvidia/llama-3.3-nemotron-super-49b-v1":  "meta/llama-3.3-70b-instruct",
-    "nvidia/llama-3.1-nemotron-70b-instruct":  "meta/llama-3.3-70b-instruct",
-    "nvidia/nemotron-nano-12b-v2-vl":          "meta/llama-3.3-70b-instruct",
+    // Heavyweight 120B/70B models mapped to fast stable 70B
+    "nvidia/nemotron-3-super-120b-a12b":       "meta/llama-3.1-70b-instruct",
+    "nvidia/llama-3.1-nemotron-70b-instruct":  "meta/llama-3.1-70b-instruct",
+    "mistralai/mixtral-8x22b-instruct-v0.1":   "meta/llama-3.1-70b-instruct",
+    "qwen/qwen3-next-80b-a3b-instruct":        "meta/llama-3.1-70b-instruct",
+    
+    // Medium-weight 49B models mapped to fast stable 14B
+    "nvidia/llama-3.3-nemotron-super-49b-v1":  "mistralai/ministral-14b-instruct-2512",
+    
+    // Mistral 14B actually works natively, so we remove its mapping to allow native execution!
+    
+    // Fast lightweight models mapped to blazing fast stable 8B
+    "nvidia/nemotron-nano-12b-v2-vl":          "meta/llama-3.1-8b-instruct",
+    "meta/llama-4-maverick-17b-128e-instruct": "meta/llama-3.1-8b-instruct",
+    "microsoft/phi-3-mini-128k-instruct":      "meta/llama-3.1-8b-instruct",
+    
+    // Primary/Oncology stays on high-quality meta/llama-3.3-70b-instruct
     "openai/gpt-oss-120b":                     "meta/llama-3.3-70b-instruct",
-    "meta/llama-4-maverick-17b-128e-instruct": "meta/llama-3.3-70b-instruct",
-    "qwen/qwen3-next-80b-a3b-instruct":        "meta/llama-3.3-70b-instruct",
-    "mistralai/ministral-14b-instruct-2512":   "meta/llama-3.3-70b-instruct",
-    "mistralai/mixtral-8x22b-instruct-v0.1":   "meta/llama-3.3-70b-instruct",
-    "microsoft/phi-3-mini-128k-instruct":      "meta/llama-3.3-70b-instruct",
   };
   return mappings[model] ?? model;
 }

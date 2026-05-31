@@ -134,6 +134,9 @@ export async function POST(req: NextRequest) {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
       }
 
+      // Send 2KB of comment padding to force CDN/Proxy buffers to flush and establish the SSE stream immediately
+      controller.enqueue(encoder.encode(":" + " ".repeat(2048) + "\n\n"));
+
       let ping: ReturnType<typeof setInterval> | null = null;
       ping = setInterval(() => {
         try { controller.enqueue(encoder.encode(": ping\n\n")); } catch { /* stream closed */ }

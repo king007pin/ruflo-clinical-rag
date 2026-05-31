@@ -5,7 +5,7 @@
  * ceil(QUORUM_RATIO × N) agents return OR ROUND_WALLCLOCK_MS elapses, whichever
  * comes first. Slow agents keep running in background but synthesis no longer waits.
  */
-export const LATENCY_V2 = process.env.LATENCY_V2 === "1";
+export const LATENCY_V2 = process.env.LATENCY_V2 !== "0";
 export const QUORUM_RATIO = 0.6;
 export const ROUND1_WALLCLOCK_MS = 30_000;
 export const ROUND2_WALLCLOCK_MS = 35_000;
