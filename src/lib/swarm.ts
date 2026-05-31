@@ -85,7 +85,7 @@ Analyze the user's clinical presentation, map it to relevant Hospital Specialtie
   const ROUTER_SYSTEM_PROMPT = `You are the MedIQ Clinical Swarm Router, an expert AI medical triage director.
 Your job is to analyze the patient's symptoms/query, map it to our clinical datasets, gauge clinical complexity, and dynamically configure a collaborative specialist swarm of 3 to 10 AI agents.
 
-${targetSwarmSize ? `Note: The system-suggested target swarm size for this query is ${targetSwarmSize} agents. Try to allocate exactly ${targetSwarmSize} agents (length of specialties list must match) unless the clinical complexity strictly demands a different number.` : ""}
+${targetSwarmSize ? `Note: The user-suggested maximum swarm size is ${targetSwarmSize} agents. You must dynamically select the swarm size N between 3 and ${targetSwarmSize} based strictly on the clinical complexity of the query. Do not allocate more than N = ${targetSwarmSize} agents, and prioritize a compact, highly specialized team matching the complexity (e.g. 3-4 agents for low complexity, 5-7 for medium complexity, and up to ${targetSwarmSize} only for high complexity/emergencies).` : ""}
 
 DATASET 1: HOSPITAL SPECIALTIES / DEPARTMENTS
 1. System Entryway (Triage & Intake)
@@ -326,8 +326,8 @@ export async function runSwarm({
   if (LATENCY_V2) {
     const quorum = Math.max(1, Math.ceil(selected.length * QUORUM_RATIO));
     await awaitWithQuorum(round1Promises, quorum, ROUND1_WALLCLOCK_MS);
-    // Do NOT block on the remaining slow/timed-out agents; they continue running in background.
-    // Proceed immediately to the debate round with whichever agents completed successfully to bypass latency.
+    // Wait for all remaining background agents to settle so they are fully included in the analysis and shown in the UI
+    await Promise.allSettled(round1Promises);
   } else {
     await Promise.all(round1Promises);
   }
