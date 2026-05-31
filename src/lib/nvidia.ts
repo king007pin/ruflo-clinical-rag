@@ -36,17 +36,50 @@ const poolIndexes: Record<NvidiaTaskType, number> = {
   default: 0,
 };
 
+// Stateful Key Health Registry (Pillar 1)
+type KeyHealth = {
+  key: string;
+  quarantinedUntil: number; // timestamp
+  consecutiveFailures: number;
+};
+const keyRegistry = new Map<string, KeyHealth>();
+
+function getKeyHealthRecord(key: string): KeyHealth {
+  let record = keyRegistry.get(key);
+  if (!record) {
+    record = { key, quarantinedUntil: 0, consecutiveFailures: 0 };
+    keyRegistry.set(key, record);
+  }
+  return record;
+}
+
+export function markKeyHealthy(key: string): void {
+  const record = getKeyHealthRecord(key);
+  record.consecutiveFailures = 0;
+  record.quarantinedUntil = 0;
+}
+
+export function markKeyUnhealthy(key: string, status: number): void {
+  const record = getKeyHealthRecord(key);
+  record.consecutiveFailures += 1;
+  // Quarantine key: 3 mins for 429 rate limit, 1 min for other 5xx errors
+  const cooldownMs = status === 429 ? 180_000 : 60_000;
+  record.quarantinedUntil = Date.now() + cooldownMs;
+  console.warn(`[NVIDIA Key Registry] Key starting with ${key.slice(0, 12)}... marked unhealthy (status ${status}). Quarantined for ${cooldownMs / 1000}s. Consecutive failures: ${record.consecutiveFailures}`);
+}
+
 export function resetApiKeyRotation(): void {
   poolIndexes.triage = 0;
   poolIndexes.debate = 0;
   poolIndexes.vision = 0;
   poolIndexes.crawl = 0;
   poolIndexes.default = 0;
+  keyRegistry.clear();
 }
 
 /**
- * Retrieves the next NVIDIA API key from the environment, load-balanced dynamically
- * by task pool type to isolate workloads, maximize parallel execution, and bypass rate limits.
+ * Retrieves the next healthy NVIDIA API key, load-balanced dynamically.
+ * Incorporates active health circuit-breaking and dynamic cooperative pool borrowing (Pillar 2).
  */
 export function getNvidiaApiKey(task: NvidiaTaskType = "default"): string {
   const envMap: Record<NvidiaTaskType, string | undefined> = {
@@ -62,6 +95,34 @@ export function getNvidiaApiKey(task: NvidiaTaskType = "default"): string {
   const keys = keysStr.split(",").map(k => k.trim()).filter(Boolean);
   if (keys.length === 0) return "";
 
+  // 1. Try to find a healthy key in the dedicated pool
+  const healthyKeys = keys.filter(k => {
+    const health = keyRegistry.get(k);
+    return !health || health.quarantinedUntil <= Date.now();
+  });
+
+  if (healthyKeys.length > 0) {
+    const idx = poolIndexes[task];
+    poolIndexes[task] = (idx + 1) % healthyKeys.length;
+    return healthyKeys[idx % healthyKeys.length];
+  }
+
+  // 2. Cooperative borrowing failover: dedicated pool exhausted, borrow a healthy key from the cooperative fabric
+  const masterKeysStr = process.env.NVIDIA_API_KEY || "";
+  const masterKeys = masterKeysStr.split(",").map(k => k.trim()).filter(Boolean);
+  const healthyMasterKeys = masterKeys.filter(k => {
+    const health = keyRegistry.get(k);
+    return !health || health.quarantinedUntil <= Date.now();
+  });
+
+  if (healthyMasterKeys.length > 0) {
+    console.warn(`[NVIDIA Key Router] Dedicated "${task}" pool has no healthy keys. Borrowing healthy key from Cooperative Key Fabric.`);
+    const idx = poolIndexes[task];
+    poolIndexes[task] = (idx + 1) % healthyMasterKeys.length;
+    return healthyMasterKeys[idx % healthyMasterKeys.length];
+  }
+
+  // 3. Disaster recovery: all 20 keys quarantined! Fallback to round-robin on original keys
   const idx = poolIndexes[task];
   poolIndexes[task] = (idx + 1) % keys.length;
   return keys[idx % keys.length];
@@ -88,18 +149,34 @@ async function nvidiaFetch(path: string, body: unknown, timeoutMs = 32_000, task
       }) as RequestInit;
 
       res = await fetch(`${NVIDIA_BASE}${path}`, init);
-      if (res.ok) break;
+      if (res.ok) {
+        markKeyHealthy(apiKey);
+        break;
+      }
+
+      markKeyUnhealthy(apiKey, res.status);
 
       const isTransient = (res.status >= 500 && res.status < 600) || res.status === 429;
       if (isTransient && attempt < 3) {
         const elapsed = Date.now() - start;
-        // Calculate backoff: 500ms, 1000ms, 2000ms with random jitter to stagger concurrent requests
+        // Calculate backoff: 500ms, 1000ms, 2000ms with random jitter
         const backoffBase = Math.pow(2, attempt) * 500;
         const jitter = Math.random() * 400;
         const delay = backoffBase + jitter;
 
         if (elapsed + delay + 500 < timeoutMs) {
           attempt++;
+          
+          // Model Fallback Cascade (Pillar 4) on 3rd attempt
+          if (attempt >= 2 && typeof body === "object" && body !== null) {
+            const mutableBody = body as Record<string, unknown>;
+            if (typeof mutableBody.model === "string" && mutableBody.model !== "meta/llama-3.3-70b-instruct") {
+              const prevModel = mutableBody.model;
+              mutableBody.model = "meta/llama-3.3-70b-instruct";
+              console.warn(`[NVIDIA Fetch] Model ${prevModel} failing. Cascading to ultra-stable meta/llama-3.3-70b-instruct on attempt ${attempt + 1}.`);
+            }
+          }
+
           console.warn(`[NVIDIA Fetch] Transient failure (${res.status}) on ${path}. Retrying with next rotated key in ${delay.toFixed(0)}ms (attempt ${attempt}/3)...`);
           await new Promise((r) => setTimeout(r, delay));
           continue;
@@ -219,7 +296,7 @@ export async function nvidiaChatStream(
   maxTokensOverride?: number,
   task: NvidiaTaskType = "default",
 ): Promise<ReadableStream<string>> {
-  const targetModel = mapUnstableModel(model);
+  let targetModel = mapUnstableModel(model);
   const cfg = MODEL_CONFIGS[targetModel] ?? { maxTokens: 4096, temperature: 0.3 };
 
   const start = Date.now();
@@ -250,7 +327,12 @@ export async function nvidiaChatStream(
       }),
     }) as RequestInit);
 
-    if (res.ok) break;
+    if (res.ok) {
+      markKeyHealthy(apiKey);
+      break;
+    }
+
+    markKeyUnhealthy(apiKey, res.status);
 
     const isTransient = (res.status >= 500 && res.status < 600) || res.status === 429;
     if (isTransient && attempt < 3) {
@@ -262,6 +344,13 @@ export async function nvidiaChatStream(
 
       if (elapsed + delay + 500 < timeoutMs) {
         attempt++;
+        
+        // Model Fallback Cascade on final attempts
+        if (attempt >= 2 && targetModel !== "meta/llama-3.3-70b-instruct") {
+          console.warn(`[NVIDIA ChatStream] Model ${targetModel} failing repeatedly. Cascading stream to ultra-stable meta/llama-3.3-70b-instruct...`);
+          targetModel = "meta/llama-3.3-70b-instruct";
+        }
+
         console.warn(`[NVIDIA ChatStream] Transient failure (${res.status}). Retrying with next rotated key in ${delay.toFixed(0)}ms (attempt ${attempt}/3)...`);
         await new Promise((r) => setTimeout(r, delay));
         continue;
