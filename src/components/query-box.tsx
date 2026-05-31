@@ -847,13 +847,13 @@ export default function QueryBox() {
                 )}
               </div>
               {labUploading && (
-                <div className="space-y-1 pt-1">
-                  <div className="relative h-1 w-full overflow-hidden rounded-full bg-zinc-800/80">
+                <div className="space-y-1.5 pt-1.5">
+                  <div className="relative h-2 w-full overflow-hidden rounded-full bg-zinc-950/60 border border-zinc-800/60 shadow-[inner_0_1px_2px_rgba(0,0,0,0.4)]">
                     <div className="absolute inset-y-0 rounded-full"
                       style={{
                         width: "40%",
                         background: "linear-gradient(90deg, #818cf8, #f472b6)",
-                        boxShadow: "0 0 8px rgba(129,140,248,0.4)",
+                        boxShadow: "0 0 10px rgba(129,140,248,0.5), inset 0 1px 1px rgba(255,255,255,0.15)",
                         animation: "pulse-progress 1.8s ease-in-out infinite"
                       }} />
                   </div>
@@ -1058,13 +1058,13 @@ export default function QueryBox() {
           </div>
 
           {/* Swarm progress bar */}
-          <div className="space-y-1">
-            <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-zinc-900 border border-zinc-800/50">
+          <div className="space-y-1.5">
+            <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-zinc-950/70 border border-zinc-800/60 shadow-[inner_0_1px_3px_rgba(0,0,0,0.5)]">
               <div className="absolute inset-y-0 rounded-full transition-all duration-500 ease-out"
                 style={{
                   width: `${synthesisPhase ? 95 : Math.max(10, Math.min(90, (totalLive / (totalExpected || 1)) * 100))}%`,
-                  background: "linear-gradient(90deg, #818cf8, #3b82f6, #f472b6)",
-                  boxShadow: "0 0 12px rgba(129,140,248,0.6)",
+                  background: "linear-gradient(90deg, #818cf8, #3b82f6, #ec4899)",
+                  boxShadow: "0 0 14px rgba(129,140,248,0.7), inset 0 1px 1px rgba(255,255,255,0.2)",
                 }} />
             </div>
             <div className="flex justify-between text-[10px]" style={{ color: "var(--muted)" }}>
