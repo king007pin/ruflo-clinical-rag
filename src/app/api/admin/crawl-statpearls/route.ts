@@ -3,6 +3,7 @@ import { sourceFeeds } from "@/db/schema";
 import { persistSource } from "@/lib/ingest-pipeline";
 import { fetchStatpearlsArticle, fetchStatpearlsArticleUrls } from "@/lib/statpearls";
 import { requireRole } from "@/lib/auth-guard";
+import { serverError } from "@/lib/api-error";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -67,7 +68,7 @@ export async function POST(req: NextRequest) {
   try {
     allUrls = await fetchStatpearlsArticleUrls();
   } catch (err) {
-    return NextResponse.json({ error: `Failed to fetch StatPearls index: ${(err as Error).message}` }, { status: 500 });
+    return serverError("Failed to fetch StatPearls", err, 500);
   }
 
   if (!allUrls.length) {

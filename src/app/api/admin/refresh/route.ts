@@ -1,5 +1,6 @@
 import { runFeedRefresh } from "@/lib/feed-refresh";
 import { requireRole } from "@/lib/auth-guard";
+import { serverError } from "@/lib/api-error";
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -12,9 +13,6 @@ export async function POST(req: NextRequest) {
     const result = await runFeedRefresh();
     return NextResponse.json(result);
   } catch (err) {
-    return NextResponse.json(
-      { ok: false, error: (err as Error).message },
-      { status: 500 },
-    );
+    return serverError("Feed refresh failed", err, 500);
   }
 }

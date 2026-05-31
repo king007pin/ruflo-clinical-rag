@@ -4,6 +4,7 @@ import { decrypt } from "@/lib/secretVault";
 import { PROVIDERS, callProvider, resolveProvider } from "@/lib/providerRegistry";
 import { requireAuth } from "@/lib/auth-guard";
 import { rateLimit, RL_SWARM } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 import { eq, desc } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -165,7 +166,8 @@ export async function POST(req: NextRequest) {
         45_000,
       );
     } catch (e) {
-      synthesis = `Synthesis failed: ${(e as Error).message}`;
+      logger.error("Synthesis failed", e instanceof Error ? e.message : String(e));
+      synthesis = "Synthesis failed. Please try again.";
     }
   } else {
     // Fallback: concatenate top 3 outputs
