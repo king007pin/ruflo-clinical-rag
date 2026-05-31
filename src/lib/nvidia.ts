@@ -68,11 +68,23 @@ async function nvidiaFetch(path: string, body: unknown, timeoutMs = 32_000): Pro
     while (true) {
       res = await fetch(`${NVIDIA_BASE}${path}`, init);
       if (res.ok) break;
-      if (res.status >= 500 && res.status < 600 && attempt < 1 && (Date.now() - start + 500) < timeoutMs) {
-        attempt++;
-        await new Promise((r) => setTimeout(r, 500));
-        continue;
+
+      const isTransient = (res.status >= 500 && res.status < 600) || res.status === 429;
+      if (isTransient && attempt < 3) {
+        const elapsed = Date.now() - start;
+        // Calculate backoff: 500ms, 1000ms, 2000ms with random jitter to stagger concurrent requests
+        const backoffBase = Math.pow(2, attempt) * 500;
+        const jitter = Math.random() * 400;
+        const delay = backoffBase + jitter;
+
+        if (elapsed + delay + 500 < timeoutMs) {
+          attempt++;
+          console.warn(`[NVIDIA Fetch] Transient failure (${res.status}) on ${path}. Retrying in ${delay.toFixed(0)}ms (attempt ${attempt}/3)...`);
+          await new Promise((r) => setTimeout(r, delay));
+          continue;
+        }
       }
+
       const text = await res.text().catch(() => "");
       throw new Error(`NVIDIA API ${path} failed (${res.status}): ${text.slice(0, 200)}`);
     }
@@ -168,26 +180,49 @@ export async function nvidiaChatStream(
   const apiKey = getNvidiaApiKey();
   if (!apiKey) throw new Error("NVIDIA_API_KEY not configured");
 
-  const res = await fetch(`${NVIDIA_BASE}/chat/completions`, nvidiaFetchInit({
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: targetModel,
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
-      max_tokens: maxTokensOverride ?? cfg.maxTokens,
-      temperature: temperatureOverride ?? cfg.temperature,
-      top_p: 0.9,
-      stream: true,
-    }),
-  }) as RequestInit);
+  const start = Date.now();
+  let attempt = 0;
+  let res: Response;
+  const timeoutMs = 32_000;
 
-  if (!res.ok) {
+  while (true) {
+    res = await fetch(`${NVIDIA_BASE}/chat/completions`, nvidiaFetchInit({
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: targetModel,
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: user },
+        ],
+        max_tokens: maxTokensOverride ?? cfg.maxTokens,
+        temperature: temperatureOverride ?? cfg.temperature,
+        top_p: 0.9,
+        stream: true,
+      }),
+    }) as RequestInit);
+
+    if (res.ok) break;
+
+    const isTransient = (res.status >= 500 && res.status < 600) || res.status === 429;
+    if (isTransient && attempt < 3) {
+      const elapsed = Date.now() - start;
+      // Calculate backoff: 500ms, 1000ms, 2000ms with random jitter
+      const backoffBase = Math.pow(2, attempt) * 500;
+      const jitter = Math.random() * 400;
+      const delay = backoffBase + jitter;
+
+      if (elapsed + delay + 500 < timeoutMs) {
+        attempt++;
+        console.warn(`[NVIDIA ChatStream] Transient failure (${res.status}). Retrying in ${delay.toFixed(0)}ms (attempt ${attempt}/3)...`);
+        await new Promise((r) => setTimeout(r, delay));
+        continue;
+      }
+    }
+
     const text = await res.text().catch(() => "");
     throw new Error(`NVIDIA stream failed (${res.status}): ${text.slice(0, 200)}`);
   }
