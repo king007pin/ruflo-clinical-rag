@@ -219,6 +219,7 @@ export function parseLabText(text: string): LabPanel {
 
   // 1. Parse structured numerical lines (CBC, LFT, RFT values)
   for (const line of lines) {
+    if (line.length > 200) continue;
     const match = line.match(
       /([A-Za-z][A-Za-z\s\-/]*?)[\s:]+([0-9]+\.?[0-9]*)\s*([A-Za-z/μ×³%]*)/,
     );
