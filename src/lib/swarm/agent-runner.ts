@@ -2,6 +2,8 @@ import { AgentReply, MatchMeta, SpecialtyMeta } from "./types";
 import { getCognitiveStrategyForSpecialty } from "./specialty";
 import { callRufloApi } from "./ruflo-client";
 import { hasNvidiaKey, nvidiaChat, nvidiaChatStream } from "../nvidia";
+import { callProvider, type ChatMessage } from "../providerRegistry";
+import { type BYOKConfig, mapModelForProvider } from "../byok-resolver";
 import { logger } from "../logger";
 
 const NVIDIA_SWARM_MODELS_FAST = [
@@ -590,6 +592,7 @@ export async function runAgent(
   specialty: SpecialtyMeta,
   patientContext?: string,
   labText?: string,
+  providerOverride?: BYOKConfig,
 ): Promise<AgentReply> {
   const cognitiveStrategy = getCognitiveStrategyForSpecialty(specialty, model);
   const system = buildSystemPrompt(specialty, cognitiveStrategy);
@@ -599,6 +602,22 @@ export async function runAgent(
 
   const rufloMsg = await callRufloApi({ model, system, question, context, evidence: matches });
   if (rufloMsg) return { model, message: rufloMsg, reasoning: `Ruflo · ${tag}`, round: 1 };
+
+  // BYOK: use user's provider key if available
+  if (providerOverride) {
+    const mappedModel = mapModelForProvider(model, providerOverride);
+    try {
+      const messages: ChatMessage[] = [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ];
+      const message = await callProvider(providerOverride.provider, providerOverride.apiKey, mappedModel, messages, 45_000);
+      return { model, message, reasoning: `${tag} · ${providerOverride.provider.name}`, round: 1 };
+    } catch (err) {
+      logger.warn(`[BYOK Agent] ${providerOverride.provider.name} failed for ${model}→${mappedModel}, falling back to NVIDIA: ${(err as Error).message.slice(0, 80)}`);
+      // Fall through to NVIDIA
+    }
+  }
 
   if (hasNvidiaKey()) {
     try {
@@ -622,6 +641,7 @@ export async function runDebateAgent(
   agentIndex: number,
   swarmSize: number,
   specialty: SpecialtyMeta,
+  providerOverride?: BYOKConfig,
 ): Promise<AgentReply & { round: 2 }> {
   const cognitiveStrategy = getCognitiveStrategyForSpecialty(specialty, model);
   const system = buildDebateSystemPrompt(specialty, cognitiveStrategy);
@@ -637,6 +657,22 @@ export async function runDebateAgent(
 
   const rufloMsg = await callRufloApi({ model, system, question, context, evidence: matches, debateMode: true, peers });
   if (rufloMsg) return { model, message: rufloMsg, reasoning: `Ruflo · ${tag}`, round: 2 };
+
+  // BYOK: use user's provider key if available
+  if (providerOverride) {
+    const mappedModel = mapModelForProvider(model, providerOverride);
+    try {
+      const messages: ChatMessage[] = [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ];
+      const message = await callProvider(providerOverride.provider, providerOverride.apiKey, mappedModel, messages, 45_000);
+      return { model, message, reasoning: `${tag} · ${providerOverride.provider.name}`, round: 2 };
+    } catch (err) {
+      logger.warn(`[BYOK Debate] ${providerOverride.provider.name} failed for ${model}→${mappedModel}, falling back to NVIDIA: ${(err as Error).message.slice(0, 80)}`);
+      // Fall through to NVIDIA
+    }
+  }
 
   if (hasNvidiaKey()) {
     try {
@@ -658,12 +694,36 @@ export async function runSynthesisAgent(
   round2Agents: AgentReply[],
   matches: MatchMeta[],
   onSynthesisToken?: (token: string) => void,
+  providerOverride?: BYOKConfig,
 ): Promise<string> {
   const system = buildSynthesisSystemPrompt(round1Agents.length);
   const user = buildSynthesisUserPrompt(question, context, round1Agents, round2Agents);
 
   const rufloMsg = await callRufloApi({ model, system, question, context, synthesisMode: true });
   if (rufloMsg) return rufloMsg;
+
+  // BYOK: use user's provider key for synthesis if available
+  if (providerOverride) {
+    const mappedModel = mapModelForProvider(model, providerOverride);
+    try {
+      const messages: ChatMessage[] = [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ];
+      const result = await callProvider(providerOverride.provider, providerOverride.apiKey, mappedModel, messages, 60_000);
+      // Emit synthesis token-by-token for streaming UI effect
+      if (onSynthesisToken) {
+        const words = result.split(/(?<=\s)/);
+        for (const word of words) {
+          onSynthesisToken(word);
+        }
+      }
+      return result;
+    } catch (err) {
+      logger.warn(`[BYOK Synthesis] ${providerOverride.provider.name} failed for ${model}→${mappedModel}, falling back to NVIDIA: ${(err as Error).message.slice(0, 80)}`);
+      // Fall through to NVIDIA
+    }
+  }
 
   if (hasNvidiaKey()) {
     try {

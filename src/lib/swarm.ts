@@ -1,5 +1,6 @@
 import { assembleContext } from "./rag";
 import { hasNvidiaKey, nvidiaChat, nvidiaChatStream, NVIDIA_SWARM_MODELS } from "./nvidia";
+import { type BYOKConfig } from "./byok-resolver";
 import { logger } from "./logger";
 
 // Import core types
@@ -279,6 +280,7 @@ export async function runSwarm({
   onSynthesisStart,
   onSynthesisToken,
   onSwarmConfig,
+  providerOverride,
 }: {
   question: string;
   context: string;
@@ -293,6 +295,7 @@ export async function runSwarm({
   onSynthesisStart?: () => void;
   onSynthesisToken?: (token: string) => void;
   onSwarmConfig?: (config: { swarmSize: number; hospitalDepartments: string[]; pgSubjects: string[] }) => void;
+  providerOverride?: BYOKConfig;
 }) {
   let selected: string[] = [];
   let specialties: SpecialtyMeta[] = [];
@@ -309,13 +312,14 @@ export async function runSwarm({
     selected = [model, ...selected.filter((m) => m !== model)].slice(0, selected.length);
   }
 
-  logger.info(`[AI Swarm Router] Routed query to ${selected.length} agents. Departments: ${hospitalDepts.join(", ")}, PG Subjects: ${pgSubjs.join(", ")}`);
+  const byokLabel = providerOverride ? ` [BYOK: ${providerOverride.provider.name}]` : "";
+  logger.info(`[AI Swarm Router] Routed query to ${selected.length} agents.${byokLabel} Departments: ${hospitalDepts.join(", ")}, PG Subjects: ${pgSubjs.join(", ")}`);
   onSwarmConfig?.({ swarmSize: selected.length, hospitalDepartments: hospitalDepts, pgSubjects: pgSubjs });
 
   // ── Round 1: Independent analysis ───────────────────────────────────────
   const round1Map = new Map<string, AgentReply & { round: 1 }>();
   const round1Promises = selected.map((m, idx) =>
-    runAgent(m, question, context, matches, idx, specialties[idx], patientContext, labText).then((reply) => {
+    runAgent(m, question, context, matches, idx, specialties[idx], patientContext, labText, providerOverride).then((reply) => {
       const r1 = { ...reply, round: 1 as const };
       onAgentDone?.(r1);
       round1Map.set(m, r1);
@@ -352,7 +356,7 @@ export async function runSwarm({
             role: specialtyByModel.get(a.model)?.role ?? a.model,
             message: a.message,
           }));
-        return runDebateAgent(m, question, context, own.message, peers, matches, idx, round1Agents.length, specialties[idx]).then((reply) => {
+        return runDebateAgent(m, question, context, own.message, peers, matches, idx, round1Agents.length, specialties[idx], providerOverride).then((reply) => {
           onAgentDone?.(reply);
           round2Map.set(m, reply);
           return reply;
@@ -380,6 +384,7 @@ export async function runSwarm({
     round2Agents,
     matches,
     onSynthesisToken,
+    providerOverride,
   );
 
   const finalAgents = round2Agents.length > 0 ? round2Agents : round1Agents;

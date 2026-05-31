@@ -963,6 +963,11 @@ export default function QueryBox() {
                 {m === "nvidia" ? "NVIDIA NIM (free)" : "My Providers"}
               </button>
             ))}
+            {mode === "nvidia" && (
+              <span className="text-[10px] ml-1" style={{ color: "var(--accent)" }}>
+                ✨ Auto: your provider key will be used if configured
+              </span>
+            )}
             {mode === "multi" && (
               <span className="text-[10px] ml-1" style={{ color: "var(--muted)" }}>
                 Uses your configured provider keys + active swarm config

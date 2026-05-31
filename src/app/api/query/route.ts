@@ -2,6 +2,7 @@ import { assembleContext, embedBatch, embedText, searchByVectors, rewriteQueryFo
 import { getSimilarPastCases, logSession } from "@/lib/session-learning";
 import { runManagedSwarm, classifyMedical } from "@/lib/manager";
 import { precomputeSwarmRouting, verifyAndStripOrphanCitations } from "@/lib/swarm";
+import { resolveBYOK } from "@/lib/byok-resolver";
 import { auditSections } from "@/lib/section-completeness";
 import { checkDrugInteractions, extractDrugNamesFromReport } from "@/lib/drug-safety";
 import { rateLimit, RL_QUERY } from "@/lib/rate-limit";
@@ -145,6 +146,14 @@ export async function POST(req: NextRequest) {
       try {
         send({ type: "status", message: "Manager: initialising swarm…" });
 
+        // BYOK: resolve user-configured provider key (e.g., OpenRouter)
+        // If found, the swarm will automatically use it instead of the built-in NVIDIA pool
+        const byokConfig = await resolveBYOK();
+        if (byokConfig) {
+          send({ type: "status", message: `Manager: using your ${byokConfig.provider.name} key for analysis…` });
+          logger.info(`[BYOK] Resolved user provider: ${byokConfig.provider.name} (${byokConfig.providerId})`);
+        }
+
         const result = await runManagedSwarm({
           question,
           context: contextWithMemory,
@@ -155,6 +164,7 @@ export async function POST(req: NextRequest) {
           labText,
           queryEmbedding: qEmbedding,
           precomputedRouting,
+          providerOverride: byokConfig ?? undefined,
           onAgentDone: (agent) => send({ type: "agent", ...agent }),
           onSwarmConfig: (config) => send({ type: "swarm_config", ...config }),
           onDebateStart: () =>

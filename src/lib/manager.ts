@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { managerEvents } from "@/db/schema";
 import { desc, sql } from "drizzle-orm";
 import { runSwarm, type SwarmRouting } from "./swarm";
+import { type BYOKConfig } from "./byok-resolver";
 
 // ── Emergency detection ──────────────────────────────────────────────────────
 // W46: extracted to `detect-emergency.ts` (zero DB deps → testable in isolation).
@@ -98,6 +99,7 @@ export async function runManagedSwarm(params: {
     agentAnswers: string[];
     consensusSnippet?: string;
   }) => Promise<number | null>;
+  providerOverride?: BYOKConfig;
 }): Promise<ManagerResult> {
   const {
     question, context, matches, model, patientContext, labText,
@@ -148,6 +150,7 @@ export async function runManagedSwarm(params: {
     onDebateStart,
     onSynthesisStart,
     onSynthesisToken,
+    providerOverride: params.providerOverride,
   });
 
   const totalLatencyMs = Date.now() - t0;
