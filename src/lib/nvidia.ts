@@ -218,6 +218,7 @@ export async function nvidiaEmbed(
   task: NvidiaTaskType = "default",
 ): Promise<number[]> {
   const [vec] = await nvidiaEmbedBatch([text], inputType, task);
+  if (!vec) throw new Error("NVIDIA embeddings returned no vector");
   return vec;
 }
 
@@ -280,8 +281,10 @@ export async function nvidiaChat(
     max_tokens: maxTokensOverride ?? cfg.maxTokens,
     temperature: temperatureOverride ?? cfg.temperature,
     top_p: 0.9,
-  }, 32_000, task)) as { choices: Array<{ message: { content: string } }> };
-  return data.choices[0].message.content;
+  }, 32_000, task)) as { choices?: Array<{ message?: { content?: string } }> };
+  const content = data.choices?.[0]?.message?.content;
+  if (content == null) throw new Error("NVIDIA chat returned no choices");
+  return content;
 }
 
 export function hasNvidiaKey(): boolean {
@@ -366,17 +369,22 @@ export async function nvidiaChatStream(
 
   return new ReadableStream<string>({
     async pull(controller) {
-      const { done, value } = await reader.read();
-      if (done) { controller.close(); return; }
-      const lines = decoder.decode(value).split("\n").filter((l) => l.startsWith("data: "));
-      for (const line of lines) {
-        const data = line.slice(6);
-        if (data === "[DONE]") { controller.close(); return; }
-        try {
-          const parsed = JSON.parse(data) as { choices?: Array<{ delta?: { content?: string } }> };
-          const delta = parsed.choices?.[0]?.delta?.content;
-          if (delta) controller.enqueue(delta);
-        } catch { /* ignore malformed SSE chunks */ }
+      try {
+        const { done, value } = await reader.read();
+        if (done) { controller.close(); return; }
+        const lines = decoder.decode(value).split("\n").filter((l) => l.startsWith("data: "));
+        for (const line of lines) {
+          const data = line.slice(6);
+          if (data === "[DONE]") { controller.close(); return; }
+          try {
+            const parsed = JSON.parse(data) as { choices?: Array<{ delta?: { content?: string } }> };
+            const delta = parsed.choices?.[0]?.delta?.content;
+            if (delta) controller.enqueue(delta);
+          } catch { /* ignore malformed SSE chunks */ }
+        }
+      } catch (err) {
+        controller.error(err);
+        reader.cancel().catch(() => {});
       }
     },
   });
@@ -454,7 +462,8 @@ async function uploadOcrAsset(buffer: Buffer, mimeType: string, apiKey: string):
     const t = await createRes.text().catch(() => "");
     throw new Error(`NVCF asset create failed (${createRes.status}): ${t.slice(0, 160)}`);
   }
-  const { assetId, uploadUrl } = (await createRes.json()) as { assetId: string; uploadUrl: string };
+  const { assetId, uploadUrl } = (await createRes.json()) as { assetId?: string; uploadUrl?: string };
+  if (!assetId || !uploadUrl) throw new Error("NVCF asset create returned no assetId/uploadUrl");
   // PUT raw bytes to the presigned S3 URL — different host, no NVIDIA auth/dispatcher.
   // The asset-description header MUST match the value used at create time.
   const putRes = await fetch(uploadUrl, {

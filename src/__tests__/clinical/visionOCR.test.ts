@@ -117,4 +117,18 @@ describe("extractTextFromImage — NeMo Retriever OCR (pinned)", () => {
     expect(headers["NVCF-INPUT-ASSET-REFERENCES"]).toBe("asset-123");
     expect(JSON.parse(inferInit?.body as string).input[0].url).toContain("asset_id,asset-123");
   });
+
+  it("throws when asset create response is missing uploadUrl — no PUT attempted", async () => {
+    const heavy = Buffer.alloc(140_000, 1);
+    expect(heavy.toString("base64").length).toBeGreaterThan(180_000);
+
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ assetId: "asset-123" }),
+    } as Response);
+
+    await expect(extractTextFromImage(heavy, "image/jpeg")).rejects.toThrow(/no assetId\/uploadUrl/);
+    // Only the create call fired — no PUT to a presigned URL.
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
 });
