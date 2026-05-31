@@ -421,6 +421,7 @@ export default function QueryBox() {
   const [sharingPdf, setSharingPdf] = useState(false);
 
   const abortRef = useRef<AbortController | null>(null);
+  const extractionCacheRef = useRef<Map<string, { text: string; criticals: LabCritical[] }>>(new Map());
 
   function stop() {
     abortRef.current?.abort();
@@ -446,6 +447,8 @@ export default function QueryBox() {
     return parts.join(" | ");
   }
 
+  const getCacheKey = (file: File) => `${file.name}-${file.size}-${file.lastModified}`;
+
   async function runLabExtraction(files: File[]) {
     if (files.length === 0) {
       setLabFiles([]);
@@ -454,35 +457,63 @@ export default function QueryBox() {
       setLabError(null);
       return;
     }
-    setLabFiles(files);
-    setLabText("");
-    setLabCriticals([]);
+
     setLabError(null);
-    setLabUploading(true);
-    try {
-      const fd = new FormData();
-      files.forEach((file) => {
-        fd.append("files", file);
-      });
-      const res = await fetch("/api/lab-extract", { method: "POST", body: fd });
-      const data = await res.json() as {
-        text?: string;
-        panel?: { structuredText: string; criticals: LabCritical[] };
-        error?: string;
-      };
-      if (!res.ok || data.error) {
-        setLabError(data.error ?? "Extraction failed");
-        setLabFiles([]);
-      } else {
-        setLabText(data.panel?.structuredText ?? data.text ?? "");
-        setLabCriticals(data.panel?.criticals ?? []);
+
+    // Identify which files need to be processed
+    const newFiles = files.filter((file) => !extractionCacheRef.current.has(getCacheKey(file)));
+
+    if (newFiles.length > 0) {
+      setLabUploading(true);
+      try {
+        const newExtractions = await Promise.all(
+          newFiles.map(async (file) => {
+            const fd = new FormData();
+            fd.append("files", file);
+            const res = await fetch("/api/lab-extract", { method: "POST", body: fd });
+            const data = await res.json() as {
+              text?: string;
+              panel?: { structuredText: string; criticals: LabCritical[] };
+              error?: string;
+            };
+            if (!res.ok || data.error) {
+              throw new Error(data.error ?? `Extraction failed for ${file.name}`);
+            }
+            return {
+              file,
+              text: data.panel?.structuredText ?? data.text ?? "",
+              criticals: data.panel?.criticals ?? [],
+            };
+          })
+        );
+
+        // Store results in client-side cache
+        newExtractions.forEach(({ file, text, criticals }) => {
+          extractionCacheRef.current.set(getCacheKey(file), { text, criticals });
+        });
+      } catch (err) {
+        setLabError((err as Error).message ?? "Upload failed — check file format.");
+        setLabUploading(false);
+        return;
       }
-    } catch {
-      setLabError("Upload failed — check file format.");
-      setLabFiles([]);
-    } finally {
-      setLabUploading(false);
     }
+
+    // Combine extraction results from cache for all current files
+    const combinedTexts: string[] = [];
+    const combinedCriticals: LabCritical[] = [];
+
+    files.forEach((file) => {
+      const cached = extractionCacheRef.current.get(getCacheKey(file));
+      if (cached) {
+        combinedTexts.push(cached.text);
+        combinedCriticals.push(...cached.criticals);
+      }
+    });
+
+    setLabFiles(files);
+    setLabText(combinedTexts.join("\n\n"));
+    setLabCriticals(combinedCriticals);
+    setLabUploading(false);
   }
 
   async function handleLabFile(e: React.ChangeEvent<HTMLInputElement>) {
