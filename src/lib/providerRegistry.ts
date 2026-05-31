@@ -185,7 +185,9 @@ export async function callProvider(
         throw Object.assign(new Error(err), { status: res.status });
       }
       const data = (await res.json()) as { choices: Array<{ message: { content: string } }> };
-      return data.choices[0]?.message?.content ?? "";
+      const content = data.choices[0]?.message?.content;
+      if (!content) throw new Error(`${provider.id} returned an empty or malformed response`);
+      return content;
 
     } else if (provider.format === "anthropic") {
       const system = messages.find((m) => m.role === "system")?.content;
@@ -210,16 +212,18 @@ export async function callProvider(
         throw Object.assign(new Error(err), { status: res.status });
       }
       const data = (await res.json()) as { content: Array<{ text: string }> };
-      return data.content[0]?.text ?? "";
+      const content = data.content[0]?.text;
+      if (!content) throw new Error(`${provider.id} returned an empty or malformed response`);
+      return content;
 
     } else {
       // gemini
       const prompt = messages.map((m) => `${m.role}: ${m.content}`).join("\n");
       const res = await fetch(
-        `${baseUrl}/v1beta/models/${targetModel}:generateContent?key=${apiKey}`,
+        `${baseUrl}/v1beta/models/${targetModel}:generateContent`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
           body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
           signal: ctrl.signal,
         },
@@ -231,7 +235,9 @@ export async function callProvider(
       const data = (await res.json()) as {
         candidates: Array<{ content: { parts: Array<{ text: string }> } }>;
       };
-      return data.candidates[0]?.content?.parts[0]?.text ?? "";
+      const content = data.candidates[0]?.content?.parts[0]?.text;
+      if (!content) throw new Error(`${provider.id} returned an empty or malformed response`);
+      return content;
     }
   } finally {
     clearTimeout(timer);
