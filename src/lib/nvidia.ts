@@ -26,8 +26,29 @@ export const NVIDIA_SWARM_MODELS = [
 
 export type NvidiaModel = (typeof NVIDIA_SWARM_MODELS)[number];
 
+let keyIndex = 0;
+
+export function resetApiKeyRotation(): void {
+  keyIndex = 0;
+}
+
+/**
+ * Retrieves the next NVIDIA API key from the environment.
+ * Supports both a single API key and a pool of comma-separated keys.
+ * Rotates through keys using a round-robin schedule to bypass rate limits and concurrency locks.
+ */
+export function getNvidiaApiKey(): string {
+  const keysStr = process.env.NVIDIA_API_KEY || "";
+  if (!keysStr) return "";
+  const keys = keysStr.split(",").map(k => k.trim()).filter(Boolean);
+  if (keys.length === 0) return "";
+  const key = keys[keyIndex % keys.length];
+  keyIndex = (keyIndex + 1) % keys.length;
+  return key;
+}
+
 async function nvidiaFetch(path: string, body: unknown, timeoutMs = 32_000): Promise<unknown> {
-  const apiKey = process.env.NVIDIA_API_KEY;
+  const apiKey = getNvidiaApiKey();
   if (!apiKey) throw new Error("NVIDIA_API_KEY not configured");
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -132,7 +153,7 @@ export async function nvidiaChat(model: string, system: string, user: string, te
 }
 
 export function hasNvidiaKey(): boolean {
-  return Boolean(process.env.NVIDIA_API_KEY);
+  return Boolean(getNvidiaApiKey());
 }
 
 export async function nvidiaChatStream(
@@ -144,7 +165,7 @@ export async function nvidiaChatStream(
 ): Promise<ReadableStream<string>> {
   const targetModel = mapUnstableModel(model);
   const cfg = MODEL_CONFIGS[targetModel] ?? { maxTokens: 4096, temperature: 0.3 };
-  const apiKey = process.env.NVIDIA_API_KEY;
+  const apiKey = getNvidiaApiKey();
   if (!apiKey) throw new Error("NVIDIA_API_KEY not configured");
 
   const res = await fetch(`${NVIDIA_BASE}/chat/completions`, nvidiaFetchInit({
@@ -193,7 +214,7 @@ export async function nvidiaChatStream(
 }
 
 export async function extractTextFromImage(buffer: Buffer, mimeType: string): Promise<string> {
-  const apiKey = process.env.NVIDIA_API_KEY;
+  const apiKey = getNvidiaApiKey();
   if (!apiKey) {
     throw new Error("NVIDIA_API_KEY is not configured. Vision OCR requires an API key.");
   }
