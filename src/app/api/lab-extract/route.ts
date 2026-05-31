@@ -29,42 +29,51 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No files provided" }, { status: 400 });
   }
 
-  const combinedTextParts: string[] = [];
-
-  for (const file of files) {
-    // W14: cap upload size before buffering. Cloud Run instance is 2 GiB;
-    // an unchecked PDF/Image upload could OOM the process.
-    if (file.size > MAX_LAB_BYTES) {
-      return NextResponse.json({ error: `File ${file.name} is too large (limit 10 MB)` }, { status: 413 });
-    }
-
-    const buffer = Buffer.from(await file.arrayBuffer());
-    let rawText = "";
-
-    if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
-      try {
-        rawText = (await textFromPdfBuffer(buffer)).slice(0, MAX_CHARS);
-      } catch (err) {
-        return NextResponse.json({ error: `PDF extraction failed on ${file.name}: ${(err as Error).message}` }, { status: 422 });
+  const results = await Promise.all(
+    files.map(async (file) => {
+      // W14: cap upload size before buffering.
+      if (file.size > MAX_LAB_BYTES) {
+        return { error: `File ${file.name} is too large (limit 10 MB)`, status: 413 };
       }
-    } else if (file.type.startsWith("image/") || file.name.match(/\.(png|jpe?g|webp|gif)$/i)) {
-      try {
-        rawText = (await extractTextFromImage(buffer, file.type || "image/jpeg")).slice(0, MAX_CHARS);
-      } catch (err) {
-        return NextResponse.json({ error: `Image transcription failed on ${file.name}: ${(err as Error).message}` }, { status: 422 });
-      }
-    } else if (file.type.startsWith("text/") || file.name.match(/\.(txt|csv|md)$/i)) {
-      rawText = buffer.toString("utf-8").slice(0, MAX_CHARS);
-    } else {
-      return NextResponse.json(
-        { error: `Unsupported file type for ${file.name}. Upload PDF, Image (PNG, JPEG, WebP), or plain text (.txt, .csv) reports.` },
-        { status: 415 },
-      );
-    }
 
-    combinedTextParts.push(`--- FILE: ${file.name} ---\n${rawText}`);
+      try {
+        const buffer = Buffer.from(await file.arrayBuffer());
+        let rawText = "";
+
+        if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
+          try {
+            rawText = (await textFromPdfBuffer(buffer)).slice(0, MAX_CHARS);
+          } catch (err) {
+            return { error: `PDF extraction failed on ${file.name}: ${(err as Error).message}`, status: 422 };
+          }
+        } else if (file.type.startsWith("image/") || file.name.match(/\.(png|jpe?g|webp|gif)$/i)) {
+          try {
+            rawText = (await extractTextFromImage(buffer, file.type || "image/jpeg")).slice(0, MAX_CHARS);
+          } catch (err) {
+            return { error: `Image transcription failed on ${file.name}: ${(err as Error).message}`, status: 422 };
+          }
+        } else if (file.type.startsWith("text/") || file.name.match(/\.(txt|csv|md)$/i)) {
+          rawText = buffer.toString("utf-8").slice(0, MAX_CHARS);
+        } else {
+          return {
+            error: `Unsupported file type for ${file.name}. Upload PDF, Image (PNG, JPEG, WebP), or plain text (.txt, .csv) reports.`,
+            status: 415,
+          };
+        }
+
+        return { text: `--- FILE: ${file.name} ---\n${rawText}` };
+      } catch (err) {
+        return { error: `File reading failed on ${file.name}: ${(err as Error).message}`, status: 500 };
+      }
+    })
+  );
+
+  const errorResult = results.find((r) => "error" in r);
+  if (errorResult && "error" in errorResult) {
+    return NextResponse.json({ error: errorResult.error }, { status: errorResult.status ?? 422 });
   }
 
+  const combinedTextParts = results.map((r) => (r as { text: string }).text);
   const combinedText = combinedTextParts.join("\n\n");
   const panel = parseLabText(combinedText);
 
