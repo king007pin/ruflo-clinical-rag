@@ -287,6 +287,129 @@ export async function nvidiaChat(
   return content;
 }
 
+// ── Latency hedging (Pillar 5) ───────────────────────────────────────────────
+// Fire the SAME request on a few distinct healthy keys and take the first to
+// return; the slow-key / queue tail is what makes agents miss the swarm quorum
+// wallclock, so racing 2 keys cuts that tail. Hedging changes the KEY only,
+// never the model.
+const HEDGE_TIMEOUT_MS = 32_000;
+const HEDGE_DISABLED = process.env.NVIDIA_HEDGE === "0";
+
+/** Pick up to `n` DISTINCT healthy keys for a hedged dispatch, walking the same
+ *  dedicated→cooperative tiers as getNvidiaApiKey. Returns fewer than `n`
+ *  (possibly 0/1) when the pool is small or unhealthy. */
+function pickDistinctHealthyKeys(task: NvidiaTaskType, n: number): string[] {
+  const envMap: Record<NvidiaTaskType, string | undefined> = {
+    triage: process.env.NVIDIA_KEY_TRIAGE_POOL,
+    debate: process.env.NVIDIA_KEY_DEBATE_POOL,
+    vision: process.env.NVIDIA_KEY_VISION_POOL,
+    crawl: process.env.NVIDIA_KEY_CRAWL_POOL,
+    default: undefined,
+  };
+  const collectHealthy = (keysStr: string | undefined): string[] => {
+    const keys = (keysStr || "").split(",").map((k) => k.trim()).filter(Boolean);
+    return keys.filter((k) => {
+      const health = keyRegistry.get(k);
+      return !health || health.quarantinedUntil <= Date.now();
+    });
+  };
+
+  // Tier 1: dedicated pool (or master if no dedicated pool for this task)
+  const healthy = collectHealthy(envMap[task] || process.env.NVIDIA_API_KEY);
+  // Tier 2: borrow distinct healthy keys from the cooperative master fabric
+  if (healthy.length < n) {
+    for (const k of collectHealthy(process.env.NVIDIA_API_KEY)) {
+      if (!healthy.includes(k)) healthy.push(k);
+    }
+  }
+  if (healthy.length === 0) return [];
+
+  // Round-robin offset so concurrent agents fan out across the pool.
+  const offset = poolIndexes[task] % healthy.length;
+  poolIndexes[task] = (poolIndexes[task] + n) % healthy.length;
+  const picked: string[] = [];
+  for (let i = 0; i < Math.min(n, healthy.length); i++) {
+    picked.push(healthy[(offset + i) % healthy.length]);
+  }
+  return picked;
+}
+
+/** One hedged chat attempt against a pinned key, abortable via `signal`. */
+async function hedgedChatAttempt(
+  body: Record<string, unknown>,
+  apiKey: string,
+  signal: AbortSignal,
+): Promise<string> {
+  const res = await fetch(`${NVIDIA_BASE}/chat/completions`, nvidiaFetchInit({
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify(body),
+    signal,
+  }) as RequestInit);
+  if (!res.ok) {
+    markKeyUnhealthy(apiKey, res.status);
+    const text = await res.text().catch(() => "");
+    throw new Error(`NVIDIA hedged failed (${res.status}): ${text.slice(0, 120)}`);
+  }
+  markKeyHealthy(apiKey);
+  const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
+  const content = data.choices?.[0]?.message?.content;
+  if (content == null) throw new Error("NVIDIA hedged returned no content");
+  return content;
+}
+
+/**
+ * Latency-hedged chat. Fires the same request on up to `hedge` distinct healthy
+ * keys, returns the first success, and cancels the losers. Falls back to the
+ * standard rotating-retry nvidiaChat when hedging is unavailable (< 2 keys) or
+ * every hedged copy fails — that fallback preserves the model-cascade safety
+ * net. The model is mapped once and identical across copies: hedging never
+ * substitutes the model, only the key.
+ */
+export async function nvidiaChatHedged(
+  model: string,
+  system: string,
+  user: string,
+  temperatureOverride?: number,
+  maxTokensOverride?: number,
+  task: NvidiaTaskType = "default",
+  hedge = 2,
+): Promise<string> {
+  const keys = HEDGE_DISABLED ? [] : pickDistinctHealthyKeys(task, hedge);
+  // Hedging only helps with ≥2 distinct keys; otherwise use the resilient
+  // single-call path (which itself does rotating retry + model cascade).
+  if (keys.length < 2) {
+    return nvidiaChat(model, system, user, temperatureOverride, maxTokensOverride, task);
+  }
+
+  const targetModel = mapUnstableModel(model);
+  const cfg = MODEL_CONFIGS[targetModel] ?? { maxTokens: 4096, temperature: 0.3 };
+  const body = {
+    model: targetModel,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: user },
+    ],
+    max_tokens: maxTokensOverride ?? cfg.maxTokens,
+    temperature: temperatureOverride ?? cfg.temperature,
+    top_p: 0.9,
+  };
+
+  const controllers = keys.map(() => new AbortController());
+  const timers = controllers.map((c) => setTimeout(() => c.abort(), HEDGE_TIMEOUT_MS));
+  try {
+    const attempts = keys.map((key, i) => hedgedChatAttempt(body, key, controllers[i].signal));
+    return await Promise.any(attempts);
+  } catch {
+    // Every hedged copy failed (AggregateError) — fall back to the resilient
+    // single-call path with rotating retry + model cascade.
+    return nvidiaChat(model, system, user, temperatureOverride, maxTokensOverride, task);
+  } finally {
+    timers.forEach(clearTimeout);
+    controllers.forEach((c) => c.abort()); // cancel any still-running losers
+  }
+}
+
 export function hasNvidiaKey(): boolean {
   return Boolean(getNvidiaApiKey());
 }

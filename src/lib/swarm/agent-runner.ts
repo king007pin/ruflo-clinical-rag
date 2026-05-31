@@ -1,7 +1,7 @@
 import { AgentReply, MatchMeta, SpecialtyMeta } from "./types";
 import { getCognitiveStrategyForSpecialty } from "./specialty";
 import { callRufloApi } from "./ruflo-client";
-import { hasNvidiaKey, nvidiaChat, nvidiaChatStream } from "../nvidia";
+import { hasNvidiaKey, nvidiaChat, nvidiaChatHedged, nvidiaChatStream } from "../nvidia";
 import { callProvider, type ChatMessage } from "../providerRegistry";
 import { type BYOKConfig, mapModelForProvider } from "../byok-resolver";
 import { logger } from "../logger";
@@ -582,6 +582,10 @@ export function buildSynthesisUserPrompt(
 }
 
 const ROUND1_NONPRIMARY_MAX_TOKENS = 1500;
+// Debate replies are short (≥300 words); cap so agents finish before the Round-2
+// quorum wallclock. Only affects intermediate debate bubbles, never the final
+// synthesized clinical report.
+const ROUND2_DEBATE_MAX_TOKENS = 1024;
 
 export async function runAgent(
   model: string,
@@ -621,7 +625,7 @@ export async function runAgent(
 
   if (hasNvidiaKey()) {
     try {
-      const message = await nvidiaChat(model, system, user, undefined, maxTokens, "debate");
+      const message = await nvidiaChatHedged(model, system, user, undefined, maxTokens, "debate");
       return { model, message, reasoning: tag, round: 1 };
     } catch (err) {
       return { model, message: buildLocalFallback(question, matches, agentIndex), reasoning: `fallback (${(err as Error).message.slice(0, 60)})`, round: 1 };
@@ -676,7 +680,7 @@ export async function runDebateAgent(
 
   if (hasNvidiaKey()) {
     try {
-      const message = await nvidiaChat(model, system, user, undefined, 2048, "debate");
+      const message = await nvidiaChatHedged(model, system, user, undefined, ROUND2_DEBATE_MAX_TOKENS, "debate");
       return { model, message, reasoning: tag, round: 2 };
     } catch (err) {
       return { model, message: buildDebateFallback(question, myAssessment, peers, agentIndex), reasoning: `fallback (${(err as Error).message.slice(0, 60)})`, round: 2 };
