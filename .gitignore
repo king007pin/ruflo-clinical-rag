@@ -42,3 +42,4 @@ __pycache__/
 *.pyc
 sidecar/.venv/
 
+.env*.local

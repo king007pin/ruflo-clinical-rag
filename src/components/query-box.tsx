@@ -459,6 +459,7 @@ export default function QueryBox() {
     }
 
     setLabError(null);
+    setLabFiles(files); // Instantly display the files in the UI list before extraction begins!
 
     // Identify which files need to be processed
     const newFiles = files.filter((file) => !extractionCacheRef.current.has(getCacheKey(file)));
@@ -494,6 +495,9 @@ export default function QueryBox() {
       } catch (err) {
         setLabError((err as Error).message ?? "Upload failed — check file format.");
         setLabUploading(false);
+        // Revert UI to show only the files that were successfully cached/extracted
+        const validFiles = files.filter((f) => extractionCacheRef.current.has(getCacheKey(f)));
+        setLabFiles(validFiles);
         return;
       }
     }
