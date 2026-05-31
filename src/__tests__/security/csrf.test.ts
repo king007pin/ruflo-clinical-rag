@@ -58,8 +58,23 @@ describe("checkCsrf — sec-fetch-site", () => {
   it("allows same-origin", () => {
     expect(checkCsrf(makeReq("/api/cases", { secFetchSite: "same-origin" })).ok).toBe(true);
   });
-  it("allows none (user-typed)", () => {
-    expect(checkCsrf(makeReq("/api/cases", { secFetchSite: "none" })).ok).toBe(true);
+  it("rejects none for mutating methods (CSRF-bypass vector), even with a token", () => {
+    const token = mintCsrfToken();
+    const verdict = checkCsrf(
+      makeReq("/api/cases", { secFetchSite: "none", csrfCookie: token, csrfHeader: token }),
+    );
+    expect(verdict.ok).toBe(false);
+    if (!verdict.ok) expect(verdict.reason).toBe("sec-fetch-site=none");
+  });
+  it("allows none for safe methods (user-typed navigation)", () => {
+    expect(
+      checkCsrf(makeReq("/api/cases", { method: "GET", secFetchSite: "none" })).ok,
+    ).toBe(true);
+  });
+  it("allows same-origin mutating request", () => {
+    expect(
+      checkCsrf(makeReq("/api/cases", { method: "POST", secFetchSite: "same-origin" })).ok,
+    ).toBe(true);
   });
   it("rejects cross-site", () => {
     const verdict = checkCsrf(makeReq("/api/cases", { secFetchSite: "cross-site" }));

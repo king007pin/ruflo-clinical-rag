@@ -72,7 +72,13 @@ export function checkCsrf(req: NextRequest): CsrfVerdict {
 
   const secFetchSite = req.headers.get("sec-fetch-site");
   if (secFetchSite) {
-    if (secFetchSite === "same-origin" || secFetchSite === "none") {
+    // Only `same-origin` clears here. We reach this branch solely for mutating
+    // methods (safe methods returned above). `none` is sent on direct
+    // address-bar navigation, but a state-changing request should never
+    // legitimately originate that way — and `none` has been used as a
+    // CSRF-bypass vector — so we reject it (and `cross-site`) for mutations.
+    // A genuine no-browser-signal client still has the double-submit fallback.
+    if (secFetchSite === "same-origin") {
       return { ok: true };
     }
     return { ok: false, reason: `sec-fetch-site=${secFetchSite}` };
