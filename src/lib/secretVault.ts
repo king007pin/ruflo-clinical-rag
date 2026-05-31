@@ -34,11 +34,16 @@ export function encrypt(plaintext: string): string {
 
 export function decrypt(ciphertext: string): string {
   const key = getKey();
-  const { iv, authTag, data } = JSON.parse(ciphertext) as VaultCipher;
-  const decipher = createDecipheriv("aes-256-gcm", key, Buffer.from(iv, "hex"));
-  decipher.setAuthTag(Buffer.from(authTag, "hex"));
-  return Buffer.concat([
-    decipher.update(Buffer.from(data, "hex")),
-    decipher.final(),
-  ]).toString("utf8");
+  try {
+    const { iv, authTag, data } = JSON.parse(ciphertext) as VaultCipher;
+    const decipher = createDecipheriv("aes-256-gcm", key, Buffer.from(iv, "hex"));
+    decipher.setAuthTag(Buffer.from(authTag, "hex"));
+    return Buffer.concat([
+      decipher.update(Buffer.from(data, "hex")),
+      decipher.final(),
+    ]).toString("utf8");
+  } catch {
+    // Never surface raw crypto/JSON errors or the secret material.
+    throw new Error("Failed to decrypt credential");
+  }
 }

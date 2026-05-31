@@ -14,6 +14,7 @@ import { db } from "@/db";
 import { providerCredentials } from "@/db/schema";
 import { decrypt } from "@/lib/secretVault";
 import { PROVIDERS, type Provider } from "@/lib/providerRegistry";
+import { logger } from "@/lib/logger";
 
 export type BYOKConfig = {
   provider: Provider;
@@ -140,7 +141,7 @@ export async function resolveBYOK(): Promise<BYOKConfig | null> {
 
       const modelMap = MODEL_MAPS[cred.providerId] ?? {};
 
-      console.log(`[BYOK Resolver] Selected user provider: ${provider.name} (${cred.providerId})`);
+      logger.info(`[BYOK Resolver] Selected user provider: ${provider.name} (${cred.providerId})`);
 
       return {
         provider: cred.customBaseUrl && provider.requiresBaseUrl
@@ -154,7 +155,7 @@ export async function resolveBYOK(): Promise<BYOKConfig | null> {
 
     return null;
   } catch (err) {
-    console.error("[BYOK Resolver] Failed to resolve user provider keys:", err);
+    logger.error("[BYOK Resolver] Failed to resolve user provider keys:", err);
     return null;
   }
 }

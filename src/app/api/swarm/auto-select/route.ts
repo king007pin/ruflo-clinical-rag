@@ -88,9 +88,12 @@ export async function POST(req: NextRequest) {
 
   const config = selected.map(({ role, providerId, model }) => ({ role, providerId, model }));
 
-  // Persist as active swarm config
-  await db.update(swarmConfigs).set({ isActive: false }).where(eq(swarmConfigs.isActive, true));
-  await db.insert(swarmConfigs).values({ name: "auto-selected", config, isActive: true });
+  // Persist as active swarm config. Deactivate-then-insert must be atomic so
+  // concurrent auto-selects can't leave multiple rows with isActive=true.
+  await db.transaction(async (tx) => {
+    await tx.update(swarmConfigs).set({ isActive: false }).where(eq(swarmConfigs.isActive, true));
+    await tx.insert(swarmConfigs).values({ name: "auto-selected", config, isActive: true });
+  });
 
   return NextResponse.json({ ok: true, swarm: config, providerCount: creds.length, candidatesProbed: providerPool.length });
 }

@@ -37,4 +37,14 @@ describe("secretVault — AES-256-GCM", () => {
     const key = "key-with-🔒-unicode-and-!@#$%^&*()";
     expect(decrypt(encrypt(key))).toBe(key);
   });
+
+  it("throws a clean error (not a raw crypto/JSON error) on malformed input", () => {
+    expect(() => decrypt("not-json")).toThrow("Failed to decrypt credential");
+  });
+
+  it("throws the same clean error when tampered, leaking no crypto detail", () => {
+    const ciphertext = JSON.parse(encrypt("secret"));
+    ciphertext.authTag = "00".repeat(16);
+    expect(() => decrypt(JSON.stringify(ciphertext))).toThrow("Failed to decrypt credential");
+  });
 });
