@@ -602,7 +602,7 @@ export async function runAgent(
 
   if (hasNvidiaKey()) {
     try {
-      const message = await nvidiaChat(model, system, user, undefined, maxTokens);
+      const message = await nvidiaChat(model, system, user, undefined, maxTokens, "debate");
       return { model, message, reasoning: tag, round: 1 };
     } catch (err) {
       return { model, message: buildLocalFallback(question, matches, agentIndex), reasoning: `fallback (${(err as Error).message.slice(0, 60)})`, round: 1 };
@@ -640,7 +640,7 @@ export async function runDebateAgent(
 
   if (hasNvidiaKey()) {
     try {
-      const message = await nvidiaChat(model, system, user, undefined, 2048);
+      const message = await nvidiaChat(model, system, user, undefined, 2048, "debate");
       return { model, message, reasoning: tag, round: 2 };
     } catch (err) {
       return { model, message: buildDebateFallback(question, myAssessment, peers, agentIndex), reasoning: `fallback (${(err as Error).message.slice(0, 60)})`, round: 2 };
@@ -668,7 +668,7 @@ export async function runSynthesisAgent(
   if (hasNvidiaKey()) {
     try {
       if (onSynthesisToken) {
-        const stream = await nvidiaChatStream(model, system, user, 0.15, 3500);
+        const stream = await nvidiaChatStream(model, system, user, 0.15, 3500, "triage");
         const reader = stream.getReader();
         const chunks: string[] = [];
         for (;;) {
@@ -679,7 +679,7 @@ export async function runSynthesisAgent(
         }
         return chunks.join("");
       }
-      return await nvidiaChat(model, system, user, 0.15);
+      return await nvidiaChat(model, system, user, 0.15, undefined, "triage");
     } catch {
       // fall through to local fallback
     }

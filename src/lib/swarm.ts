@@ -141,7 +141,7 @@ JSON SCHEMA:
 }`;
 
   const routerModel = "meta/llama-3.3-70b-instruct";
-  const rawResponse = await nvidiaChat(routerModel, ROUTER_SYSTEM_PROMPT, userPrompt, 0.1, 2048);
+  const rawResponse = await nvidiaChat(routerModel, ROUTER_SYSTEM_PROMPT, userPrompt, 0.1, 2048, "triage");
   const parsed = cleanAndParseJSON(rawResponse);
 
   const hospitalDepartments = Array.isArray(parsed.hospitalDepartments) ? parsed.hospitalDepartments : [];

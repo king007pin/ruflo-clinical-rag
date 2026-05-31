@@ -26,46 +26,67 @@ export const NVIDIA_SWARM_MODELS = [
 
 export type NvidiaModel = (typeof NVIDIA_SWARM_MODELS)[number];
 
-let keyIndex = 0;
+export type NvidiaTaskType = "triage" | "debate" | "vision" | "crawl" | "default";
+
+const poolIndexes: Record<NvidiaTaskType, number> = {
+  triage: 0,
+  debate: 0,
+  vision: 0,
+  crawl: 0,
+  default: 0,
+};
 
 export function resetApiKeyRotation(): void {
-  keyIndex = 0;
+  poolIndexes.triage = 0;
+  poolIndexes.debate = 0;
+  poolIndexes.vision = 0;
+  poolIndexes.crawl = 0;
+  poolIndexes.default = 0;
 }
 
 /**
- * Retrieves the next NVIDIA API key from the environment.
- * Supports both a single API key and a pool of comma-separated keys.
- * Rotates through keys using a round-robin schedule to bypass rate limits and concurrency locks.
+ * Retrieves the next NVIDIA API key from the environment, load-balanced dynamically
+ * by task pool type to isolate workloads, maximize parallel execution, and bypass rate limits.
  */
-export function getNvidiaApiKey(): string {
-  const keysStr = process.env.NVIDIA_API_KEY || "";
+export function getNvidiaApiKey(task: NvidiaTaskType = "default"): string {
+  const envMap: Record<NvidiaTaskType, string | undefined> = {
+    triage: process.env.NVIDIA_KEY_TRIAGE_POOL,
+    debate: process.env.NVIDIA_KEY_DEBATE_POOL,
+    vision: process.env.NVIDIA_KEY_VISION_POOL,
+    crawl: process.env.NVIDIA_KEY_CRAWL_POOL,
+    default: undefined,
+  };
+
+  const keysStr = envMap[task] || process.env.NVIDIA_API_KEY || "";
   if (!keysStr) return "";
   const keys = keysStr.split(",").map(k => k.trim()).filter(Boolean);
   if (keys.length === 0) return "";
-  const key = keys[keyIndex % keys.length];
-  keyIndex = (keyIndex + 1) % keys.length;
-  return key;
+
+  const idx = poolIndexes[task];
+  poolIndexes[task] = (idx + 1) % keys.length;
+  return keys[idx % keys.length];
 }
 
-async function nvidiaFetch(path: string, body: unknown, timeoutMs = 32_000): Promise<unknown> {
-  const apiKey = getNvidiaApiKey();
-  if (!apiKey) throw new Error("NVIDIA_API_KEY not configured");
+async function nvidiaFetch(path: string, body: unknown, timeoutMs = 32_000, task: NvidiaTaskType = "default"): Promise<unknown> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
     const start = Date.now();
     let attempt = 0;
     let res: Response;
-    const init = nvidiaFetchInit({
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(body),
-      signal: ctrl.signal,
-    }) as RequestInit;
     while (true) {
+      const apiKey = getNvidiaApiKey(task);
+      if (!apiKey) throw new Error("NVIDIA_API_KEY not configured");
+      const init = nvidiaFetchInit({
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(body),
+        signal: ctrl.signal,
+      }) as RequestInit;
+
       res = await fetch(`${NVIDIA_BASE}${path}`, init);
       if (res.ok) break;
 
@@ -79,7 +100,7 @@ async function nvidiaFetch(path: string, body: unknown, timeoutMs = 32_000): Pro
 
         if (elapsed + delay + 500 < timeoutMs) {
           attempt++;
-          console.warn(`[NVIDIA Fetch] Transient failure (${res.status}) on ${path}. Retrying in ${delay.toFixed(0)}ms (attempt ${attempt}/3)...`);
+          console.warn(`[NVIDIA Fetch] Transient failure (${res.status}) on ${path}. Retrying with next rotated key in ${delay.toFixed(0)}ms (attempt ${attempt}/3)...`);
           await new Promise((r) => setTimeout(r, delay));
           continue;
         }
@@ -97,6 +118,7 @@ async function nvidiaFetch(path: string, body: unknown, timeoutMs = 32_000): Pro
 export async function nvidiaEmbedBatch(
   texts: string[],
   inputType: "query" | "passage" = "passage",
+  task: NvidiaTaskType = "default",
 ): Promise<number[][]> {
   const BATCH = 64;
   const results: number[][] = [];
@@ -107,14 +129,18 @@ export async function nvidiaEmbedBatch(
       model: NVIDIA_EMBED_MODEL,
       encoding_format: "float",
       input_type: inputType,
-    })) as { data: Array<{ embedding: number[] }> };
+    }, 32_000, task)) as { data: Array<{ embedding: number[] }> };
     results.push(...data.data.map((d) => d.embedding));
   }
   return results;
 }
 
-export async function nvidiaEmbed(text: string, inputType: "query" | "passage" = "passage"): Promise<number[]> {
-  const [vec] = await nvidiaEmbedBatch([text], inputType);
+export async function nvidiaEmbed(
+  text: string,
+  inputType: "query" | "passage" = "passage",
+  task: NvidiaTaskType = "default",
+): Promise<number[]> {
+  const [vec] = await nvidiaEmbedBatch([text], inputType, task);
   return vec;
 }
 
@@ -148,7 +174,14 @@ export function mapUnstableModel(model: string): string {
   return mappings[model] ?? model;
 }
 
-export async function nvidiaChat(model: string, system: string, user: string, temperatureOverride?: number, maxTokensOverride?: number): Promise<string> {
+export async function nvidiaChat(
+  model: string,
+  system: string,
+  user: string,
+  temperatureOverride?: number,
+  maxTokensOverride?: number,
+  task: NvidiaTaskType = "default",
+): Promise<string> {
   const targetModel = mapUnstableModel(model);
   const cfg = MODEL_CONFIGS[targetModel] ?? { maxTokens: 4096, temperature: 0.3 };
   const data = (await nvidiaFetch("/chat/completions", {
@@ -160,7 +193,7 @@ export async function nvidiaChat(model: string, system: string, user: string, te
     max_tokens: maxTokensOverride ?? cfg.maxTokens,
     temperature: temperatureOverride ?? cfg.temperature,
     top_p: 0.9,
-  })) as { choices: Array<{ message: { content: string } }> };
+  }, 32_000, task)) as { choices: Array<{ message: { content: string } }> };
   return data.choices[0].message.content;
 }
 
@@ -174,11 +207,10 @@ export async function nvidiaChatStream(
   user: string,
   temperatureOverride?: number,
   maxTokensOverride?: number,
+  task: NvidiaTaskType = "default",
 ): Promise<ReadableStream<string>> {
   const targetModel = mapUnstableModel(model);
   const cfg = MODEL_CONFIGS[targetModel] ?? { maxTokens: 4096, temperature: 0.3 };
-  const apiKey = getNvidiaApiKey();
-  if (!apiKey) throw new Error("NVIDIA_API_KEY not configured");
 
   const start = Date.now();
   let attempt = 0;
@@ -186,6 +218,9 @@ export async function nvidiaChatStream(
   const timeoutMs = 32_000;
 
   while (true) {
+    const apiKey = getNvidiaApiKey(task);
+    if (!apiKey) throw new Error("NVIDIA_API_KEY not configured");
+
     res = await fetch(`${NVIDIA_BASE}/chat/completions`, nvidiaFetchInit({
       method: "POST",
       headers: {
@@ -217,7 +252,7 @@ export async function nvidiaChatStream(
 
       if (elapsed + delay + 500 < timeoutMs) {
         attempt++;
-        console.warn(`[NVIDIA ChatStream] Transient failure (${res.status}). Retrying in ${delay.toFixed(0)}ms (attempt ${attempt}/3)...`);
+        console.warn(`[NVIDIA ChatStream] Transient failure (${res.status}). Retrying with next rotated key in ${delay.toFixed(0)}ms (attempt ${attempt}/3)...`);
         await new Promise((r) => setTimeout(r, delay));
         continue;
       }
@@ -248,8 +283,8 @@ export async function nvidiaChatStream(
   });
 }
 
-export async function extractTextFromImage(buffer: Buffer, mimeType: string): Promise<string> {
-  const apiKey = getNvidiaApiKey();
+export async function extractTextFromImage(buffer: Buffer, mimeType: string, task: NvidiaTaskType = "vision"): Promise<string> {
+  const apiKey = getNvidiaApiKey(task);
   if (!apiKey) {
     throw new Error("NVIDIA_API_KEY is not configured. Vision OCR requires an API key.");
   }
