@@ -383,6 +383,7 @@ export default function QueryBox() {
   const [model, setModel] = useState<string>("meta/llama-3.3-70b-instruct");
   const [showModelPicker, setShowModelPicker] = useState(false);
   const [swarmSize, setSwarmSize] = useState(3);
+  const [swarmMode, setSwarmMode] = useState<"research" | "debate">("debate");
   const [result, setResult] = useState<ResponseShape | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -624,7 +625,7 @@ export default function QueryBox() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          question, model,
+          question, model, mode: swarmMode,
           patientContext: formatPatientContext(patientInfo) || undefined,
           labText: labText || undefined,
         }),
@@ -755,7 +756,7 @@ export default function QueryBox() {
   const topCitation = useMemo(() => result?.matches?.[0], [result]);
   const hasDebate = (result?.round1Agents?.length ?? 0) > 0 && (result?.agents?.some((a) => a.round === 2) ?? false);
   const totalLive = liveRound1.length + liveRound2.length;
-  const totalExpected = swarmSize * (swarmSize > 1 ? 2 : 1);
+  const totalExpected = swarmSize * (swarmMode === "debate" && swarmSize > 1 ? 2 : 1);
 
   // Phase label
   const phaseLabel = synthesisPhase
@@ -1008,11 +1009,37 @@ export default function QueryBox() {
 
 
 
+        <div className="flex flex-col items-center gap-1.5">
+          <div className="inline-flex rounded-full border p-1"
+            style={{ borderColor: "var(--card-border)", backgroundColor: "var(--card)" }}>
+            {([
+              { id: "research", label: "Research", hint: "faster" },
+              { id: "debate", label: "Research + Debate", hint: "deeper · default" },
+            ] as const).map((m) => (
+              <button key={m.id} type="button" onClick={() => setSwarmMode(m.id)}
+                aria-pressed={swarmMode === m.id}
+                className="rounded-full px-4 py-1.5 text-xs font-semibold transition"
+                style={{
+                  backgroundColor: swarmMode === m.id ? "var(--accent)" : "transparent",
+                  color: swarmMode === m.id ? "#0f172a" : "var(--muted)",
+                }}>
+                {m.label}
+                <span className="ml-1 font-normal opacity-70">({m.hint})</span>
+              </button>
+            ))}
+          </div>
+          <p className="text-[10px]" style={{ color: "var(--muted)" }}>
+            {swarmMode === "research"
+              ? "Round 1 analysis → synthesis. Skips peer debate for a faster report."
+              : "Round 1 → peer debate → synthesis. Deeper, multi-agent cross-review."}
+          </p>
+        </div>
+
         <div className="flex flex-wrap items-center justify-center gap-4">
           <button type="submit" disabled={loading}
             className="rounded-2xl px-6 py-3 text-sm font-semibold shadow-lg transition disabled:opacity-60"
             style={{ background: "linear-gradient(90deg, #818cf8, #f472b6)", color: "#0f172a", boxShadow: "0 10px 30px rgba(99,102,241,0.25)" }}>
-            {loading ? "Debating…" : "Ask the swarm"}
+            {loading ? (swarmMode === "debate" ? "Debating…" : "Researching…") : "Ask the swarm"}
           </button>
           {(loading || stopped) && (
             <button type="button"
@@ -1163,7 +1190,7 @@ export default function QueryBox() {
           )}
 
           {/* Debate transition */}
-          {(debatePhase || liveRound2.length > 0 || synthesisPhase) && swarmSize > 1 && (
+          {swarmMode === "debate" && (debatePhase || liveRound2.length > 0 || synthesisPhase) && swarmSize > 1 && (
             <div className="rounded-xl border px-4 py-3"
               style={{ borderColor: "rgba(244,114,182,0.35)", background: "linear-gradient(135deg,rgba(244,114,182,0.06),rgba(129,140,248,0.06))" }}>
               <div className="flex items-center gap-3 mb-1">
@@ -1219,7 +1246,7 @@ export default function QueryBox() {
           <div className="h-1 w-full rounded-full overflow-hidden" style={{ backgroundColor: "var(--pill)" }}>
             <div className="h-full rounded-full transition-all duration-700"
               style={{
-                width: synthesisPhase ? "90%" : `${(totalLive / totalExpected) * 80}%`,
+                width: synthesisPhase ? "90%" : `${(totalLive / (totalExpected || 1)) * 80}%`,
                 background: "linear-gradient(90deg, #818cf8, #f472b6, #4ade80)",
               }} />
           </div>

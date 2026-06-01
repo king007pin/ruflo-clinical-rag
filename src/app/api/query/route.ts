@@ -18,6 +18,7 @@ const bodySchema = z.object({
   question: z.string().optional(),
   model: z.string().optional(),
   swarmSize: z.number().int().min(1).max(10).optional(),
+  mode: z.enum(["research", "debate"]).optional(),
   topK: z.number().int().min(1).max(20).optional(),
   patientContext: z.string().max(800).optional(),
   labText: z.string().max(12000).optional(),
@@ -36,7 +37,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid payload", issues: parsed.error.issues }, { status: 400 });
   }
 
-  let { question, model, swarmSize, topK = 10, patientContext, labText } = parsed.data;
+  let { question, model, swarmSize, mode, topK = 10, patientContext, labText } = parsed.data;
 
   const hasClinicalPayload = !!(labText?.trim() || patientContext?.trim());
   const hasQuestion = !!(question?.trim());
@@ -160,6 +161,7 @@ export async function POST(req: NextRequest) {
           matches: topMatches,
           model,
           swarmSize,
+          mode,
           patientContext,
           labText,
           queryEmbedding: qEmbedding,
@@ -170,7 +172,7 @@ export async function POST(req: NextRequest) {
           onDebateStart: () =>
             send({ type: "debate_start", message: "Agents reviewing each other's reasoning…" }),
           onSynthesisStart: () =>
-            send({ type: "synthesis_start", message: "Synthesizing final report from debate…" }),
+            send({ type: "synthesis_start", message: "Synthesizing final report…" }),
           // Item 2: stream synthesis tokens to client
           onSynthesisToken: (token) => send({ type: "synthesis_token", token }),
           onManagerStatus: (msg) => send({ type: "status", message: msg }),

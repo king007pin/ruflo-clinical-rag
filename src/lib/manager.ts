@@ -80,6 +80,7 @@ export async function runManagedSwarm(params: {
   matches: Parameters<typeof runSwarm>[0]["matches"];
   model?: string;
   swarmSize?: number;
+  mode?: "research" | "debate";
   patientContext?: string;
   labText?: string;
   queryEmbedding?: number[];
@@ -142,6 +143,7 @@ export async function runManagedSwarm(params: {
     matches,
     model,
     swarmSize: agentCountSelected,
+    mode: params.mode,
     patientContext,
     labText,
     precomputedRouting: params.precomputedRouting,

@@ -234,4 +234,122 @@ REFERENCES
     expect(doneEvent.sectionAudit.allMandatoryPresent).toBe(true);
     expect(doneEvent.agents.length).toBeGreaterThanOrEqual(2);
   });
+
+  // Detect a synthesis (streaming) request by its body `stream: true` flag rather
+  // than a call-count heuristic — research mode fires fewer calls (no Round 2).
+  function mockSwarmFetch() {
+    return vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (!url.includes("/chat/completions")) {
+        return new Response(JSON.stringify({}), { status: 200 });
+      }
+      const body = typeof init?.body === "string" ? init.body : "";
+      if (body.includes("\"stream\":true")) {
+        const encoder = new TextEncoder();
+        const stream = new ReadableStream({
+          start(controller) {
+            const text = `CLINICAL ASSESSMENT REPORT
+----------------------------------------
+CLINICAL INTERPRETATION
+Some interpretation details here.
+
+DIFFERENTIAL DIAGNOSIS
+- possible ACS
+
+MOST LIKELY DIAGNOSIS
+ACS secondary to acute occlusion.
+
+RECOMMENDED EVALUATION NOW
+Immediate ECG.
+
+EVIDENCE GAPS
+No long-term follow up.
+
+REFERENCES
+[S1] Reference article.`;
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: text } }] })}\n\n`));
+            controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
+            controller.close();
+          },
+        });
+        return new Response(stream, { status: 200, headers: { "Content-Type": "text/event-stream" } });
+      }
+      return new Response(
+        JSON.stringify({ choices: [{ message: { content: `Round response. Reviewed evidence [S1].` } }] }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    }) as typeof fetch;
+  }
+
+  async function collectSseEvents(response: Response): Promise<Array<Record<string, unknown>>> {
+    const reader = response.body!.getReader();
+    const decoder = new TextDecoder();
+    let acc = "";
+    let done = false;
+    while (!done) {
+      const { value, done: isDone } = await reader.read();
+      done = isDone;
+      if (value) acc += decoder.decode(value);
+    }
+    return acc
+      .split("\n\n")
+      .filter((l) => l.trim().startsWith("data: "))
+      .map((l) => JSON.parse(l.replace("data: ", "")));
+  }
+
+  it("research mode skips Round 2 — no debate_start, still synthesizes a full report", async () => {
+    global.fetch = mockSwarmFetch();
+
+    const req = new NextRequest("http://localhost/api/query", {
+      method: "POST",
+      body: JSON.stringify({
+        question: "54M with crushing substernal chest pressure and radiating left arm pain with severe dyspnea.",
+        swarmSize: 4,
+        mode: "research",
+      }),
+    });
+
+    const response = await POST(req);
+    expect(response.status).toBe(200);
+
+    const events = await collectSseEvents(response);
+    const types = events.map((e) => e.type);
+
+    // Research mode: Round 2 gated off → no debate phase emitted …
+    expect(types).not.toContain("debate_start");
+    // … but synthesis still runs and a full report is produced.
+    expect(types).toContain("synthesis_start");
+    expect(types).toContain("synthesis_token");
+    expect(types).toContain("done");
+    const done = events.find((e) => e.type === "done") as { answer: string } | undefined;
+    expect(done?.answer).toContain("MOST LIKELY DIAGNOSIS");
+  });
+
+  it("debate mode still emits debate_start (default behavior preserved)", async () => {
+    global.fetch = mockSwarmFetch();
+
+    const req = new NextRequest("http://localhost/api/query", {
+      method: "POST",
+      body: JSON.stringify({
+        question: "54M with crushing substernal chest pressure and radiating left arm pain with severe dyspnea.",
+        swarmSize: 4,
+        mode: "debate",
+      }),
+    });
+
+    const response = await POST(req);
+    expect(response.status).toBe(200);
+    const events = await collectSseEvents(response);
+    expect(events.map((e) => e.type)).toContain("debate_start");
+  });
+
+  it("rejects an invalid mode value with 400 before any swarm work", async () => {
+    const req = new NextRequest("http://localhost/api/query", {
+      method: "POST",
+      body: JSON.stringify({ question: "chest pain", mode: "argue" }),
+    });
+
+    const response = await POST(req);
+    expect(response.status).toBe(400);
+  });
 });

@@ -272,6 +272,7 @@ export async function runSwarm({
   matches,
   model,
   swarmSize = 10,
+  mode = "debate",
   patientContext,
   labText,
   precomputedRouting,
@@ -287,6 +288,7 @@ export async function runSwarm({
   matches: MatchMeta[];
   model?: string;
   swarmSize?: number;
+  mode?: "research" | "debate";
   patientContext?: string;
   labText?: string;
   precomputedRouting?: SwarmRouting;
@@ -340,7 +342,7 @@ export async function runSwarm({
   // ── Round 2: Peer debate — only for complex/emergency (4+ agents) ────────
   let round2Agents: Array<AgentReply & { round: 2 }> = [];
 
-  if (selected.length >= 4 && round1Agents.length >= 2) {
+  if (mode === "debate" && selected.length >= 4 && round1Agents.length >= 2) {
     onDebateStart?.();
 
     const specialtyByModel = new Map(selected.map((m, i) => [m, specialties[i]]));
